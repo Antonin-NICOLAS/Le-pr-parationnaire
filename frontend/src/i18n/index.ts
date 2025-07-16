@@ -19,7 +19,7 @@ i18n.use(LanguageDetector)
         },
         defaultNS: 'common',
         nsSeparator: '.',
-        ns: ['common'],
+        ns: ['common', 'header'],
         resources: {
             en: {
                 common: CommonEN,

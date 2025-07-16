@@ -65,6 +65,11 @@ const UserSchema = new mongoose.Schema({
         enum: ['en', 'fr', 'es', 'de'],
         default: 'en',
     },
+    theme: {
+        type: String,
+        enum: ['dark', 'light', 'auto'],
+        default: 'light',
+    },
     createdAt: {
         type: Date,
         default: Date.now,

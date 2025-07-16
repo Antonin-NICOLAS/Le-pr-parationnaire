@@ -15,7 +15,6 @@ i18n.use(Backend)
         },
         fallbackLng: false,
         returnNull: false,
-        debug: true,
         supportedLngs: ['en', 'fr'],
         ns: ['common', 'auth'],
         defaultNS: 'common',

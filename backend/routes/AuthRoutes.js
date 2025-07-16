@@ -29,10 +29,12 @@ router.use(
     })
 )
 
-// Apply rate limiting to auth routes
+// Routes
+router.get('/profile', authenticate, checkSession)
+
+// with rate limiting
 router.use(rateLimiterMiddleware)
 
-// Routes
 router.post('/register', register)
 router.post('/login', login)
 router.post('/logout', logout)
@@ -42,7 +44,5 @@ router.post('/reset-password', resetPassword)
 
 router.post('/verify-email', authenticate, verifyEmail)
 router.post('/change-password', authenticate, changePassword)
-
-router.get('/profile', authenticate, checkSession)
 
 module.exports = router

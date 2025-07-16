@@ -14,6 +14,7 @@ const StrictrateLimiter = new RateLimiterMemory({
 
 // Middleware to apply rate limiting
 const rateLimiterMiddleware = (req, res, next) => {
+    const { t } = req
     rateLimiter
         .consume(req.ip)
         .then(() => {
@@ -24,14 +25,17 @@ const rateLimiterMiddleware = (req, res, next) => {
             res.status(429).json({
                 success: false,
                 error:
-                    'Trop de requêtes, veuillez réessayer dans ' +
+                    t('common:request_limit') +
                     remainingSeconds +
-                    ' secondes.',
+                    ' ' +
+                    t('common:sec') +
+                    '.',
             })
         })
 }
 
 const strictRateLimiterMiddleware = (req, res, next) => {
+    const { t } = req
     StrictrateLimiter.consume(req.ip)
         .then(() => {
             next()
@@ -41,9 +45,11 @@ const strictRateLimiterMiddleware = (req, res, next) => {
             res.status(429).json({
                 success: false,
                 error:
-                    'Trop de requêtes, veuillez réessayer dans ' +
+                    t('common:request_limit') +
                     remainingSeconds +
-                    ' secondes.',
+                    ' ' +
+                    t('common:sec') +
+                    '.',
             })
         })
 }
