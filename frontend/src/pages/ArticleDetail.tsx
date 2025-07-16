@@ -220,7 +220,7 @@ export function ArticleDetail() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900  transition-all duration-400">
             {/* Hero Section */}
             <div className="relative bg-white dark:bg-gray-800">
                 <div className="absolute inset-0">

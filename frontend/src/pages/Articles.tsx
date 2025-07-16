@@ -29,6 +29,7 @@ const mockArticles = [
             { id: '1', name: 'Organisation', color: 'blue', category: 'type' },
             { id: '2', name: 'MPSI', color: 'green', category: 'level' },
         ],
+        viewCount: 150,
         isPublished: true,
         isPremium: false,
     },
@@ -59,6 +60,7 @@ const mockArticles = [
             },
             { id: '4', name: 'Conseils', color: 'yellow', category: 'type' },
         ],
+        viewCount: 151,
         isPublished: true,
         isPremium: true,
     },
@@ -84,6 +86,7 @@ const mockArticles = [
             { id: '5', name: 'Physique', color: 'red', category: 'subject' },
             { id: '6', name: 'Mécanique', color: 'indigo', category: 'type' },
         ],
+        viewCount: 178,
         isPublished: true,
         isPremium: false,
     },
@@ -109,6 +112,7 @@ const mockArticles = [
             { id: '7', name: 'Chimie', color: 'green', category: 'subject' },
             { id: '8', name: 'PCSI', color: 'blue', category: 'level' },
         ],
+        viewCount: 158,
         isPublished: true,
         isPremium: false,
     },
@@ -153,7 +157,7 @@ export function Articles() {
     }
 
     return (
-        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8">
+        <div className="min-h-screen bg-gray-50 dark:bg-gray-900 py-8 transition-all duration-400">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 {/* Header */}
                 <div className="text-center mb-12">

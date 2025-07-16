@@ -97,7 +97,7 @@ const stats = [
 
 export function Home() {
     return (
-        <div className="min-h-screen bg-white dark:bg-gray-900">
+        <div className="min-h-screen bg-white dark:bg-gray-900 transition-all duration-400">
             {/* Hero Section */}
             <section className="relative bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-800 dark:to-gray-900 py-20">
                 <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">

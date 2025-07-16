@@ -78,11 +78,6 @@ export function Navbar({ theme, toggleTheme }: NavbarProps) {
 
                         {user ? (
                             <div className="flex items-center space-x-3">
-                                <span className="text-sm text-gray-700 dark:text-gray-300">
-                                    Bonjour,{' '}
-                                    {user.user_metadata?.full_name ||
-                                        user.email}
-                                </span>
                                 <Link to="/profile">
                                     <UserAvatar
                                         src={user.user_metadata?.avatar_url}
@@ -156,10 +151,6 @@ export function Navbar({ theme, toggleTheme }: NavbarProps) {
 
                                 {user ? (
                                     <div className="flex items-center space-x-3">
-                                        <span className="text-sm text-gray-700 dark:text-gray-300">
-                                            {user.user_metadata?.full_name ||
-                                                user.email}
-                                        </span>
                                         <Link
                                             to="/profile"
                                             onClick={() => setIsMenuOpen(false)}
