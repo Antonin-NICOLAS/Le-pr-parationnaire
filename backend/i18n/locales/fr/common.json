@@ -1,5 +1,7 @@
 {
   "errors": {
     "server_error": "Erreur du serveur. Veuillez réessyer plus tard."
-  }
+  },
+  "request_limit": "Trop de requêtes, veuillez réessayer dans",
+  "sec": "secondes"
 }

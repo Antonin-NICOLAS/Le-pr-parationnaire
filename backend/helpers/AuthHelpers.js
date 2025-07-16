@@ -34,7 +34,7 @@ const validatePassword = (password) => {
 
 // User Location
 const findLocation = async (language, ipAddress) => {
-    let location = 'Localisation inconnue'
+    let location = t('auth:unkown_loc')
     try {
         const geoRes = await fetch(
             `http://ip-api.com/json/${ipAddress}?fields=status,country,regionName,city,zip,lat,lon&lang=${language}`

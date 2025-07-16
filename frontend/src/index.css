@@ -1,5 +1,57 @@
 @import 'tailwindcss';
 
+/* Thème clair par défaut */
+@theme {
+    --color-primary-50: rgba(230, 240, 247, 1);
+    --color-primary-100: rgba(207, 224, 235, 1);
+    --color-primary-200: rgba(175, 202, 218, 1);
+    --color-primary-300: rgba(143, 180, 201, 1);
+    --color-primary-400: rgba(111, 158, 184, 1);
+    --color-primary-500: rgba(84, 140, 169, 1);
+    --color-primary-600: rgba(67, 113, 136, 1);
+    --color-primary-700: rgba(51, 86, 103, 1);
+    --color-primary-800: rgba(34, 60, 71, 1);
+    --color-primary-900: rgba(17, 34, 40, 1);
+    /* global */
+    --color-background: rgba(255, 255, 255, 1);
+    --color-text: rgba(30, 30, 30, 1);
+    /* error */
+    --color-error-text: rgba(150, 0, 0, 1);
+    --color-error-bg: 255, rgba(200, 200, 1);
+    --color-error-border: rgba(200, 0, 0, 1);
+    /* warning */
+    --color-warning-text: rgba(120, 60, 0, 1);
+    --color-warning-bg: rgba(255, 235, 200, 1);
+    --color-warning-border: rgba(200, 150, 0, 1);
+    /* success */
+    --color-success-text: rgba(0, 100, 0, 1);
+    --color-success-bg: rgba(200, 255, 200, 1);
+    --color-success-border: rgba(0, 150, 0, 1);
+}
+
+/* Dark mode overrides */
+@layer base {
+    .dark {
+        --color-background: rgba(18, 18, 20, 1);
+        --color-text: rgba(220, 220, 230, 1);
+        /* primary ajustée en dark */
+        --color-primary-50: rgba(34, 60, 71, 1);
+        --color-primary-100: rgba(51, 86, 103, 1);
+        --color-primary-200: rgba(67, 113, 136, 1);
+        --color-primary-300: rgba(84, 140, 169, 1);
+        --color-primary-400: rgba(111, 158, 184, 1);
+        --color-primary-500: rgba(143, 180, 201, 1);
+        --color-primary-600: rgba(175, 202, 218, 1);
+        --color-primary-700: rgba(207, 224, 235, 1);
+        --color-primary-800: rgba(230, 240, 247, 1);
+        --color-primary-900: rgba(255, 255, 255, 1);
+        /* erreurs/alertes dark modérées */
+        --color-error-bg: rgba(80, 0, 0, 1);
+        --color-warning-bg: rgba(80, 50, 0, 1);
+        --color-success-bg: rgba(0, 80, 0, 1);
+    }
+}
+
 /* Custom styles for affiliate links */
 .affiliate-link {
     position: relative;

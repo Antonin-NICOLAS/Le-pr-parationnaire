@@ -212,6 +212,7 @@ const checkSession = async (req, res) => {
                 nom: req.user.nom,
                 prenom: req.user.prenom,
                 language: req.user.language,
+                theme: req.user.theme,
                 role: req.user.role,
             },
         })
