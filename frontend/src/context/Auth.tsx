@@ -4,18 +4,32 @@ import axios from 'axios'
 import.meta.env.VITE_AUTH =
     import.meta.env.VITE_NODE_ENV === 'development' ? '/auth' : '/api/auth'
 
-type User = {
+export interface User {
     id: string
-    email: string
     nom: string
     prenom: string
+    avatarUrl?: string
+    email: string
+    lastLogin?: Date
+    loginHistory?: Array<{
+        ip: string
+        userAgent: string
+        location: string
+        date: Date
+    }>
+    TwoFactor?: {
+        email: boolean
+        app: boolean
+        webauthn: boolean
+    }
+    role: string
     language: string
     theme: string
-    role: string
 }
 
 type AuthContextType = {
     user: User | null
+    isAuthenticated: boolean
     error: string | null
     login: (
         email: string,
@@ -36,6 +50,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     const [user, setUser] = useState<User | null>(null)
+    const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false)
     const [error, setError] = useState<string | null>(null)
 
     const checkAuth = async () => {
@@ -46,6 +61,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
                     withCredentials: true,
                 }
             )
+            setIsAuthenticated(true)
             setUser(res.data)
         } catch (err) {
             setUser(null)
@@ -107,7 +123,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }, [])
 
     return (
-        <AuthContext.Provider value={{ user, error, login, logout, register }}>
+        <AuthContext.Provider
+            value={{ user, isAuthenticated, error, login, logout, register }}
+        >
             {children}
         </AuthContext.Provider>
     )
