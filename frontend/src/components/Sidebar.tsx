@@ -3,6 +3,8 @@ import { NavLink, useNavigate } from 'react-router-dom'
 // Contexts
 import { useTheme } from '../context/Theme'
 import { useAuth } from '../context/Auth'
+// Image
+import Logo from '../assets/icon.png'
 // Icons
 import {
     LayoutDashboard,
@@ -90,8 +92,12 @@ const Sidebar: React.FC<SidebarProps> = ({
                         onClick={handleNavClick}
                         className="inline-flex items-center gap-x-1"
                     >
-                        <img alt="Logo" className="text-primary-500 h-10" />
-                        <span className="text-primary-500 font-semibold">
+                        <img
+                            src={Logo}
+                            alt="Logo"
+                            className="text-primary-500 h-10"
+                        />
+                        <span className="text-primary-500 text-xl font-semibold">
                             Le préparationnaire
                         </span>
                     </NavLink>
@@ -160,7 +166,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                                     Vous n'êtes pas connecté
                                 </h3>
                                 <NavLink
-                                    to="/login"
+                                    to="/auth"
                                     className="text-[calc(7px_+_0.3vh_+_0.2vw)] text-gray-400 no-underline [transition:color_0.4s]"
                                 >
                                     Se connecter
@@ -410,7 +416,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                             </button>
                         ) : (
                             <NavLink
-                                to="/login"
+                                to="/auth"
                                 onClick={handleNavClick}
                                 className="text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[1.9rem] transition-[color] duration-[0.1s]"
                             >
