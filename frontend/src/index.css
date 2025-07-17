@@ -1,47 +1,8 @@
 @import 'tailwindcss';
 
-:root {
-    --first-color: hsl(228, 85%, 63%);
-    --title-color: hsl(228, 18%, 16%);
-    --text-color: hsl(228, 8%, 56%);
-    --body-color: hsl(228, 100%, 99%);
-    --shadow-color: hsla(228, 80%, 4%, 0.1);
-
-    --shadow: 0 4px 6px var(--shadow-color), 0 1px 3px rgba(0, 0, 0, 0.08);
-    --shadow-lg: 0 10px 15px -3px var(--shadow-color),
-        0 4px 6px -2px rgba(0, 0, 0, 0.05);
-    --transition: all 0.3s ease;
-    --sidebar: padding 0.4s ease;
-    --radius: 8px;
-    --radius-lg: 12px;
-
-    --normal-font-size: 0.938rem;
-    --smaller-font-size: 0.75rem;
-    --tiny-font-size: 0.75rem;
-
-    --font-regular: 400;
-    --font-semi-bold: 600;
-}
-
-/*=============== VARIABLES DARK THEME ===============*/
-html.dark {
-    --first-color: hsl(228, 70%, 63%);
-    --title-color: hsl(228, 18%, 96%);
-    --text-color: hsl(228, 12%, 61%);
-    --body-color: hsl(228, 24%, 16%);
-    --shadow-color: hsla(228, 80%, 4%, 0.3);
-}
-
-/*========== Responsive typography ==========*/
-@media screen and (min-width: 1150px) {
-    :root {
-        --normal-font-size: 1rem;
-        --smaller-font-size: 0.813rem;
-    }
-}
-
 /* Thème clair par défaut */
 @theme {
+    /* Primary palette */
     --color-primary-50: rgba(230, 240, 247, 1);
     --color-primary-100: rgba(207, 224, 235, 1);
     --color-primary-200: rgba(175, 202, 218, 1);
@@ -52,62 +13,94 @@ html.dark {
     --color-primary-700: rgba(51, 86, 103, 1);
     --color-primary-800: rgba(34, 60, 71, 1);
     --color-primary-900: rgba(17, 34, 40, 1);
-    /* global */
-    --color-background: rgba(255, 255, 255, 1);
+
+    /* Gray gradient (light mode) */
+    --color-deg-gray-50: rgba(255, 255, 255, 1);
+    --color-deg-gray-100: rgba(230, 230, 230, 1);
+    --color-deg-gray-200: rgba(200, 200, 200, 1);
+    --color-deg-gray-300: rgba(160, 160, 160, 1);
+    --color-deg-gray-400: rgba(120, 120, 120, 1);
+    --color-deg-gray-500: rgba(90, 90, 90, 1);
+    --color-deg-gray-600: rgba(70, 70, 70, 1);
+    --color-deg-gray-700: rgba(50, 50, 50, 1);
+    --color-deg-gray-800: rgba(30, 30, 30, 1);
+    --color-deg-gray-900: rgba(10, 10, 10, 1);
+
+    /* Global */
+    --color-background: var(--color-deg-gray-50);
     --color-text: rgba(30, 30, 30, 1);
-    /* error */
+
+    /* Alerts */
     --color-error-text: rgba(150, 0, 0, 1);
-    --color-error-bg: 255, rgba(200, 200, 1);
+    --color-error-bg: rgba(255, 240, 240, 1);
     --color-error-border: rgba(200, 0, 0, 1);
-    /* warning */
+
     --color-warning-text: rgba(120, 60, 0, 1);
-    --color-warning-bg: rgba(255, 235, 200, 1);
+    --color-warning-bg: rgba(255, 245, 220, 1);
     --color-warning-border: rgba(200, 150, 0, 1);
-    /* success */
+
     --color-success-text: rgba(0, 100, 0, 1);
-    --color-success-bg: rgba(200, 255, 200, 1);
+    --color-success-bg: rgba(230, 255, 230, 1);
     --color-success-border: rgba(0, 150, 0, 1);
 
-    --color-shadow-color: hsla(228, 80%, 4%, 0.1);
+    /* Font sizes */
+    --text-normal: calc(14px + 0.25vw + 0.25vh);
+    --text-small: calc(12px + 0.18vw + 0.2vh);
+    --text-tiny: calc(10px + 0.15vw + 0.15vh);
+
+    /* Radius */
+    --radius-sm: 4px;
+    --radius-md: 8px;
+    --radius-lg: 12px;
+
+    /* Breakpoints */
+    --breakpoint-sidebar: 1150px;
 }
 
 /* Dark mode overrides */
 @layer base {
     .dark {
-        --color-background: rgba(18, 18, 20, 1);
-        --color-text: rgba(220, 220, 230, 1);
-        /* primary ajustée en dark */
-        --color-primary-50: rgba(34, 60, 71, 1);
-        --color-primary-100: rgba(51, 86, 103, 1);
-        --color-primary-200: rgba(67, 113, 136, 1);
-        --color-primary-300: rgba(84, 140, 169, 1);
-        --color-primary-400: rgba(111, 158, 184, 1);
-        --color-primary-500: rgba(143, 180, 201, 1);
-        --color-primary-600: rgba(175, 202, 218, 1);
-        --color-primary-700: rgba(207, 224, 235, 1);
-        --color-primary-800: rgba(230, 240, 247, 1);
-        --color-primary-900: rgba(255, 255, 255, 1);
-        /* erreurs/alertes dark modérées */
+        /* Global */
+        --color-text: rgba(230, 230, 240, 1);
+
+        /* Gray gradient (dark mode) */
+        --color-deg-gray-50: rgba(10, 10, 10, 1);
+        --color-deg-gray-100: rgba(30, 30, 30, 1);
+        --color-deg-gray-200: rgba(50, 50, 50, 1);
+        --color-deg-gray-300: rgba(50, 50, 50, 1);
+        --color-deg-gray-400: rgba(70, 70, 70, 1);
+        --color-deg-gray-500: rgba(90, 90, 90, 1);
+        --color-deg-gray-600: rgba(160, 160, 160, 1);
+        --color-deg-gray-700: rgba(200, 200, 200, 1);
+        --color-deg-gray-800: rgba(230, 230, 230, 1);
+        --color-deg-gray-900: rgba(255, 255, 255, 1);
+
+        /* Alerts - plus sobres en dark */
         --color-error-bg: rgba(80, 0, 0, 1);
         --color-warning-bg: rgba(80, 50, 0, 1);
         --color-success-bg: rgba(0, 80, 0, 1);
+
+        /* Shadow (déjà là) */
+        --color-shadow-color: hsla(228, 80%, 4%, 0.3);
     }
 }
 
-/* Custom styles for affiliate links */
-.affiliate-link {
-    position: relative;
-    text-decoration: underline;
-    text-decoration-color: #f59e0b;
-}
-
-.affiliate-link:hover {
-    text-decoration-color: #d97706;
+:root {
+    --font-regular: 400;
+    --font-semi-bold: 600;
 }
 
 /* Smooth scrolling for table of contents */
 html {
     scroll-behavior: smooth;
+}
+
+body {
+    font-family: 'Nunito Sans', system-ui;
+    background-color: var(--color-background);
+    min-width: calc(100vw - 8px);
+    min-height: 100vh;
+    overflow-x: auto;
 }
 
 /* Custom scrollbar */
@@ -117,6 +110,7 @@ html {
 
 ::-webkit-scrollbar-track {
     background: #f1f5f9;
+    border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb {
@@ -129,13 +123,13 @@ html {
 }
 
 .dark ::-webkit-scrollbar-track {
-    background: #1e293b;
+    background: #383d43;
 }
 
 .dark ::-webkit-scrollbar-thumb {
-    background: #475569;
+    background: #637288;
 }
 
 .dark ::-webkit-scrollbar-thumb:hover {
-    background: #64748b;
+    background: #7b8eaa;
 }
