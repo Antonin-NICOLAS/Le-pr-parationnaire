@@ -1,31 +1,9 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
+import type { User } from '../types/auth'
 import axios from 'axios'
 
 import.meta.env.VITE_AUTH =
     import.meta.env.VITE_NODE_ENV === 'development' ? '/auth' : '/api/auth'
-
-export interface User {
-    id: string
-    nom: string
-    prenom: string
-    avatarUrl?: string
-    email: string
-    lastLogin?: Date
-    loginHistory?: Array<{
-        ip: string
-        userAgent: string
-        location: string
-        date: Date
-    }>
-    TwoFactor?: {
-        email: boolean
-        app: boolean
-        webauthn: boolean
-    }
-    role: string
-    language: string
-    theme: string
-}
 
 type AuthContextType = {
     user: User | null
