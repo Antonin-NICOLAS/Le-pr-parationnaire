@@ -37,7 +37,6 @@ export const ThemeProvider = ({ children }: { children: React.ReactNode }) => {
 
     // Gère les changements de thème système (ex: macOS passe en dark à la tombée de la nuit)
     useEffect(() => {
-        console.log('System theme change listener added')
         if (user?.theme !== 'auto') return
 
         const media = window.matchMedia('(prefers-color-scheme: dark)')
