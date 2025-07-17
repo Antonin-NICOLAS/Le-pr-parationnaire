@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react'
+import React, { useEffect, useRef } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
 // Contexts
 import { useTheme } from '../context/Theme'
@@ -22,12 +22,20 @@ import {
     User,
 } from 'lucide-react'
 
-const Header: React.FC = () => {
+type SidebarProps = {
+    sidebarOpen: boolean
+    setSidebarOpen: React.Dispatch<React.SetStateAction<boolean>>
+    isMobileView: boolean
+}
+
+const Sidebar: React.FC<SidebarProps> = ({
+    sidebarOpen,
+    setSidebarOpen,
+    isMobileView,
+}) => {
     const navigate = useNavigate()
     const { user, isAuthenticated, logout } = useAuth()
     const { theme, toggleTheme } = useTheme()
-    const [sidebarOpen, setSidebarOpen] = useState(false)
-    const [isMobileView, setIsMobileView] = useState(false)
     const closeMenuRef = useRef<HTMLDivElement>(null)
     const sidebarRef = useRef<HTMLDivElement>(null)
 
@@ -46,19 +54,6 @@ const Header: React.FC = () => {
             setSidebarOpen(false)
         }
     }
-
-    useEffect(() => {
-        const checkScreenSize = () => {
-            setIsMobileView(window.innerWidth < 1150)
-        }
-
-        checkScreenSize()
-        window.addEventListener('resize', checkScreenSize)
-
-        return () => {
-            window.removeEventListener('resize', checkScreenSize)
-        }
-    }, [])
 
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
@@ -86,31 +81,24 @@ const Header: React.FC = () => {
     return (
         <>
             <header
-                className={`fixed z-9000 m-3 top-0 left-0 right-0 [transition:padding_0.4s,_background-color_0.4s,_width_0.4s]
-                    ${sidebarOpen && !isMobileView && 'pl-[300px]'}
-                    ${!sidebarOpen && !isMobileView && 'pl-[100px]'}
-                    ${sidebarOpen && isMobileView && 'pl-[300px]'}
-                    ${!sidebarOpen && isMobileView && 'pl-[0]'}`}
+                className={`z-9000 fixed left-0 right-0 top-0 m-3 [transition:padding_0.4s,_background-color_0.4s,_width_0.4s] ${sidebarOpen && !isMobileView && 'pl-[calc(290px+0.75rem)]'} ${!sidebarOpen && !isMobileView && 'pl-[calc(90px+0.75rem)]'} ${sidebarOpen && isMobileView && 'pl-[calc(290px+0.75rem)]'} ${!sidebarOpen && isMobileView && 'pl-[0]'}`}
                 id="header"
             >
-                <div className="w-full h-[3.5rem] bg-[color:var(--body-color)] shadow-[0_2px_24px_rgba(0,0,0,0.25] flex justify-between items-center transition-[background-color] duration-[0.4s] rounded-2xl px-6">
+                <div className="bg-deg-gray-100 flex h-[3.5rem] w-full items-center justify-between rounded-2xl px-6 shadow-xl transition-[background-color] duration-[0.4s]">
                     <NavLink
                         to={user ? '/dashboard' : '/'}
                         onClick={handleNavClick}
                         className="inline-flex items-center gap-x-1"
                     >
-                        <img
-                            alt="Logo"
-                            className="h-10 text-[color:var(--first-color)]"
-                        />
-                        <span className="text-[color:var(--title-color)] font-[number:var(--font-semi-bold)]">
+                        <img alt="Logo" className="text-primary-500 h-10" />
+                        <span className="text-primary-500 font-semibold">
                             Le préparationnaire
                         </span>
                     </NavLink>
 
                     <div className="grid gap-y-6" ref={closeMenuRef}>
                         <button
-                            className="text-2xl text-[color:var(--title-color)] cursor-pointer"
+                            className="text-text cursor-pointer text-2xl"
                             onClick={toggleSidebar}
                         >
                             <Menu />
@@ -120,7 +108,7 @@ const Header: React.FC = () => {
             </header>
 
             <nav
-                className={`z-9001 bg-[color:var(--body-color)] py-6 fixed top-[0] bottom-[0] [box-shadow:2px_0_24px_rgba(0,0,0,0.25] m-3 rounded-2xl [transition:left_0.4s,_background-color_0.4s,_width_0.4s] ${
+                className={`z-9001 bg-deg-gray-100 fixed bottom-[0] top-[0] m-3 rounded-2xl py-6 shadow-xl [transition:left_0.4s,_background-color_0.4s,_width_0.4s] ${
                     isMobileView && sidebarOpen && 'left-[0]'
                 } ${isMobileView && !sidebarOpen && 'left-[-120%]'} ${
                     !sidebarOpen && !isMobileView ? 'w-[90px]' : 'w-[290px]'
@@ -128,22 +116,22 @@ const Header: React.FC = () => {
                 id="sidebar"
                 ref={sidebarRef}
             >
-                <div className="h-full overflow-hidden flex flex-col gap-8">
-                    <div className="grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[1.2rem]">
+                <div className="flex h-full flex-col gap-8 overflow-hidden">
+                    <div className="grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[1.22rem]">
                         <div
-                            className={`relative w-[50px] h-[50px] bg-[color:var(--first-color)] overflow-hidden grid justify-items-center rounded-[50%] ${
+                            className={`bg-primary-500 relative grid h-[50px] w-[50px] justify-items-center overflow-hidden rounded-[50%] ${
                                 isAuthenticated && user ? 'items-center' : ''
                             }`}
                         >
                             {isAuthenticated && user ? (
                                 <img
                                     src={user.avatarUrl}
-                                    className="absolute w-full h-full"
+                                    className="absolute h-full w-full"
                                     alt="profile"
                                 />
                             ) : (
                                 <User
-                                    className="absolute w-[80%] h-[80%] bottom-[0] text-[color:var(--body-color)]"
+                                    className="absolute bottom-[0] h-[80%] w-[80%] text-white"
                                     strokeWidth={1.2}
                                 />
                             )}
@@ -155,10 +143,10 @@ const Header: React.FC = () => {
                                     sidebarOpen ? '' : 'opacity-0'
                                 }`}
                             >
-                                <h3 className="text-[length:var(--normal-font-size)] text-[color:var(--title-color)] [transition:color_0.4s]">
+                                <h3 className="text-[length:var(--normal-font-size)] text-gray-500 [transition:color_0.4s]">
                                     {user && user.prenom + ' ' + user.nom}
                                 </h3>
-                                <span className="no-underline text-[color:var(--title-color)] text-[calc(7px_+_0.3vh_+_0.2vw)] [transition:color_0.4s]">
+                                <span className="text-[calc(7px_+_0.3vh_+_0.2vw)] text-gray-400 no-underline [transition:color_0.4s]">
                                     {user && user.email}
                                 </span>
                             </NavLink>
@@ -168,12 +156,12 @@ const Header: React.FC = () => {
                                     sidebarOpen ? '' : 'opacity-0'
                                 }`}
                             >
-                                <h3 className="text-[length:var(--normal-font-size)] text-[color:var(--title-color)] [transition:color_0.4s]">
+                                <h3 className="text-[length:var(--normal-font-size)] text-gray-500 [transition:color_0.4s]">
                                     Vous n'êtes pas connecté
                                 </h3>
                                 <NavLink
                                     to="/login"
-                                    className="no-underline text-[color:var(--title-color)] text-[calc(7px_+_0.3vh_+_0.2vw)] [transition:color_0.4s]"
+                                    className="text-[calc(7px_+_0.3vh_+_0.2vw)] text-gray-400 no-underline [transition:color_0.4s]"
                                 >
                                     Se connecter
                                 </NavLink>
@@ -182,12 +170,12 @@ const Header: React.FC = () => {
                     </div>
                     <div className={isMobileView ? 'block' : 'hidden'}>
                         <button
-                            className="relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 text-[color:var(--text-color)] transition-[color] duration-[0.1s] pl-[1.9rem] hover:text-[color:var(--first-color)]"
+                            className="text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[1.9rem] transition-[color] duration-[0.1s]"
                             onClick={toggleSidebar}
                         >
                             <ChevronsLeft />
                             <span
-                                className={`font-[number:var(--font-semi-bold)] ${
+                                className={`font-semibold ${
                                     sidebarOpen ? '' : 'opacity-0'
                                 }`}
                             >
@@ -199,10 +187,10 @@ const Header: React.FC = () => {
                     <div className="overflow-hidden overflow-y-auto">
                         <div>
                             <h3
-                                className={`text-[var(--title-color)] font-[var(--font-semi-bold)] w-max mb-6 pl-8 [transition:var(--sidebar)] ${
+                                className={`text-primary-400 mb-6 w-max pl-7 font-semibold [transition:padding_0.4s] ${
                                     !sidebarOpen && !isMobileView
-                                        ? 'text-[0px] after:content-["NAV"] after:text-[length:var(--tiny-font-size)] after:font-[var(--font-semi-bold)]'
-                                        : 'text-[length:var(--tiny-font-size)]'
+                                        ? 'after:text-tiny text-[0px] after:font-semibold after:content-["NAV"]'
+                                        : 'text-tiny'
                                 }`}
                             >
                                 NAVIGATION
@@ -212,16 +200,16 @@ const Header: React.FC = () => {
                                     to="/dashboard"
                                     onClick={handleNavClick}
                                     className={({ isActive }) =>
-                                        `relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 text-[color:var(--text-color)] [transition:color_0.4s,_opacity_0.4s] pl-[1.9rem] hover:text-[color:var(--first-color)] ${
+                                        `text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[1.9rem] [transition:color_0.4s,_opacity_0.4s] ${
                                             isActive
-                                                ? 'text-[color:var(--first-color)] after:content-[""] after:absolute after:w-[3px] after:h-[calc(0.75rem_+_24.5px)] after:bg-[color:var(--first-color)] after:left-0'
+                                                ? 'text-primary-500 after:bg-primary-500 after:absolute after:left-0 after:h-[calc(0.75rem_+_24.5px)] after:w-[3px] after:content-[""]'
                                                 : ''
                                         }`
                                     }
                                 >
                                     <LayoutDashboard className="text-xl" />
                                     <span
-                                        className={`font-[var(--font-semi-bold)] [transition:opacity_0.4s] ${
+                                        className={`font-semibold [transition:opacity_0.4s] ${
                                             sidebarOpen ? '' : 'opacity-0'
                                         }`}
                                     >
@@ -232,16 +220,16 @@ const Header: React.FC = () => {
                                     to="/steps"
                                     onClick={handleNavClick}
                                     className={({ isActive }) =>
-                                        `relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 text-[color:var(--text-color)] [transition:color_0.4s,_opacity_0.4s] pl-[1.9rem] hover:text-[color:var(--first-color)] ${
+                                        `text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[1.9rem] [transition:color_0.4s,_opacity_0.4s] ${
                                             isActive
-                                                ? 'text-[color:var(--first-color)] after:content-[""] after:absolute after:w-[3px] after:h-[calc(0.75rem_+_24.5px)] after:bg-[color:var(--first-color)] after:left-0'
+                                                ? 'text-primary-500 after:bg-primary-500 after:absolute after:left-0 after:h-[calc(0.75rem_+_24.5px)] after:w-[3px] after:content-[""]'
                                                 : ''
                                         }`
                                     }
                                 >
                                     <Footprints className="text-xl" />
                                     <span
-                                        className={`font-[number:var(--font-semi-bold)] [transition:opacity_0.4s] ${
+                                        className={`font-semibold [transition:opacity_0.4s] ${
                                             sidebarOpen ? '' : 'opacity-0'
                                         }`}
                                     >
@@ -252,16 +240,16 @@ const Header: React.FC = () => {
                                     to="/challenges"
                                     onClick={handleNavClick}
                                     className={({ isActive }) =>
-                                        `relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 text-[color:var(--text-color)] [transition:color_0.4s,_opacity_0.4s] pl-[1.9rem] hover:text-[color:var(--first-color)] ${
+                                        `text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[1.9rem] [transition:color_0.4s,_opacity_0.4s] ${
                                             isActive
-                                                ? 'text-[color:var(--first-color)] after:content-[""] after:absolute after:w-[3px] after:h-[calc(0.75rem_+_24.5px)] after:bg-[color:var(--first-color)] after:left-0'
+                                                ? 'text-primary-500 after:bg-primary-500 after:absolute after:left-0 after:h-[calc(0.75rem_+_24.5px)] after:w-[3px] after:content-[""]'
                                                 : ''
                                         }`
                                     }
                                 >
                                     <Dumbbell className="text-xl" />
                                     <span
-                                        className={`font-[number:var(--font-semi-bold)] [transition:opacity_0.4s] ${
+                                        className={`font-semibold [transition:opacity_0.4s] ${
                                             sidebarOpen ? '' : 'opacity-0'
                                         }`}
                                     >
@@ -272,16 +260,16 @@ const Header: React.FC = () => {
                                     to="/rewards"
                                     onClick={handleNavClick}
                                     className={({ isActive }) =>
-                                        `relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 text-[color:var(--text-color)] [transition:color_0.4s,_opacity_0.4s] pl-[1.9rem] hover:text-[color:var(--first-color)] ${
+                                        `text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[1.9rem] [transition:color_0.4s,_opacity_0.4s] ${
                                             isActive
-                                                ? 'text-[color:var(--first-color)] after:content-[""] after:absolute after:w-[3px] after:h-[calc(0.75rem_+_24.5px)] after:bg-[color:var(--first-color)] after:left-0'
+                                                ? 'text-primary-500 after:bg-primary-500 after:absolute after:left-0 after:h-[calc(0.75rem_+_24.5px)] after:w-[3px] after:content-[""]'
                                                 : ''
                                         }`
                                     }
                                 >
                                     <Award className="text-xl" />
                                     <span
-                                        className={`font-[number:var(--font-semi-bold)] [transition:opacity_0.4s] ${
+                                        className={`font-semibold [transition:opacity_0.4s] ${
                                             sidebarOpen ? '' : 'opacity-0'
                                         }`}
                                     >
@@ -292,16 +280,16 @@ const Header: React.FC = () => {
                                     to="/leaderboard"
                                     onClick={handleNavClick}
                                     className={({ isActive }) =>
-                                        `relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 text-[color:var(--text-color)] [transition:color_0.4s,_opacity_0.4s] pl-[1.9rem] hover:text-[color:var(--first-color)] ${
+                                        `text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[1.9rem] [transition:color_0.4s,_opacity_0.4s] ${
                                             isActive
-                                                ? 'text-[color:var(--first-color)] after:content-[""] after:absolute after:w-[3px] after:h-[calc(0.75rem_+_24.5px)] after:bg-[color:var(--first-color)] after:left-0'
+                                                ? 'text-primary-500 after:bg-primary-500 after:absolute after:left-0 after:h-[calc(0.75rem_+_24.5px)] after:w-[3px] after:content-[""]'
                                                 : ''
                                         }`
                                     }
                                 >
                                     <AlignStartVertical className="text-xl" />
                                     <span
-                                        className={`font-[number:var(--font-semi-bold)] [transition:opacity_0.4s] ${
+                                        className={`font-semibold [transition:opacity_0.4s] ${
                                             sidebarOpen ? '' : 'opacity-0'
                                         }`}
                                     >
@@ -312,16 +300,16 @@ const Header: React.FC = () => {
                                     to="/friends"
                                     onClick={handleNavClick}
                                     className={({ isActive }) =>
-                                        `relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 text-[color:var(--text-color)] [transition:color_0.4s,_opacity_0.4s] pl-[1.9rem] hover:text-[color:var(--first-color)] ${
+                                        `text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[1.9rem] [transition:color_0.4s,_opacity_0.4s] ${
                                             isActive
-                                                ? 'text-[color:var(--first-color)] after:content-[""] after:absolute after:w-[3px] after:h-[calc(0.75rem_+_24.5px)] after:bg-[color:var(--first-color)] after:left-0'
+                                                ? 'text-primary-500 after:bg-primary-500 after:absolute after:left-0 after:h-[calc(0.75rem_+_24.5px)] after:w-[3px] after:content-[""]'
                                                 : ''
                                         }`
                                     }
                                 >
                                     <Users className="text-xl" />
                                     <span
-                                        className={`font-[number:var(--font-semi-bold)] [transition:opacity_0.4s] ${
+                                        className={`font-semibold [transition:opacity_0.4s] ${
                                             sidebarOpen ? '' : 'opacity-0'
                                         }`}
                                     >
@@ -333,10 +321,10 @@ const Header: React.FC = () => {
 
                         <div>
                             <h3
-                                className={`text-[var(--title-color)] text-[length:var(--tiny-font-size)] font-[var(--font-semi-bold)] w-max mb-6 mt-6 [transition:var(--sidebar)] ${
+                                className={`text-primary-400 text-tiny mb-6 mt-6 w-max font-semibold [transition:padding_0.4s] ${
                                     !sidebarOpen && !isMobileView
-                                        ? 'pl-4'
-                                        : 'pl-8'
+                                        ? 'pl-3'
+                                        : 'pl-7'
                                 }`}
                             >
                                 GENERAL
@@ -347,16 +335,16 @@ const Header: React.FC = () => {
                                         to="/settings"
                                         onClick={handleNavClick}
                                         className={({ isActive }) =>
-                                            `relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 text-[color:var(--text-color)] [transition:color_0.4s,_opacity_0.4s] pl-[1.9rem] hover:text-[color:var(--first-color)] ${
+                                            `text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[1.9rem] [transition:color_0.4s,_opacity_0.4s] ${
                                                 isActive
-                                                    ? 'text-[color:var(--first-color)] after:content-[""] after:absolute after:w-[3px] after:h-[calc(0.75rem_+_24.5px)] after:bg-[color:var(--first-color)] after:left-0'
+                                                    ? 'text-primary-500 after:bg-primary-500 after:absolute after:left-0 after:h-[calc(0.75rem_+_24.5px)] after:w-[3px] after:content-[""]'
                                                     : ''
                                             } ${sidebarOpen ? '' : 'opacity-0'}`
                                         }
                                     >
                                         <Settings className="text-xl" />
                                         <span
-                                            className={`font-[number:var(--font-semi-bold)] [transition:opacity_0.4s] ${
+                                            className={`font-semibold [transition:opacity_0.4s] ${
                                                 sidebarOpen ? '' : 'opacity-0'
                                             }`}
                                         >
@@ -368,16 +356,16 @@ const Header: React.FC = () => {
                                     to="/about"
                                     onClick={handleNavClick}
                                     className={({ isActive }) =>
-                                        `relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 text-[color:var(--text-color)] [transition:color_0.4s,_opacity_0.4s] pl-[1.9rem] hover:text-[color:var(--first-color)] ${
+                                        `text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[1.9rem] [transition:color_0.4s,_opacity_0.4s] ${
                                             isActive
-                                                ? 'text-[color:var(--first-color)] after:content-[""] after:absolute after:w-[3px] after:h-[calc(0.75rem_+_24.5px)] after:bg-[color:var(--first-color)] after:left-0'
+                                                ? 'text-primary-500 after:bg-primary-500 after:absolute after:left-0 after:h-[calc(0.75rem_+_24.5px)] after:w-[3px] after:content-[""]'
                                                 : ''
                                         }`
                                     }
                                 >
                                     <Info className="text-xl" />
                                     <span
-                                        className={`font-[number:var(--font-semi-bold)] [transition:opacity_0.4s] ${
+                                        className={`font-semibold [transition:opacity_0.4s] ${
                                             sidebarOpen ? '' : 'opacity-0'
                                         }`}
                                     >
@@ -388,9 +376,9 @@ const Header: React.FC = () => {
                         </div>
                     </div>
 
-                    <div className="grid gap-6 mt-auto">
+                    <div className="mt-auto grid gap-6">
                         <div
-                            className="relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 text-[color:var(--text-color)] transition-[color] duration-[0.1s] pl-[1.9rem] hover:text-[color:var(--first-color)] cursor-pointer"
+                            className="text-text hover:text-primary-500 relative grid cursor-pointer grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[1.9rem] transition-[color] duration-[0.1s]"
                             onClick={toggleTheme}
                         >
                             {theme === 'dark' ? (
@@ -399,7 +387,7 @@ const Header: React.FC = () => {
                                 <Moon className="text-xl" />
                             )}
                             <span
-                                className={`font-[number:var(--font-semi-bold)] [transition:opacity_0.4s] ${
+                                className={`font-semibold [transition:opacity_0.4s] ${
                                     sidebarOpen ? '' : 'opacity-0'
                                 }`}
                             >
@@ -408,12 +396,12 @@ const Header: React.FC = () => {
                         </div>
                         {isAuthenticated ? (
                             <button
-                                className="relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 text-[color:var(--text-color)] transition-[color] duration-[0.1s] pl-[1.9rem] hover:text-[color:var(--first-color)]"
+                                className="text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[1.9rem] transition-[color] duration-[0.1s]"
                                 onClick={handleLogout}
                             >
                                 <LogOut className="text-xl" />
                                 <span
-                                    className={`font-[number:var(--font-semi-bold)] [transition:opacity_0.4s] ${
+                                    className={`font-semibold [transition:opacity_0.4s] ${
                                         sidebarOpen ? '' : 'opacity-0'
                                     }`}
                                 >
@@ -424,11 +412,11 @@ const Header: React.FC = () => {
                             <NavLink
                                 to="/login"
                                 onClick={handleNavClick}
-                                className="relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 text-[color:var(--text-color)] transition-[color] duration-[0.1s] pl-[1.9rem] hover:text-[color:var(--first-color)]"
+                                className="text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[1.9rem] transition-[color] duration-[0.1s]"
                             >
                                 <LogIn className="text-xl" />
                                 <span
-                                    className={`font-[number:var(--font-semi-bold)] [transition:opacity_0.4s] ${
+                                    className={`font-semibold [transition:opacity_0.4s] ${
                                         sidebarOpen ? '' : 'opacity-0'
                                     }`}
                                 >
@@ -443,4 +431,4 @@ const Header: React.FC = () => {
     )
 }
 
-export default Header
+export default Sidebar
