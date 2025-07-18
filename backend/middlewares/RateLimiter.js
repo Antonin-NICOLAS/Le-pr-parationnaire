@@ -21,15 +21,16 @@ const rateLimiterMiddleware = (req, res, next) => {
             next()
         })
         .catch((rateLimiterRes) => {
-            const remainingSeconds = rateLimiterRes.msBeforeNext / 1000
+            const remainingSeconds = Math.round(rateLimiterRes.msBeforeNext / 1000)
+            let message
+            if (remainingSeconds > 60) {
+                message = t('common:request_limit') + ' ' + Math.round(remainingSeconds / 60) + ' ' + t('common:min') + '.'
+            } else {
+                message = t('common:request_limit') + ' ' + remainingSeconds + ' ' + t('common:sec') + '.'
+            }
             res.status(429).json({
                 success: false,
-                error:
-                    t('common:request_limit') +
-                    remainingSeconds +
-                    ' ' +
-                    t('common:sec') +
-                    '.',
+                error: message
             })
         })
 }

@@ -1,7 +1,7 @@
 export interface User {
     id: string
-    nom: string
-    prenom: string
+    lastName: string
+    firstName: string
     avatarUrl?: string
     email: string
     lastLogin?: Date
@@ -11,11 +11,17 @@ export interface User {
         location: string
         date: Date
     }>
-    TwoFactor?: {
-        email: boolean
-        app: boolean
-        webauthn: boolean
-        preferredMethod?: 'email' | 'app' | null
+    twoFactor?: {
+        email?: {
+            isEnabled: boolean
+        }
+        app: {
+            isEnabled: boolean
+        }
+        webauthn: {
+            isEnabled: boolean
+        }
+        preferredMethod?: 'email' | 'app' | 'webauthn' | null
     }
     role: string
     language: string

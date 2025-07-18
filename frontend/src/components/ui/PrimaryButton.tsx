@@ -58,7 +58,7 @@ const PrimaryButton: React.FC<PrimaryButtonProps> = ({
     return (
         <button
             disabled={disabled || loading}
-            className={` ${baseClasses} ${sizeClasses[size]} ${variantClasses[variant]} ${loading ? 'cursor-wait' : ''} ${className} `}
+            className={` ${baseClasses} ${sizeClasses[size]} ${variantClasses[variant]} ${loading ? 'cursor-wait' : ''} ${className} cursor-pointer`}
             {...props}
         >
             {loading ? (

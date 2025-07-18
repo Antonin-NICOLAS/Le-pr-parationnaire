@@ -2,11 +2,11 @@ const mongoose = require('mongoose')
 
 const UserSchema = new mongoose.Schema({
     //Informaton
-    nom: {
+    lastName: {
         type: String,
         required: true,
     },
-    prenom: {
+    firstName: {
         type: String,
         required: true,
     },
@@ -34,6 +34,7 @@ const UserSchema = new mongoose.Schema({
             userAgent: String,
             location: String,
             date: { type: Date, default: Date.now },
+            expiresAt: { type: Date, default: Date.now + 2 * 24 * 60 * 60 * 1000 },
         },
     ],
     emailVerification: {
@@ -45,12 +46,51 @@ const UserSchema = new mongoose.Schema({
         token: { type: String },
         expiration: { type: Date },
     },
-    TwoFactor: {
-        email: { type: Boolean, default: false },
-        app: { type: Boolean, default: false },
-        webauthn: { type: Boolean, default: false },
-        secret: { type: String },
-        backupCodes: [{ type: String }],
+    twoFactor: {
+        email: { 
+            isEnabled: { type: Boolean, default: false },
+            token: { type: String },
+            expiration: { type: Date },
+        },
+        app: { 
+            isEnabled: { type: Boolean, default: false },
+            secret: { type: String },
+        },
+        webauthn: {
+            isEnabled: { type: Boolean, default: false },
+            challenge: { type: String },
+            expiration: { type: Date },
+            credentials: [{
+                credentialId: { type: String },
+                publicKey: { type: String },
+                counter: { type: Number },
+                deviceType: { type: String },
+                deviceName: { type: String },
+                transports: [{ type: String }],
+                lastUsed: {
+                    type: Date,
+                    default: Date.now,
+                },
+                createdAt: {
+                    type: Date,
+                    default: Date.now,
+                }
+            }],
+        },
+        preferredMethod: {
+            type: String,
+            enum: ['email', 'app', 'webauthn'],
+            default: 'email',
+        },
+        backupCodes: [
+            {
+                code: String,
+                used: {
+                    type: Boolean,
+                    default: false,
+                },
+            },
+        ],
         securityQuestions: [
             {
                 question: String,

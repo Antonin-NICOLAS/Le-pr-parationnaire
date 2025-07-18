@@ -150,7 +150,8 @@ const Sidebar: React.FC<SidebarProps> = ({
                                 }`}
                             >
                                 <h3 className="text-[length:var(--normal-font-size)] text-gray-500 [transition:color_0.4s]">
-                                    {user && user.prenom + ' ' + user.nom}
+                                    {user &&
+                                        user.firstName + ' ' + user.lastName}
                                 </h3>
                                 <span className="text-[calc(7px_+_0.3vh_+_0.2vw)] text-gray-400 no-underline [transition:color_0.4s]">
                                     {user && user.email}

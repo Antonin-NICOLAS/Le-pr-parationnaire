@@ -11,15 +11,17 @@ const {
     generateResetToken,
 } = require('../helpers/AuthHelpers')
 
+const i18n = require('../i18n')
+
 const { sendResetPasswordEmail } = require('../utils/SendMail')
 
 const register = async (req, res) => {
     try {
-        const { email, password, nom, prenom, rememberMe } = req.body
+        const { email, password, lastName, firstName, rememberMe } = req.body
         const { t } = req
 
         // 1. Vérifier que tous les champs sont présents
-        if (!email || !password || !nom || !prenom) {
+        if (!email || !password || !lastName || !firstName) {
             return res.status(400).json({
                 success: false,
                 error: t('auth:errors.missing_fields'),
@@ -27,14 +29,14 @@ const register = async (req, res) => {
         }
 
         // 2. Vérification du nom et prénom
-        if (!validateName(nom)) {
+        if (!validateName(lastName)) {
             return res.status(400).json({
                 success: false,
                 error: t('auth:errors.invalid_name'),
             })
         }
 
-        if (!validateName(prenom)) {
+        if (!validateName(firstName)) {
             return res.status(400).json({
                 success: false,
                 error: t('auth:errors.invalid_name'),
@@ -77,11 +79,11 @@ const register = async (req, res) => {
         // 8. On crée l'utilisateur
         const ip = req.ip || req.connection.remoteAddress
         const userAgent = req.headers['user-agent']
-        const location = findLocation(user.language, ip)
+        const location = await findLocation(t, i18n.language, ip)
 
         const user = await User.create({
-            nom,
-            prenom,
+            lastName,
+            firstName,
             email,
             password: hashedPassword,
             emailVerification: {
@@ -109,6 +111,33 @@ const register = async (req, res) => {
     } catch (err) {
         const { t } = req
         console.error('Registration error:', err)
+        return res.status(500).json({
+            success: false,
+            error: t('common:errors.server_error'),
+        })
+    }
+}
+
+const checkAuthStatus = async (req, res) => {
+    try {
+        const { email } = req.query
+
+        // Check if user is authenticated
+        const user = await User.findOne({ email })
+        if (!user) {
+            return res.status(200).json({
+                success: false,
+                webauthn: false,
+            })
+        }
+
+        return res.status(200).json({
+            success: true,
+            webauthn: user.twoFactor.webauthn.isEnabled,
+        })
+    } catch (err) {
+        const { t } = req
+        console.error('Auth status check error:', err)
         return res.status(500).json({
             success: false,
             error: t('common:errors.server_error'),
@@ -159,6 +188,7 @@ const login = async (req, res) => {
 
         //5. Check if user is verified
         if (!user.emailVerified) {
+            // TODO: send verification email
             return res.status(403).json({
                 success: false,
                 error: req.t('auth:errors.email_not_verified'),
@@ -166,9 +196,13 @@ const login = async (req, res) => {
         }
 
         // 6. Update last login and login history
-        const ip = req.ip || req.connection.remoteAddress
+        const ip =
+      req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress
         const userAgent = req.headers['user-agent']
-        const location = findLocation(user.language, ip)
+        const location = await findLocation(user.language, ip)
+        const sessionDuration = rememberMe
+            ? ms(process.env.SESSION_DURATION_LONG)
+            : ms(process.env.SESSION_DURATION_SHORT)
 
         user.lastLogin = new Date()
         user.loginHistory.push({
@@ -176,6 +210,7 @@ const login = async (req, res) => {
             userAgent,
             location,
             date: new Date(),
+            expiresAt: new Date(Date.now() + sessionDuration),
         })
         await user.save()
 
@@ -209,18 +244,19 @@ const checkSession = async (req, res) => {
             user: {
                 id: req.user._id,
                 email: req.user.email,
-                nom: req.user.nom,
-                prenom: req.user.prenom,
+                lastName: req.user.lastName,
+                firstName: req.user.firstName,
                 language: req.user.language,
                 theme: req.user.theme,
                 role: req.user.role,
             },
         })
     } catch (err) {
+        const { t } = req
         console.error('Session check error:', err)
         return res.status(500).json({
             success: false,
-            error: req.t('common:errors.server_error'),
+            error: t('common:errors.server_error'),
         })
     }
 }
@@ -250,9 +286,8 @@ const forgotPassword = async (req, res) => {
         const resetToken = generateResetToken()
         const expiration = new Date(Date.now() + 60 * 60 * 1000) // 1h
         user.resetPassword = { token: resetToken, expiration }
-        const link = `${
-            process.env.FRONTEND_SERVER
-        }/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`
+        const link = `${process.env.FRONTEND_SERVER
+            }/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`
         await user.save()
 
         // 4. On envoie un email avec le token
@@ -322,6 +357,9 @@ const resetPassword = async (req, res) => {
         user.resetPassword = undefined
         await user.save()
 
+        // 7. On envoie un mail de confirmation
+        // TODO: envoyer un email de confirmation
+
         return res
             .status(200)
             .json({ success: true, message: t('auth:success.password_reset') })
@@ -352,7 +390,7 @@ const verifyEmail = async (req, res) => {
         if (user.emailVerification.isVerified) {
             return res.status(400).json({
                 success: false,
-                error: t('auth:errors.email_already_verified'),
+                error: t('auth.errors.email_already_verified'),
             })
         }
 
@@ -377,6 +415,9 @@ const verifyEmail = async (req, res) => {
         user.emailVerification.token = undefined
         user.emailVerification.expiration = undefined
         await user.save()
+
+        // 6. Envoyer un email de bienvenue
+        // TODO: envoyer un email de bienvenue
 
         return res
             .status(200)
@@ -438,8 +479,11 @@ const changePassword = async (req, res) => {
     }
 }
 
+// TODO: Change email : si la double authentication est activée, on demande à l'utilisateur s'il veut continuer.
+
 module.exports = {
     register,
+    checkAuthStatus,
     login,
     logout,
     checkSession,
