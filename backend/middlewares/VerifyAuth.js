@@ -69,7 +69,7 @@ const authorize = (roles = []) => {
         if (roles.length && !roles.includes(req.user.role)) {
             return res.status(403).json({
                 success: false,
-                error: req.t('auth:errors.unauthorized_role'),
+                error: req.t('auth:errors.unauthorized'),
             })
         }
         next()

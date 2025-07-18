@@ -33,7 +33,7 @@ const validatePassword = (password) => {
 }
 
 // User Location
-const findLocation = async (language, ipAddress) => {
+const findLocation = async (t, language, ipAddress) => {
     let location = t('auth:unkown_loc')
     try {
         const geoRes = await fetch(
@@ -85,7 +85,7 @@ const generateCookie = (res, user, stayLoggedIn) => {
         sameSite: 'strict',
         maxAge: ms(duration),
         path: '/',
-        domain: process.env.FRONTEND_SERVER || undefined,
+        ...(process.env.NODE_ENV === 'production' && { domain: process.env.FRONTEND_SERVER || undefined }),
     }
 
     res.cookie('jwtauth', token, options)

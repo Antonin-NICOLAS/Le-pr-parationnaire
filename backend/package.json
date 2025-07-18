@@ -9,6 +9,7 @@
     "author": "Antonin NICOLAS",
     "license": "ISC",
     "dependencies": {
+        "@simplewebauthn/server": "^13.1.2",
         "bcrypt": "^6.0.0",
         "cookie-parser": "^1.4.7",
         "cors": "^2.8.5",
@@ -23,7 +24,10 @@
         "nodemailer": "^7.0.5",
         "nodemon": "^3.1.10",
         "path": "^0.12.7",
+        "qrcode": "^1.5.4",
         "rate-limiter-flexible": "^7.1.1",
+        "speakeasy": "^2.0.0",
+        "ua-parser-js": "^2.0.4",
         "uuid": "^11.1.0"
     }
 }

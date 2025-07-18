@@ -1,5 +1,8 @@
 @import 'tailwindcss';
 
+/* Gestion du thème par Tailwind CSS */
+@custom-variant dark (&:where(.dark, .dark *));
+
 /* Thème clair par défaut */
 @theme {
     /* Primary palette */

@@ -2,6 +2,7 @@
   "errors": {
     "server_error": "Server error. \nPlease repeat later."
   },
+  "min": "minutes",
   "request_limit": "Too many queries, please try again in",
   "sec": "seconds"
 }
