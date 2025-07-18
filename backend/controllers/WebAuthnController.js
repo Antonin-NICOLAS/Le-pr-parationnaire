@@ -85,7 +85,6 @@ const generateRegistrationOpt = async (req, res) => {
   }
 }
 
-
 // Vérifier la réponse d'enregistrement
 const verifyRegistration = async (req, res) => {
   try {
@@ -159,7 +158,7 @@ const verifyRegistration = async (req, res) => {
         deviceType,
         deviceName: deviceName || 'Unknown Device',
         createdAt: new Date(),
-        lastUsed: null
+        lastUsed: null,
       }
 
       user.twoFactor.webauthn.credentials.push(newCredential)
@@ -176,11 +175,15 @@ const verifyRegistration = async (req, res) => {
 
       // 8. Si webauthn est la première méthode 2FA, on génère des codes de sauvegarde ou certains sont utilisés, on les remplace
 
-      if (!user.twoFactor.backupCodes || user.twoFactor.backupCodes.length === 0) {
+      if (
+        !user.twoFactor.backupCodes ||
+        user.twoFactor.backupCodes.length === 0
+      ) {
         user.twoFactor.backupCodes = generateBackupCodes(8)
       } else {
-
-        const unusedCodes = user.twoFactor.backupCodes.filter(code => !code.used)
+        const unusedCodes = user.twoFactor.backupCodes.filter(
+          (code) => !code.used,
+        )
         const codesToGenerate = 8 - unusedCodes.length
 
         if (codesToGenerate > 0) {
@@ -196,14 +199,13 @@ const verifyRegistration = async (req, res) => {
 
       await user.save()
 
-      const devices = user.twoFactor.webauthn.credentials
-        .map((cred) => ({
-          id: cred.credentialId,
-          deviceType: cred.deviceType,
-          deviceName: cred.deviceName,
-          lastUsed: cred.lastUsed,
-          createdAt: cred.createdAt,
-        }))
+      const devices = user.twoFactor.webauthn.credentials.map((cred) => ({
+        id: cred.credentialId,
+        deviceType: cred.deviceType,
+        deviceName: cred.deviceName,
+        lastUsed: cred.lastUsed,
+        createdAt: cred.createdAt,
+      }))
 
       // 10. On envoie la réponse avec les clés actives, la méthode  oréférée et les codes de sauvegarde
       return res.status(200).json({
@@ -238,7 +240,7 @@ const generateAuthenticationOpt = async (req, res) => {
     const { t } = req
 
     // 1. Vérifier si l'utilisateur existe
-    if ( !email || !validateEmail(email)) {
+    if (!email || !validateEmail(email)) {
       return res.status(400).json({
         success: false,
         error: t('auth:errors.invalid_email'),
@@ -254,7 +256,10 @@ const generateAuthenticationOpt = async (req, res) => {
     }
 
     // 2. Vérifier si l'utilisateur a activé WebAuthn
-    if (!user.twoFactor.webauthn.isEnabled || user.twoFactor.webauthn.credentials.length === 0) {
+    if (
+      !user.twoFactor.webauthn.isEnabled ||
+      user.twoFactor.webauthn.credentials.length === 0
+    ) {
       return res.status(400).json({
         success: false,
         error: t('auth:errors.webauthn.not_enabled'),
@@ -406,7 +411,10 @@ const removeWebAuthnCredential = async (req, res) => {
     }
 
     // 2. Vérifier si l'utilisateur a activé WebAuthn
-    if (!user.twoFactor.webauthn.isEnabled || user.twoFactor.webauthn.credentials.length === 0) {
+    if (
+      !user.twoFactor.webauthn.isEnabled ||
+      user.twoFactor.webauthn.credentials.length === 0
+    ) {
       return res.status(400).json({
         success: false,
         error: t('auth:errors.webauthn.not_enabled'),
@@ -437,8 +445,8 @@ const removeWebAuthnCredential = async (req, res) => {
         user.twoFactor.preferredMethod = user.twoFactor.app.isEnabled
           ? 'app'
           : user.twoFactor.email.isEnabled
-            ? 'email'
-            : undefined
+          ? 'email'
+          : undefined
       }
 
       // 7. Si aucune autre méthode n'est disponible, on supprime les codes de sauvegarde
@@ -490,7 +498,10 @@ const getWebAuthnDevices = async (req, res) => {
     }
 
     // 2. Vérifier si l'utilisateur a activé WebAuthn
-    if (!user.twoFactor.webauthn.isEnabled || user.twoFactor.webauthn.credentials.length === 0) {
+    if (
+      !user.twoFactor.webauthn.isEnabled ||
+      user.twoFactor.webauthn.credentials.length === 0
+    ) {
       return res.status(400).json({
         success: false,
         error: t('auth:errors.webauthn.not_enabled'),
@@ -498,20 +509,19 @@ const getWebAuthnDevices = async (req, res) => {
     }
 
     // 3. Récupérer les appareils
-    const devices = user.twoFactor.webauthn.credentials
-      .map((cred) => ({
-        id: cred.credentialId,
-        deviceType: cred.deviceType,
-        deviceName: cred.deviceName,
-        lastUsed: cred.lastUsed,
-        createdAt: cred.createdAt,
-      }))
+    const devices = user.twoFactor.webauthn.credentials.map((cred) => ({
+      id: cred.credentialId,
+      deviceType: cred.deviceType,
+      deviceName: cred.deviceName,
+      lastUsed: cred.lastUsed,
+      createdAt: cred.createdAt,
+    }))
 
     return res.status(200).json({
       success: true,
       data: {
-        devices
-      }
+        devices,
+      },
     })
   } catch (error) {
     console.error('Erreur récupération appareils:', error)
