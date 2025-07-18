@@ -4,7 +4,10 @@ const setChallenge = (user, challenge) => {
 }
 
 const validateChallenge = (user, challenge) => {
-  if (!user.twoFactor.webauthn.challenge || !user.twoFactor.webauthn.expiration) {
+  if (
+    !user.twoFactor.webauthn.challenge ||
+    !user.twoFactor.webauthn.expiration
+  ) {
     return false
   }
 
@@ -38,10 +41,7 @@ const updateCredentialCounter = (user, credentialId, newCounter) => {
 }
 
 const getActiveCredentials = (user) => {
-  if (
-    !user.twoFactor ||
-    user.twoFactor.webauthn.credentials.length === 0
-  ) {
+  if (!user.twoFactor || user.twoFactor.webauthn.credentials.length === 0) {
     return []
   }
   return user.twoFactor.webauthn.credentials.filter((cred) => !cred.revoked)

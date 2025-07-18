@@ -346,11 +346,15 @@ const EnableTwoFactorEmail = async (req, res) => {
 
     // 5. Si email est la première méthode 2FA, on génère des codes de sauvegarde ou certains sont utilisés, on les remplace
 
-    if (!user.twoFactor.backupCodes || user.twoFactor.backupCodes.length === 0) {
+    if (
+      !user.twoFactor.backupCodes ||
+      user.twoFactor.backupCodes.length === 0
+    ) {
       user.twoFactor.backupCodes = generateBackupCodes(8)
     } else {
-
-      const unusedCodes = user.twoFactor.backupCodes.filter(code => !code.used)
+      const unusedCodes = user.twoFactor.backupCodes.filter(
+        (code) => !code.used,
+      )
       const codesToGenerate = 8 - unusedCodes.length
 
       if (codesToGenerate > 0) {
@@ -412,7 +416,10 @@ const verifyLoginTwoFactor = async (req, res) => {
         if (!user.twoFactor.email.isEnabled) {
           return sendLocalizedError(res, 400, 'errors.2fa.email_not_enabled')
         }
-        const isMatch = await compareEmailCode(user.twoFactor.email.token, token)
+        const isMatch = await compareEmailCode(
+          user.twoFactor.email.token,
+          token,
+        )
         isValid =
           isMatch && new Date(user.twoFactor.email.expiration) > new Date()
         break
@@ -638,8 +645,8 @@ const disableTwoFactorApp = async (req, res) => {
       user.twoFactor.preferredMethod = user.twoFactor.webauthn.isEnabled
         ? 'webauthn'
         : user.twoFactor.email.isEnabled
-          ? 'email'
-          : undefined
+        ? 'email'
+        : undefined
     }
 
     // 6. Si aucune méthode n'est activée, on réinitialise les codes de sauvegarde
@@ -717,8 +724,8 @@ const disableTwoFactorEmail = async (req, res) => {
       user.twoFactor.preferredMethod = user.twoFactor.app.isEnabled
         ? 'app'
         : user.twoFactor.webauthn.isEnabled
-          ? 'webauthn'
-          : undefined
+        ? 'webauthn'
+        : undefined
     }
 
     // 6. Si aucune méthode n'est activée, on réinitialise les codes de sauvegarde
@@ -842,7 +849,7 @@ const useBackupCode = async (req, res) => {
 
     return res.status(200).json({
       success: true,
-      message: t('auth:success.2fa.backup_code_used')
+      message: t('auth:success.2fa.backup_code_used'),
     })
   } catch (error) {
     console.error("Erreur lors de l'utilisation du code de secours:", error)

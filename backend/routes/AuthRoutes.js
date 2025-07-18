@@ -4,18 +4,24 @@ require('dotenv').config()
 
 // Controllers
 const {
-    register,
-    checkAuthStatus,
-    login,
-    logout,
-    checkSession,
-    forgotPassword,
-    resetPassword,
-    verifyEmail,
-    changePassword,
+  register,
+  checkAuthStatus,
+  login,
+  logout,
+  checkSession,
+  forgotPassword,
+  resetPassword,
+  verifyEmail,
+  changePassword,
 } = require('../controllers/AuthController')
 
-const { generateRegistrationOpt, verifyRegistration, generateAuthenticationOpt, removeWebAuthnCredential, getWebAuthnDevices } = require('../controllers/WebAuthnController')
+const {
+  generateRegistrationOpt,
+  verifyRegistration,
+  generateAuthenticationOpt,
+  removeWebAuthnCredential,
+  getWebAuthnDevices,
+} = require('../controllers/WebAuthnController')
 
 // Middlewares
 const { authenticate } = require('../middlewares/VerifyAuth')
@@ -26,10 +32,10 @@ const router = express.Router()
 
 // Middleware
 router.use(
-    cors({
-        credentials: true,
-        origin: process.env.FRONTEND_SERVER,
-    })
+  cors({
+    credentials: true,
+    origin: process.env.FRONTEND_SERVER,
+  }),
 )
 
 // Routes
@@ -52,10 +58,22 @@ router.post('/verify-email', authenticate, verifyEmail)
 router.post('/change-password', authenticate, changePassword)
 router.post('/webauthn/verify-registration', authenticate, verifyRegistration)
 
-router.get('/webauthn/generate-registration', authenticate, generateRegistrationOpt)
-router.get('/webauthn/generate-authentication', authenticate, generateAuthenticationOpt)
+router.get(
+  '/webauthn/generate-registration',
+  authenticate,
+  generateRegistrationOpt,
+)
+router.get(
+  '/webauthn/generate-authentication',
+  authenticate,
+  generateAuthenticationOpt,
+)
 router.get('/webauthn/devices', authenticate, getWebAuthnDevices)
 
-router.delete('/webauthn/remove-credential/:credentialId', authenticate, removeWebAuthnCredential)
+router.delete(
+  '/webauthn/remove-credential/:credentialId',
+  authenticate,
+  removeWebAuthnCredential,
+)
 
 module.exports = router
