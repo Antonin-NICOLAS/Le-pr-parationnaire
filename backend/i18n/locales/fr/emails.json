@@ -1,0 +1,23 @@
+{
+  "backupcodes": {
+    "subject": "Le Préparationnaire - Vos codes de sauvegarde"
+  },
+  "email2FAcode": {
+    "subject": "Le Préparationnaire - Votre code de double authentification"
+  },
+  "emailverification": {
+    "subject": "Le Préparationnaire - Vérifiez votre email"
+  },
+  "login": {
+    "subject": "Le Préparationnaire - Nouvelle connexion détectée"
+  },
+  "passwordreset": {
+    "subject": "Le Préparationnaire - Réinitialiser votre mot de passe"
+  },
+  "successfulreset": {
+    "subject": "Le Préparationnaire - Votre mot de passe a été modifié"
+  },
+  "welcome": {
+    "subject": "Le Préparationnaire - Bienvenue"
+  }
+}

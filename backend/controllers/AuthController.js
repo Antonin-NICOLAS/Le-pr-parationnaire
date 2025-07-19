@@ -10,10 +10,11 @@ const {
   generateVerificationCode,
   generateResetToken,
 } = require('../helpers/AuthHelpers')
+const ms = require('ms')
 
 const i18n = require('../i18n')
 
-const { sendResetPasswordEmail } = require('../utils/SendMail')
+const { sendVerificationEmail } = require('../emails/SendMail')
 
 const register = async (req, res) => {
   try {
@@ -74,12 +75,14 @@ const register = async (req, res) => {
     // 7. On vérifie l'email de l'utilisateur
     const emailToken = generateVerificationCode()
     const expiration = new Date(Date.now() + 24 * 60 * 60 * 1000)
-    // TODO: envoyer un email de vérification avec le token
 
     // 8. On crée l'utilisateur
     const ip = req.ip || req.connection.remoteAddress
     const userAgent = req.headers['user-agent']
     const location = await findLocation(t, i18n.language, ip)
+    const duration = rememberMe
+      ? ms(process.env.SESSION_DURATION_LONG)
+      : ms(process.env.SESSION_DURATION_SHORT)
 
     const user = await User.create({
       lastName,
@@ -97,16 +100,17 @@ const register = async (req, res) => {
           userAgent,
           location,
           date: new Date(),
+          expiresAt: new Date(Date.now() + duration),
         },
       ],
     })
 
-    // 9. On génère le cookie de session
-    generateCookie(res, user, rememberMe)
+    await sendVerificationEmail(t, user, emailToken)
 
     return res.status(201).json({
       success: true,
       message: t('auth:success.registered'),
+      requiresVerification: true,
     })
   } catch (err) {
     const { t } = req
@@ -184,16 +188,17 @@ const login = async (req, res) => {
       })
     }
 
-    generateCookie(res, user, rememberMe)
-
     //5. Check if user is verified
-    if (!user.emailVerified) {
+    if (!user.emailVerification.isVerified) {
       // TODO: send verification email
       return res.status(403).json({
         success: false,
         error: req.t('auth:errors.email_not_verified'),
+        requiresVerification: true,
       })
     }
+
+    generateCookie(res, user, rememberMe)
 
     // 6. Update last login and login history
     const ip =
@@ -238,7 +243,16 @@ const logout = (req, res) => {
 }
 
 const checkSession = async (req, res) => {
+  const { t } = req
   try {
+    if (!req.user.emailVerification.isVerified) {
+      return res.status(403).json({
+        success: false,
+        error: t('auth:errors.email_not_verified'),
+        requiresVerification: true,
+      })
+    }
+
     return res.status(200).json({
       success: true,
       user: {
@@ -252,7 +266,6 @@ const checkSession = async (req, res) => {
       },
     })
   } catch (err) {
-    const { t } = req
     console.error('Session check error:', err)
     return res.status(500).json({
       success: false,
@@ -262,9 +275,9 @@ const checkSession = async (req, res) => {
 }
 
 const forgotPassword = async (req, res) => {
+  const { t } = req
   try {
     const { email } = req.body
-    const { t } = req
 
     // 1. Validation de l'email rentré
     if (!email || !validateEmail(email)) {
@@ -282,7 +295,16 @@ const forgotPassword = async (req, res) => {
       })
     }
 
-    // 3. On génère un token de réinitialisation
+    // 3. Si l'email n'est pas vérifié, on ne peut pas envoyer de lien de réinitialisation
+    if (!user.emailVerification.isVerified) {
+      return res.status(400).json({
+        success: false,
+        error: t('auth:errors.email_not_verified'),
+        requiresVerification: true,
+      })
+    }
+
+    // 4. On génère un token de réinitialisation
     const resetToken = generateResetToken()
     const expiration = new Date(Date.now() + 60 * 60 * 1000) // 1h
     user.resetPassword = { token: resetToken, expiration }
@@ -291,16 +313,71 @@ const forgotPassword = async (req, res) => {
     }/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`
     await user.save()
 
-    // 4. On envoie un email avec le token
-    await sendResetPasswordEmail(user.email, link, user.language)
+    // 5. On envoie un email avec le token
+    // TODO: envoyer un email de réinitialisation de mot de passe
 
     return res.status(200).json({
       success: true,
       message: t('auth:success.reset_email_sent'),
     })
   } catch (err) {
-    const { t } = req
     console.error('Forgot password error:', err)
+    return res
+      .status(500)
+      .json({ success: false, error: t('common:errors.server_error') })
+  }
+}
+
+const resendForgotPassword = async (req, res) => {
+  const { t } = req
+  try {
+    const { email } = req.body
+    // 1. Validation de l'email rentré
+    if (!email || !validateEmail(email)) {
+      return res
+        .status(400)
+        .json({ success: false, error: t('auth:errors.invalid_email') })
+    }
+    // 2. On cherche l'utilisateur
+    const user = await User.findOne({ email })
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: t('auth:errors.user_not_found'),
+      })
+    }
+
+    // 3. Si l'email n'est pas vérifié, on ne peut pas envoyer de lien de réinitialisation
+    if (!user.emailVerification.isVerified) {
+      return res.status(400).json({
+        success: false,
+        error: t('auth:errors.email_not_verified'),
+        requiresVerification: true,
+      })
+    }
+
+    // 4. Nouveau token de réinitialisation si expiré ou inexistant sinon on garde l'ancien
+    if (
+      !user.resetPassword.token ||
+      user.resetPassword.expiration < new Date()
+    ) {
+      user.resetPassword.token = generateResetToken()
+      user.resetPassword.expiration = new Date(Date.now() + 24 * 60 * 60 * 1000)
+      await user.save()
+    }
+    const link = `${process.env.FRONTEND_SERVER}/reset-password?token=${
+      user.resetPassword.token
+    }&email=${encodeURIComponent(email)}`
+
+    // 5. On envoie un email avec le token
+    // TODO: envoyer un email de réinitialisation de mot de passe
+
+    return res.status(200).json({
+      success: true,
+      message: t('auth:success.reset_email_sent'),
+    })
+  } catch (err) {
+    console.error('Resend forgot password error:', err)
     return res
       .status(500)
       .json({ success: false, error: t('common:errors.server_error') })
@@ -370,16 +447,23 @@ const resetPassword = async (req, res) => {
 }
 
 const verifyEmail = async (req, res) => {
-  try {
-    const { token } = req.body
-    const { t } = req
-    const user = req.user
+  const { token, email, rememberMe } = req.body
+  const { t } = req
 
-    // 1. Validation du code
-    if (!token) {
-      return res.status(400).json({
+  // 1. Validation des champs
+  if (!token || !email) {
+    return res.status(400).json({
+      success: false,
+      error: t('auth:errors.missing_fields'),
+    })
+  }
+  try {
+    // 2. On vérifie si l'utilisateur existe
+    const user = await User.findOne({ email })
+    if (!user) {
+      return res.status(404).json({
         success: false,
-        error: t('auth:errors.missing_fields'),
+        error: t('auth:errors.user_not_found'),
       })
     }
 
@@ -413,14 +497,16 @@ const verifyEmail = async (req, res) => {
     user.emailVerification.expiration = undefined
     await user.save()
 
-    // 6. Envoyer un email de bienvenue
+    // 6. On génère le cookie de session
+    generateCookie(res, user, rememberMe)
+
+    // 7. Envoyer un email de bienvenue
     // TODO: envoyer un email de bienvenue
 
     return res
       .status(200)
       .json({ success: true, message: t('auth:success.email_verified') })
   } catch (err) {
-    const { t } = req
     console.error('Verify email error:', err)
     return res
       .status(500)
@@ -428,10 +514,64 @@ const verifyEmail = async (req, res) => {
   }
 }
 
+const resendVerificationEmail = async (req, res) => {
+  const { t } = req
+  try {
+    const { email } = req.body
+
+    if (!email || !validateEmail(email)) {
+      return res.status(400).json({
+        success: false,
+        error: t('auth:errors.invalid_email'),
+      })
+    }
+
+    const user = await User.findOne({ email })
+    if (!user) {
+      return res.status(404).json({
+        success: false,
+        error: t('auth:errors.user_not_found'),
+      })
+    }
+
+    if (user.emailVerification.isVerified) {
+      return res.status(400).json({
+        success: false,
+        error: t('auth:errors.email_already_verified'),
+      })
+    }
+
+    // Générer un nouveau token si l'ancien a expiré
+    if (
+      !user.emailVerification.token ||
+      user.emailVerification.expiration < new Date()
+    ) {
+      user.emailVerification.token = generateVerificationCode()
+      user.emailVerification.expiration = new Date(
+        Date.now() + 24 * 60 * 60 * 1000,
+      )
+      await user.save()
+    }
+
+    await sendVerificationEmail(t, user, user.emailVerification.token)
+
+    return res.status(200).json({
+      success: true,
+      message: t('auth:success.verification_email_resent'),
+    })
+  } catch (err) {
+    console.error('Resend verification email error:', err)
+    return res.status(500).json({
+      success: false,
+      error: t('common:errors.server_error'),
+    })
+  }
+}
+
 const changePassword = async (req, res) => {
+  const { t } = req
   try {
     const { oldPassword, newPassword } = req.body
-    const { t } = req
     const user = req.user
 
     // 1. Validation des champs
@@ -468,7 +608,6 @@ const changePassword = async (req, res) => {
       message: t('auth:success.password_changed'),
     })
   } catch (err) {
-    const { t } = req
     console.error('Change password error:', err)
     return res
       .status(500)
@@ -485,7 +624,9 @@ module.exports = {
   logout,
   checkSession,
   forgotPassword,
+  resendForgotPassword,
   resetPassword,
   verifyEmail,
+  resendVerificationEmail,
   changePassword,
 }
