@@ -72,7 +72,7 @@ const generateToken = (user, duration) => {
 }
 
 // Génération de cookie sécurisé
-const generateCookie = (res, user, stayLoggedIn) => {
+const generateCookie = (res, user, stayLoggedIn = false) => {
   const duration = stayLoggedIn
     ? process.env.SESSION_DURATION_LONG
     : process.env.SESSION_DURATION_SHORT

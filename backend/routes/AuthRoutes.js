@@ -10,8 +10,10 @@ const {
   logout,
   checkSession,
   forgotPassword,
+  resendForgotPassword,
   resetPassword,
   verifyEmail,
+  resendVerificationEmail,
   changePassword,
 } = require('../controllers/AuthController')
 
@@ -44,17 +46,22 @@ router.get('/profile', authenticate, checkSession)
 // with rate limiting
 router.use(rateLimiterMiddleware)
 
-router.get('/status', checkAuthStatus)
-
-router.post('/register', register)
+// Login Flow
 router.post('/login', login)
 router.post('/logout', logout)
+router.get('/status', checkAuthStatus)
 
+// Register Flow
+router.post('/register', register)
+router.post('/verify-email', verifyEmail)
+router.post('/resend-verification-email', resendVerificationEmail)
+
+// Password Flow
 router.post('/forgot-password', forgotPassword)
+router.post('/resend-forgot-password', resendForgotPassword)
 router.post('/reset-password', resetPassword)
 
 // with authentication needed
-router.post('/verify-email', authenticate, verifyEmail)
 router.post('/change-password', authenticate, changePassword)
 router.post('/webauthn/verify-registration', authenticate, verifyRegistration)
 

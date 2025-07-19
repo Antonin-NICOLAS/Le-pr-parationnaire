@@ -14,7 +14,7 @@ i18n
     fallbackLng: false,
     returnNull: false,
     supportedLngs: ['en', 'fr'],
-    ns: ['common', 'auth'],
+    ns: ['common', 'auth', 'emails'],
     defaultNS: 'common',
     interpolation: {
       escapeValue: false,

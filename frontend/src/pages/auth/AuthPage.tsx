@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { Mail, Lock, User, ArrowRight, Fingerprint } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '../../context/Auth'
@@ -9,6 +10,7 @@ import type { RegisterData, PasswordStrength } from '../../types/auth'
 
 const AuthPage: React.FC = () => {
   const { login, register, checkAuthStatus } = useAuth()
+  const navigate = useNavigate()
   const [isLogin, setIsLogin] = useState(true)
   const [isLoading, setIsLoading] = useState(false)
   const [loginStep, setLoginStep] = useState<
@@ -28,6 +30,7 @@ const AuthPage: React.FC = () => {
     confirmPassword: '',
     acceptTerms: false,
     rememberMe: false,
+    onSuccess: () => navigate('/'),
   })
 
   const [passwordStrength, setPasswordStrength] =
@@ -47,7 +50,7 @@ const AuthPage: React.FC = () => {
         setLoginStep('password')
       }
     } catch (error) {
-      toast.error('Failed to verify email. Please try again.')
+      toast.error('Failed to verify email. Please try again later.')
     } finally {
       setIsLoading(false)
     }
@@ -58,9 +61,11 @@ const AuthPage: React.FC = () => {
     setIsLoading(true)
 
     try {
-      await login(email, password, rememberMe)
+      await login(email, password, rememberMe, () => {
+        navigate('/')
+      })
     } catch (error) {
-      toast.error('Login failed. Please try again.')
+      toast.error('Login failed. Please try again later.')
     } finally {
       setIsLoading(false)
     }
@@ -122,15 +127,25 @@ const AuthPage: React.FC = () => {
     setIsLoading(true)
 
     try {
-      await register({
-        email: registerData.email,
-        password: registerData.password,
-        firstName: registerData.firstName,
-        lastName: registerData.lastName,
-        rememberMe: registerData.rememberMe,
-      })
+      await register(
+        {
+          email: registerData.email,
+          password: registerData.password,
+          firstName: registerData.firstName,
+          lastName: registerData.lastName,
+          rememberMe: registerData.rememberMe,
+        },
+        () => {
+          navigate('/verify-email', {
+            state: {
+              email: registerData.email,
+              rememberMe: registerData.rememberMe,
+            },
+          })
+        },
+      )
     } catch (error) {
-      toast.error('Registration failed. Please try again.')
+      toast.error('Registration failed. Please try again later.')
     } finally {
       setIsLoading(false)
     }
