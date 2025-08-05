@@ -33,7 +33,7 @@ const AuthPage: React.FC = () => {
     confirmPassword: '',
     acceptTerms: false,
     rememberMe: false,
-    onSuccess: () => navigate('/'),
+    onSuccess: () => navigate('/home'),
   })
 
   const [passwordStrength, setPasswordStrength] =
@@ -65,7 +65,7 @@ const AuthPage: React.FC = () => {
 
     try {
       await login(email, password, rememberMe, () => {
-        navigate('/')
+        navigate('/home')
       })
     } catch (error) {
       toast.error('Login failed. Please try again later.')

@@ -50,7 +50,7 @@ const ResetPasswordPage: React.FC = () => {
       return
     }
 
-    if (passwordStrength && passwordStrength.score < 50) {
+    if (passwordStrength && passwordStrength.score < 70) {
       setError('Please choose a stronger password')
       return
     }

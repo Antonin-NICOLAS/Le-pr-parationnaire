@@ -28,20 +28,6 @@ export interface User {
   theme: string
 }
 
-export interface AuthState {
-  user: User | null
-  isAuthenticated: boolean
-  isLoading: boolean
-  error: string | null
-}
-
-export interface LoginCredentials {
-  email: string
-  password: string
-  rememberMe: boolean
-  onSuccess?: () => void
-}
-
 export interface RegisterData {
   firstName: string
   lastName: string
@@ -64,4 +50,8 @@ export interface PasswordStrength {
     special: boolean
     sequential: boolean
   }
+}
+
+export interface FormErrors {
+  [key: string]: string
 }

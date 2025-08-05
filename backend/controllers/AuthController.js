@@ -224,7 +224,7 @@ const login = async (req, res) => {
       req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress
     const userAgent = req.headers['user-agent']
     const deviceInfo = getDeviceInfo(userAgent)
-    const location = await findLocation(user.language, ip)
+    const location = await findLocation(t, user.language, ip)
     const sessionDuration = rememberMe
       ? ms(process.env.SESSION_DURATION_LONG)
       : ms(process.env.SESSION_DURATION_SHORT)

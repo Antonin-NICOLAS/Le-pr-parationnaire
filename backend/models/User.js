@@ -28,6 +28,7 @@ const UserSchema = new mongoose.Schema({
   },
   tokenVersion: { type: Number, default: 0 },
   lastLogin: { type: Date },
+  lastEmailChange: { type: Date },
   loginHistory: [
     {
       ip: String,

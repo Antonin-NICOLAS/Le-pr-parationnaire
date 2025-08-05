@@ -1,6 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import SidebarLayout from '../layouts/SidebarLayout'
 import Home from '../pages/Home'
+import SettingsPage from '../pages/settings/SettingsPage'
 
 // authentification routes
 import AuthPage from '../pages/auth/AuthPage'
@@ -14,7 +15,8 @@ export default function AppRoutes() {
   return (
     <Routes>
       <Route element={<SidebarLayout />}>
-        <Route path='/' element={<Home />} />
+        <Route path='/home' element={<Home />} />
+        <Route path='/settings' element={<SettingsPage />} />
       </Route>
 
       {/* Authentication routes */}

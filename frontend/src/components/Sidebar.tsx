@@ -89,7 +89,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       >
         <div className='bg-deg-gray-100 flex h-[3.5rem] w-full items-center justify-between rounded-2xl px-6 shadow-xl transition-[background-color] duration-[0.4s]'>
           <NavLink
-            to={user ? '/dashboard' : '/'}
+            to={user ? '/dashboard' : '/home'}
             onClick={handleNavClick}
             className='inline-flex items-center gap-x-1'
           >
