@@ -34,7 +34,7 @@ const UserSchema = new mongoose.Schema({
       userAgent: String,
       location: String,
       date: { type: Date, default: Date.now },
-      expiresAt: { type: Date, default: Date.now + 2 * 24 * 60 * 60 * 1000 },
+      expiresAt: { type: Date },
     },
   ],
   emailVerification: {

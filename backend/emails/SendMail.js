@@ -1,5 +1,7 @@
 const nodemailer = require('nodemailer')
+const { LogIn } = require('./templates/LogIn.js')
 const { EmailVerification } = require('./templates/EmailVerification.js')
+const { ResetPassword } = require('./templates/ResetPassword.js')
 
 // .env
 require('dotenv').config()
@@ -16,8 +18,7 @@ const transporter = nodemailer.createTransport({
   },
 })
 
-const sendLoginEmail = async (user, ipAddress, deviceInfo, location) => {
-  const { t } = req
+const sendLoginEmail = async (t, user, ipAddress, deviceInfo, location) => {
   const options = {
     weekday: 'long',
     year: 'numeric',
@@ -27,16 +28,13 @@ const sendLoginEmail = async (user, ipAddress, deviceInfo, location) => {
     minute: 'numeric',
   }
 
-  const loginDate = new Date().toLocaleDateString(
-    user.languagePreference,
-    options,
-  )
+  const loginDate = new Date().toLocaleDateString(user.language, options)
 
   const mailOptions = {
     from: process.env.NODEMAILER_USER,
     to: user.email,
-    subject: t('emails:login.subject', user.language),
-    html: '',
+    subject: t('emails:login.subject'),
+    html: LogIn(t, user, loginDate, deviceInfo, ipAddress, location),
   }
 
   try {
@@ -63,7 +61,7 @@ const sendVerificationEmail = async (t, user, verificationCode) => {
   }
 }
 
-const sendWelcomeEmail = async (email, prenom) => {
+const sendWelcomeEmail = async (t, email, prenom) => {
   const mailOptions = {
     from: process.env.NODEMAILER_USER,
     to: email,
@@ -79,12 +77,12 @@ const sendWelcomeEmail = async (email, prenom) => {
   }
 }
 
-const sendResetPasswordEmail = async (user, resetUrl) => {
+const sendResetPasswordEmail = async (t, user, resetUrl) => {
   const mailOptions = {
     from: process.env.NODEMAILER_USER,
     to: user.email,
     subject: t('emails:passwordreset.subject'),
-    html: '',
+    html: ResetPassword(t, user, resetUrl),
   }
 
   try {
@@ -97,11 +95,11 @@ const sendResetPasswordEmail = async (user, resetUrl) => {
   }
 }
 
-const sendResetPasswordSuccessfulEmail = async (user) => {
+const sendResetPasswordSuccessfulEmail = async (t, user) => {
   const mailOptions = {
     from: process.env.NODEMAILER_USER,
     to: user.email,
-    subject: t('emails:successfulreset.subject', user.languagePreference),
+    subject: t('emails:successfulreset.subject'),
     html: '',
   }
 
@@ -116,11 +114,11 @@ const sendResetPasswordSuccessfulEmail = async (user) => {
 }
 
 // Email des codes de secours 2FA
-const sendTwoFactorBackupCodesEmail = async (user, backupCodes) => {
+const sendTwoFactorBackupCodesEmail = async (t, user, backupCodes) => {
   const mailOptions = {
     from: process.env.NODEMAILER_USER,
     to: user.email,
-    subject: t('emails:backupcodes.subject', user.languagePreference),
+    subject: t('emails:backupcodes.subject'),
     html: '',
   }
 

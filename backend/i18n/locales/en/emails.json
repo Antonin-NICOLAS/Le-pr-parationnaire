@@ -1,0 +1,23 @@
+{
+  "backupcodes": {
+    "subject": "The preparer - your backup codes"
+  },
+  "email2FAcode": {
+    "subject": "The preparer - your double authentication code"
+  },
+  "emailverification": {
+    "subject": "The preparer - Check your email"
+  },
+  "login": {
+    "subject": "The preparer - new connection detected"
+  },
+  "passwordreset": {
+    "subject": "The preparer - Reset your password"
+  },
+  "successfulreset": {
+    "subject": "The preparer - your password has been changed"
+  },
+  "welcome": {
+    "subject": "The preparer - Welcome"
+  }
+}

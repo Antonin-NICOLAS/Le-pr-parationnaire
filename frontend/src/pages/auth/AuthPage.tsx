@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useNavigate } from 'react-router-dom'
+import { useParams, useNavigate, useLocation } from 'react-router-dom'
 import { Mail, Lock, User, ArrowRight, Fingerprint } from 'lucide-react'
 import { toast } from 'sonner'
 import { useAuth } from '../../context/Auth'
@@ -9,9 +9,12 @@ import PasswordStrengthMeter from '../../components/ui/PasswordStrengthMeter'
 import type { RegisterData, PasswordStrength } from '../../types/auth'
 
 const AuthPage: React.FC = () => {
-  const { login, register, checkAuthStatus } = useAuth()
+  // Login state
+  const { tab = 'login' } = useParams()
   const navigate = useNavigate()
-  const [isLogin, setIsLogin] = useState(true)
+  const location = useLocation()
+  const isLogin = tab === 'login'
+  const { login, register, checkAuthStatus } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [loginStep, setLoginStep] = useState<
     'email' | 'password' | 'webauthn-choice'
@@ -50,7 +53,7 @@ const AuthPage: React.FC = () => {
         setLoginStep('password')
       }
     } catch (error) {
-      toast.error('Failed to verify email. Please try again later.')
+      toast.error('Failed to check email. Please try again later.')
     } finally {
       setIsLoading(false)
     }
@@ -342,7 +345,10 @@ const AuthPage: React.FC = () => {
             <div className='flex rounded-xl bg-gray-100 p-1 dark:bg-gray-700'>
               <button
                 onClick={() => {
-                  setIsLogin(true)
+                  navigate('/auth/login', {
+                    replace: true,
+                    state: location.state,
+                  })
                   setLoginStep('email')
                 }}
                 className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-300 ${
@@ -354,7 +360,12 @@ const AuthPage: React.FC = () => {
                 Sign In
               </button>
               <button
-                onClick={() => setIsLogin(false)}
+                onClick={() =>
+                  navigate('/auth/register', {
+                    replace: true,
+                    state: location.state,
+                  })
+                }
                 className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-300 ${
                   !isLogin
                     ? 'bg-white text-gray-900 shadow-md dark:bg-gray-600 dark:text-white'

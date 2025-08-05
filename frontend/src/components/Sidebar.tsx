@@ -126,12 +126,14 @@ const Sidebar: React.FC<SidebarProps> = ({
                 isAuthenticated && user ? 'items-center' : ''
               }`}
             >
-              {isAuthenticated && user ? (
+              {isAuthenticated && user && user.avatarUrl ? (
                 <img
                   src={user.avatarUrl}
                   className='absolute h-full w-full'
-                  alt='profile'
+                  alt={`${user.firstName.slice(0, 1)} ${user.lastName.slice(0, 1)}`}
                 />
+              ) : isAuthenticated && user ? (
+                <h2 className='text-white'>{`${user.firstName.slice(0, 1)} ${user.lastName.slice(0, 1)}`}</h2>
               ) : (
                 <User
                   className='absolute bottom-[0] h-[80%] w-[80%] text-white'
@@ -338,7 +340,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                         isActive
                           ? 'text-primary-500 after:bg-primary-500 after:absolute after:left-0 after:h-[calc(0.75rem_+_24.5px)] after:w-[3px] after:content-[""]'
                           : ''
-                      } ${sidebarOpen ? '' : 'opacity-0'}`
+                      }`
                     }
                   >
                     <Settings className='text-xl' />
