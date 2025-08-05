@@ -244,6 +244,7 @@ const SixDigitCodeInput: React.FC<SixDigitCodeInputProps> = ({
           <PrimaryButton
             fullWidth={false}
             className='max-w-xs'
+            size='sm'
             onClick={handlePasteFromClipboard}
           >
             Coller le code depuis le presse-papiers

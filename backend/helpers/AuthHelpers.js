@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcrypt')
 const CryptoJS = require('crypto-js')
+const uap = require('ua-parser-js')
 const ms = require('ms')
 const { v4: uuidv4 } = require('uuid')
 
@@ -30,6 +31,16 @@ const validatePassword = (password) => {
   const passwordRegex =
     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
   return passwordRegex.test(password)
+}
+
+// Device Info Extraction
+const getDeviceInfo = (userAgent) => {
+  const parser = new uap(userAgent)
+  const device = parser.getDevice()
+  const os = parser.getOS()
+  const browser = parser.getBrowser()
+
+  return `Appareil: ${device.type} (${device.vendor} ${device.model}), OS: ${os.name} ${os.version}, navigateur: ${browser.name} ${browser.version}`
 }
 
 // User Location
@@ -96,7 +107,7 @@ const generateCookie = (res, user, stayLoggedIn = false) => {
 
 // Create 6-digit verification code
 const generateVerificationCode = () => {
-  return CryptoJS.lib.WordArray.random(6).toString().slice(0, 6)
+  return CryptoJS.lib.WordArray.random(6).toString().slice(0, 6).toUpperCase()
 }
 
 // Create 32-character reset token
@@ -110,6 +121,7 @@ module.exports = {
   validateEmail,
   validateName,
   validatePassword,
+  getDeviceInfo,
   findLocation,
   generateCookie,
   generateVerificationCode,

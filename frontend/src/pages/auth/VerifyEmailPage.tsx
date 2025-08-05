@@ -104,33 +104,25 @@ const EmailVerificationPage: React.FC = () => {
           </div>
         </div>
         <div className='space-y-2 text-center'>
-          {!canResend ? (
+          {!canResend && (
             <CountdownTimer
               initialSeconds={60}
               onComplete={() => setCanResend(true)}
               className='justify-center'
             />
-          ) : (
-            <PrimaryButton
-              variant='ghost'
-              onClick={handleResendCode}
-              loading={isLoading}
-              icon={RefreshCw}
-            >
-              Resend Code
-            </PrimaryButton>
           )}
         </div>
         <div className='text-center text-sm text-gray-600 dark:text-gray-400'>
           Didn't receive the email? Check your spam folder or{' '}
           <PrimaryButton
+            variant='ghost'
             onClick={handleResendCode}
+            loading={isLoading}
             disabled={!canResend || isLoading}
-            variant='outline'
-            size='sm'
+            icon={RefreshCw}
             className='mt-2'
           >
-            try again
+            Resend Code
           </PrimaryButton>
         </div>
       </div>

@@ -1,3 +1,8 @@
+const { header } = require('./components/header')
+const { footer } = require('./components/footer')
+
+const LogIn = (t, user, loginDate, deviceInfo, ipAddress, location) => {
+  const template = `
 <!DOCTYPE html>
 <html
   xmlns:v="urn:schemas-microsoft-com:vml"
@@ -117,11 +122,15 @@
 
         .row-2 .column-1 .block-2.paragraph_block td.pad > div,
         .row-2 .column-1 .block-3.paragraph_block td.pad > div,
-        .row-2 .column-1 .block-6.paragraph_block td.pad > div {
+        .row-2 .column-1 .block-5.paragraph_block td.pad > div,
+        .row-2 .column-1 .block-6.paragraph_block td.pad > div,
+        .row-2 .column-1 .block-8.paragraph_block td.pad > div {
           font-size: 14px !important;
         }
 
-        .row-2 .column-1 .block-7.list_block ul {
+        .row-2 .column-1 .block-4.list_block ul,
+        .row-2 .column-1 .block-7.list_block ul,
+        .row-2 .column-1 .block-9.list_block ul {
           font-size: 14px !important;
           line-height: auto !important;
         }
@@ -293,12 +302,11 @@
                                     "
                                   >
                                     <p style="margin: 0">
-                                      Vous avez demandé la réinitialisation du
-                                      mot de passe associé à votre
+                                      Une nouvelle connexion à votre
                                       compte&nbsp;<strong
                                         >Le Préparationnaire</strong
-                                      >
-                                      (${user.email}).
+                                      >&nbsp;a été détectée. Voici les détails
+                                      complets de cette activité :
                                     </p>
                                   </div>
                                 </td>
@@ -332,92 +340,20 @@
                                       mso-line-height-alt: 19px;
                                     "
                                   >
-                                    <p style="margin: 0; margin-bottom: 16px">
+                                    <p style="margin: 0">
                                       <strong
-                                        >⚡️
-                                        <u>Procédez dès maintenant :</u></strong
+                                        >📍
+                                        <u
+                                          >Informations de connexion :</u
+                                        ></strong
                                       >
                                     </p>
-                                    <p style="margin: 0">
-                                      Cliquez sur le bouton ci-dessous
-                                      pour&nbsp;<strong
-                                        >choisir un nouveau mot de passe</strong
-                                      >&nbsp;:
-                                    </p>
                                   </div>
                                 </td>
                               </tr>
                             </table>
                             <table
-                              class="button_block block-4"
-                              width="100%"
-                              border="0"
-                              cellpadding="10"
-                              cellspacing="0"
-                              role="presentation"
-                              style="
-                                mso-table-lspace: 0pt;
-                                mso-table-rspace: 0pt;
-                              "
-                            >
-                              <tr>
-                                <td class="pad">
-                                  <div class="alignment" align="center">
-                                    <a
-                                      href="${link}"
-                                      target="_blank"
-                                      style="
-                                        color: #ffffff;
-                                        text-decoration: none;
-                                      "
-                                      >><!--[if mso]>
-<v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word"  href="${link}"  style="height:42px;width:279px;v-text-anchor:middle;" arcsize="10%" fillcolor="#8fb4c9">
-<v:stroke dashstyle="Solid" weight="0px" color="#8fb4c9"/>
-<w:anchorlock/>
-<v:textbox inset="0px,0px,0px,0px">
-<center dir="false" style="color:#ffffff;font-family:sans-serif;font-size:16px">
-<!
-                                      [endif]--><span
-                                        class="button"
-                                        style="
-                                          background-color: #8fb4c9;
-                                          border-bottom: 0px solid transparent;
-                                          border-left: 0px solid transparent;
-                                          border-radius: 4px;
-                                          border-right: 0px solid transparent;
-                                          border-top: 0px solid transparent;
-                                          color: #ffffff;
-                                          display: inline-block;
-                                          font-family: Arial, Helvetica,
-                                            sans-serif;
-                                          font-size: 16px;
-                                          font-weight: 400;
-                                          mso-border-alt: none;
-                                          padding-bottom: 5px;
-                                          padding-top: 5px;
-                                          padding-left: 20px;
-                                          padding-right: 20px;
-                                          text-align: center;
-                                          width: auto;
-                                          word-break: keep-all;
-                                          letter-spacing: normal;
-                                        "
-                                        ><span
-                                          style="
-                                            word-break: break-word;
-                                            line-height: 32px;
-                                          "
-                                          >🔒 Réinitialiser mon mot de
-                                          passe</span
-                                        ></span
-                                      >><!--[if mso]></center></v:textbox></v:roundrect><![endif]--></a</a
-                                    >
-                                  </div>
-                                </td>
-                              </tr>
-                            </table>
-                            <table
-                              class="paragraph_block block-5"
+                              class="list_block block-4"
                               width="100%"
                               border="0"
                               cellpadding="10"
@@ -427,35 +363,51 @@
                                 mso-table-lspace: 0pt;
                                 mso-table-rspace: 0pt;
                                 word-break: break-word;
+                                color: #ededed;
+                                direction: ltr;
+                                font-family: Arial, Helvetica, sans-serif;
+                                font-size: 16px;
+                                font-weight: 400;
+                                letter-spacing: 0px;
+                                line-height: 1.2;
+                                text-align: left;
+                                mso-line-height-alt: 19px;
                               "
                             >
                               <tr>
                                 <td class="pad">
-                                  <div
-                                    style="
-                                      color: #ededed;
-                                      direction: ltr;
-                                      font-family: Arial, Helvetica, sans-serif;
-                                      font-size: 16px;
-                                      font-weight: 400;
-                                      letter-spacing: 0px;
-                                      line-height: 1.2;
-                                      text-align: left;
-                                      mso-line-height-alt: 19px;
-                                    "
-                                  >
-                                    <p style="margin: 0">
-                                      <em
-                                        >(Ce lien expirera dans 24 heures pour
-                                        des raisons de sécurité)</em
-                                      >
-                                    </p>
+                                  <div style="margin-left: -20px">
+                                    <ul
+                                      start="1"
+                                      style="
+                                        margin-top: 0;
+                                        margin-bottom: 0;
+                                        list-style-type: revert;
+                                      "
+                                    >
+                                      <li style="margin: 0 0 0 0">
+                                        <strong>Date et heure :</strong>
+                                        ${loginDate} (fuseau horaire UTC)
+                                      </li>
+                                      <li style="margin: 0 0 0 0">
+                                        <strong>Adresse IP :</strong>
+                                        ${ipAddress}
+                                      </li>
+                                      <li style="margin: 0 0 0 0">
+                                        <strong>Localisation estimée :</strong>
+                                        ${location} (basée sur l'adresse IP)
+                                      </li>
+                                      <li style="margin: 0 0 0 0">
+                                        <strong>Appareil utilisé :</strong>
+                                        ${deviceInfo}
+                                      </li>
+                                    </ul>
                                   </div>
                                 </td>
                               </tr>
                             </table>
                             <table
-                              class="paragraph_block block-6"
+                              class="paragraph_block block-5"
                               width="100%"
                               border="0"
                               cellpadding="10"
@@ -495,6 +447,51 @@
                               </tr>
                             </table>
                             <table
+                              class="paragraph_block block-6"
+                              width="100%"
+                              border="0"
+                              cellpadding="10"
+                              cellspacing="0"
+                              role="presentation"
+                              style="
+                                mso-table-lspace: 0pt;
+                                mso-table-rspace: 0pt;
+                                word-break: break-word;
+                              "
+                            >
+                              <tr>
+                                <td class="pad">
+                                  <div
+                                    style="
+                                      color: #ededed;
+                                      direction: ltr;
+                                      font-family: Arial, Helvetica, sans-serif;
+                                      font-size: 16px;
+                                      font-weight: 400;
+                                      letter-spacing: 0px;
+                                      line-height: 1.2;
+                                      text-align: left;
+                                      mso-line-height-alt: 19px;
+                                    "
+                                  >
+                                    <p style="margin: 0; margin-bottom: 16px">
+                                      <strong
+                                        >Reconnaissez-vous cette activité
+                                        ?</strong
+                                      >
+                                    </p>
+                                    <p style="margin: 0; margin-bottom: 16px">
+                                      ✅&nbsp;<strong>Oui</strong>&nbsp;: Aucune
+                                      action requise.
+                                    </p>
+                                    <p style="margin: 0">
+                                      ❌&nbsp;<strong>Non</strong>&nbsp;:
+                                    </p>
+                                  </div>
+                                </td>
+                              </tr>
+                            </table>
+                            <table
                               class="list_block block-7"
                               width="100%"
                               border="0"
@@ -527,48 +524,114 @@
                                       "
                                     >
                                       <li style="margin: 0 0 0 0">
-                                        <strong
-                                          >Ne partagez jamais ce lien</strong
-                                        >&nbsp;: Il donne accès complet à votre
-                                        compte.
+                                        Changez immédiatement votre mot de
+                                        passe&nbsp;<a
+                                          href="https://lepreparationnaire.vercel.app/settings/"
+                                          target="_blank"
+                                          title="Le Préparationnaire - Réglages"
+                                          style="
+                                            text-decoration: underline;
+                                            color: #8fb4c9;
+                                          "
+                                          rel="noopener"
+                                          >ici</a
+                                        >.
                                       </li>
                                       <li style="margin: 0 0 0 0">
-                                        <strong
-                                          >Créez un mot de passe robuste</strong
-                                        >&nbsp;:
-                                        <div style="margin-left: -10px">
-                                          <ul
-                                            style="
-                                              margin-top: 0;
-                                              margin-bottom: 0;
-                                              list-style-type: revert;
-                                            "
-                                          >
-                                            <li style="margin: 0 0 0 0">
-                                              8 caractères minimum
-                                            </li>
-                                            <li style="margin: 0 0 0 0">
-                                              Combinaison de lettres
-                                              (majuscules/minuscules), chiffres
-                                              et symboles
-                                            </li>
-                                            <li style="margin: 0 0 0 0">
-                                              Aucune information personnelle
-                                              (date de naissance, nom, etc.)
-                                            </li>
-                                          </ul>
-                                        </div>
+                                        Activez l'authentification à deux
+                                        facteurs (2FA) dans&nbsp;<a
+                                          href="https://lepreparationnaire.vercel.app/settings/"
+                                          target="_blank"
+                                          title="Le Préparationnaire - Réglages"
+                                          style="
+                                            text-decoration: underline;
+                                            color: #8fb4c9;
+                                          "
+                                          rel="noopener"
+                                          >vos paramètres de sécurité</a
+                                        >.
+                                      </li>
+                                    </ul>
+                                  </div>
+                                </td>
+                              </tr>
+                            </table>
+                            <table
+                              class="paragraph_block block-8"
+                              width="100%"
+                              border="0"
+                              cellpadding="10"
+                              cellspacing="0"
+                              role="presentation"
+                              style="
+                                mso-table-lspace: 0pt;
+                                mso-table-rspace: 0pt;
+                                word-break: break-word;
+                              "
+                            >
+                              <tr>
+                                <td class="pad">
+                                  <div
+                                    style="
+                                      color: #ededed;
+                                      direction: ltr;
+                                      font-family: Arial, Helvetica, sans-serif;
+                                      font-size: 16px;
+                                      font-weight: 400;
+                                      letter-spacing: 0px;
+                                      line-height: 1.2;
+                                      text-align: left;
+                                      mso-line-height-alt: 19px;
+                                    "
+                                  >
+                                    <p style="margin: 0">
+                                      <strong>Sécurisez votre compte</strong
+                                      >&nbsp;:
+                                    </p>
+                                  </div>
+                                </td>
+                              </tr>
+                            </table>
+                            <table
+                              class="list_block block-9"
+                              width="100%"
+                              border="0"
+                              cellpadding="10"
+                              cellspacing="0"
+                              role="presentation"
+                              style="
+                                mso-table-lspace: 0pt;
+                                mso-table-rspace: 0pt;
+                                word-break: break-word;
+                                color: #ededed;
+                                direction: ltr;
+                                font-family: Arial, Helvetica, sans-serif;
+                                font-size: 16px;
+                                font-weight: 400;
+                                letter-spacing: 0px;
+                                line-height: 1.2;
+                                text-align: left;
+                                mso-line-height-alt: 19px;
+                              "
+                            >
+                              <tr>
+                                <td class="pad">
+                                  <div style="margin-left: -20px">
+                                    <ul
+                                      start="1"
+                                      style="
+                                        margin-top: 0;
+                                        margin-bottom: 0;
+                                        list-style-type: revert;
+                                      "
+                                    >
+                                      <li style="margin: 0 0 0 0">
+                                        Utilisez un mot de passe unique et
+                                        complexe.
                                       </li>
                                       <li style="margin: 0 0 0 0">
-                                        <strong
-                                          >Méfiez-vous des tentatives de
-                                          phishing</strong
-                                        >&nbsp;:
-                                      </li>
-                                      <li style="margin: 0 0 0 0">
-                                        Notre équipe ne vous demandera
-                                        <strong>jamais</strong>&nbsp;votre mot
-                                        de passe par email.
+                                        Vérifiez les appareils connectés dans
+                                        votre espace personnel.
                                       </li>
                                     </ul>
                                   </div>
@@ -576,7 +639,7 @@
                               </tr>
                             </table>
                             <div
-                              class="spacer_block block-8"
+                              class="spacer_block block-10"
                               style="
                                 height: 20px;
                                 line-height: 20px;
@@ -601,3 +664,8 @@
     <!-- End -->
   </body>
 </html>
+`
+  return template
+}
+
+module.exports = { LogIn }

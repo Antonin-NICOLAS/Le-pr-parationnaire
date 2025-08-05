@@ -1,4 +1,9 @@
-<!DOCTYPE html>
+const { header } = require('./components/header.js')
+const { footer } = require('./components/footer.js')
+
+const ResetPassword = (t, user, link) => {
+  const template = `
+    <!DOCTYPE html>
 <html
   xmlns:v="urn:schemas-microsoft-com:vml"
   xmlns:o="urn:schemas-microsoft-com:office:office"
@@ -601,3 +606,9 @@
     <!-- End -->
   </body>
 </html>
+  `
+
+  return template
+}
+
+module.exports = { ResetPassword }
