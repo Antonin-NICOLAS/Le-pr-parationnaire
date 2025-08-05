@@ -41,7 +41,7 @@ const EmailVerificationPage: React.FC = () => {
 
     try {
       await emailVerification(verificationCode, email, rememberMe, () => {
-        navigate('/')
+        navigate('/home')
       })
     } catch (error) {
       setError('Invalid verification code. Please try again later.')
