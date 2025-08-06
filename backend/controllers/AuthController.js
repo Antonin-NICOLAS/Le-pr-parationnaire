@@ -7,11 +7,14 @@ const {
   validatePassword,
   getDeviceInfo,
   findLocation,
+  detectSimilarDevice,
   generateCookie,
   generateVerificationCode,
   generateResetToken,
 } = require('../helpers/AuthHelpers')
 const ms = require('ms')
+const { v4: uuidv4 } = require('uuid')
+const UAParser = require('ua-parser-js')
 
 const i18n = require('../i18n')
 
@@ -104,7 +107,7 @@ const register = async (req, res) => {
           ip,
           userAgent,
           location,
-          date: new Date(),
+          lastActive: new Date(),
           expiresAt: new Date(Date.now() + duration),
         },
       ],
@@ -217,8 +220,6 @@ const login = async (req, res) => {
       })
     }
 
-    generateCookie(res, user, rememberMe)
-
     // 6. Update last login and login history
     const ip =
       req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress
@@ -229,15 +230,58 @@ const login = async (req, res) => {
       ? ms(process.env.SESSION_DURATION_LONG)
       : ms(process.env.SESSION_DURATION_SHORT)
 
-    user.lastLogin = new Date()
-    user.loginHistory.push({
-      ip,
-      userAgent,
-      location,
-      date: new Date(),
-      expiresAt: new Date(Date.now() + sessionDuration),
+    // Analyse de l'userAgent
+    const parser = new UAParser(userAgent)
+    const uaResult = parser.getResult()
+
+    // Vérifier si une session similaire existe déjà
+    const existingSession = user.loginHistory.find((session) => {
+      if (
+        req.cookies?.sessionId &&
+        session.sessionId === req.cookies.sessionId
+      ) {
+        return true
+      }
+
+      return (
+        session.expiresAt > new Date() &&
+        detectSimilarDevice(session.userAgent, userAgent) &&
+        session.ip === ip
+      )
     })
+
+    let sessionId
+    if (existingSession) {
+      // Mise à jour de la session existante
+      existingSession.lastActive = new Date()
+      existingSession.expiresAt = new Date(Date.now() + sessionDuration)
+      sessionId = existingSession.sessionId
+    } else {
+      // Création d'une nouvelle session
+      sessionId = uuidv4()
+      user.loginHistory.push({
+        sessionId,
+        ip,
+        userAgent,
+        location,
+        deviceType: uaResult.device.type || 'desktop',
+        browser: uaResult.browser.name || 'unknown',
+        os: uaResult.os.name || 'unknown',
+        lastActive: new Date(),
+        expiresAt: new Date(Date.now() + sessionDuration),
+      })
+    }
+
+    // Nettoyage des sessions expirées
+    user.loginHistory = user.loginHistory.filter(
+      (session) => session.expiresAt > new Date(),
+    )
+
+    user.lastLogin = new Date()
     await user.save()
+
+    // Génération des cookies avec le sessionId
+    generateCookie(res, user, rememberMe, sessionId)
 
     // 7. Send login email notification
     await sendLoginEmail(t, user, ip, deviceInfo, location)
@@ -509,7 +553,7 @@ const verifyEmail = async (req, res) => {
     if (user.emailVerification.token !== token) {
       return res
         .status(400)
-        .json({ success: false, error: t('auth:errors.invalid_code') })
+        .json({ success: false, error: t('auth:errors.2fa.invalid_code') })
     }
     if (user.emailVerification.expiration < new Date()) {
       return res
@@ -594,54 +638,123 @@ const resendVerificationEmail = async (req, res) => {
   }
 }
 
-const changePassword = async (req, res) => {
+const getActiveSessions = async (req, res) => {
   const { t } = req
   try {
-    const { oldPassword, newPassword } = req.body
+    const user = req.user
+    const currentSessionId = req.cookies?.sessionId
+
+    if (!user) {
+      return res.status(401).json({
+        success: false,
+        error: t('auth:errors.user_not_found'),
+      })
+    }
+
+    const sessions = user.loginHistory
+      .filter((session) => session.expiresAt > new Date())
+      .map((session) => {
+        let deviceInfo = 'Unknown Device'
+        if (session.browser && session.os) {
+          deviceInfo = `${session.browser} on ${session.os}`
+        } else if (session.userAgent) {
+          deviceInfo = session.userAgent
+        }
+
+        return {
+          sessionId: session.sessionId,
+          ip: session.ip,
+          location: session.location,
+          device: deviceInfo,
+          deviceType: session.deviceType,
+          browser: session.browser,
+          os: session.os,
+          lastActive: session.lastActive,
+          isCurrent: session.sessionId === currentSessionId,
+        }
+      })
+
+    return res.status(200).json({
+      success: true,
+      sessions,
+    })
+  } catch (err) {
+    console.error('Get active sessions error:', err)
+    return res.status(500).json({
+      success: false,
+      error: t('common:errors.server_error'),
+    })
+  }
+}
+
+const revokeSession = async (req, res) => {
+  const { t } = req
+  try {
+    const { sessionId } = req.params
     const user = req.user
 
-    // 1. Validation des champs
-    if (!oldPassword || !newPassword) {
+    if (!sessionId) {
       return res.status(400).json({
         success: false,
         error: t('auth:errors.missing_fields'),
       })
     }
 
-    // 2. Vérification de l'ancien mot de passe
-    const isMatch = await comparePassword(oldPassword, user.password)
-    if (!isMatch) {
-      return res.status(401).json({
+    const session = user.loginHistory.find((s) => s.sessionId === sessionId)
+    if (!session) {
+      return res.status(404).json({
         success: false,
-        error: t('auth:errors.invalid_password'),
+        error: t('auth:errors.session_not_found'),
       })
     }
 
-    // 3. Vérification du nouveau mot de passe
-    if (!validatePassword(newPassword)) {
+    // On ne peut pas révoquer la session courante
+    if (session.sessionId === req.cookies?.sessionId) {
       return res.status(400).json({
         success: false,
-        error: t('auth:errors.invalid_password'),
+        error: t('auth:errors.cannot_revoke_current_session'),
       })
     }
-
-    // 4. Mise à jour du mot de passe
-    user.password = await hashPassword(newPassword)
+    // Supprimer la session
+    user.loginHistory = user.loginHistory.filter(
+      (s) => s.sessionId !== sessionId,
+    )
     await user.save()
 
     return res.status(200).json({
       success: true,
-      message: t('auth:success.password_changed'),
+      message: t('auth:success.session_revoked'),
     })
   } catch (err) {
-    console.error('Change password error:', err)
-    return res
-      .status(500)
-      .json({ success: false, error: t('common:errors.server_error') })
+    console.error('Revoke session error:', err)
+    return res.status(500).json({
+      success: false,
+      error: t('common:errors.server_error'),
+    })
   }
 }
 
-// TODO: Change email : si la double authentication est activée, on demande à l'utilisateur s'il veut continuer.
+const revokeAllSessions = async (req, res) => {
+  const { t } = req
+  try {
+    const user = User.findById(req.user._id)
+
+    // Supprimer toutes les sessions
+    user.loginHistory = []
+    await user.save()
+
+    return res.status(200).json({
+      success: true,
+      message: t('auth:success.all_sessions_revoked'),
+    })
+  } catch (err) {
+    console.error('Revoke all sessions error:', err)
+    return res.status(500).json({
+      success: false,
+      error: t('common:errors.server_error'),
+    })
+  }
+}
 
 module.exports = {
   register,
@@ -654,5 +767,7 @@ module.exports = {
   resetPassword,
   verifyEmail,
   resendVerificationEmail,
-  changePassword,
+  getActiveSessions,
+  revokeSession,
+  revokeAllSessions,
 }

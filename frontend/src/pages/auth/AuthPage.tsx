@@ -6,7 +6,11 @@ import { useAuth } from '../../context/Auth'
 import CustomInput from '../../components/ui/CustomInput'
 import PrimaryButton from '../../components/ui/PrimaryButton'
 import PasswordStrengthMeter from '../../components/ui/PasswordStrengthMeter'
-import type { RegisterData, PasswordStrength } from '../../types/auth'
+import type {
+  LoginData,
+  RegisterData,
+  PasswordStrength,
+} from '../../types/auth'
 
 const AuthPage: React.FC = () => {
   // Login state
@@ -19,9 +23,13 @@ const AuthPage: React.FC = () => {
   const [loginStep, setLoginStep] = useState<
     'email' | 'password' | 'webauthn-choice'
   >('email')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [rememberMe, setRememberMe] = useState(false)
+  // Login state
+  const [loginData, setLoginData] = useState<LoginData>({
+    email: '',
+    password: '',
+    rememberMe: false,
+    onSuccess: () => navigate('/home'),
+  })
   const [hasWebAuthn, setHasWebAuthn] = useState(false)
 
   // Register state
@@ -33,7 +41,13 @@ const AuthPage: React.FC = () => {
     confirmPassword: '',
     acceptTerms: false,
     rememberMe: false,
-    onSuccess: () => navigate('/home'),
+    onSuccess: () =>
+      navigate('/verify-email', {
+        state: {
+          email: registerData.email,
+          rememberMe: registerData.rememberMe,
+        },
+      }),
   })
 
   const [passwordStrength, setPasswordStrength] =
@@ -44,7 +58,7 @@ const AuthPage: React.FC = () => {
     setIsLoading(true)
 
     try {
-      const webauthnEnabled = await checkAuthStatus(email)
+      const webauthnEnabled = await checkAuthStatus(loginData.email)
       setHasWebAuthn(webauthnEnabled)
 
       if (webauthnEnabled) {
@@ -64,7 +78,7 @@ const AuthPage: React.FC = () => {
     setIsLoading(true)
 
     try {
-      await login(email, password, rememberMe, () => {
+      await login(loginData, () => {
         navigate('/home')
       })
     } catch (error) {
@@ -130,23 +144,14 @@ const AuthPage: React.FC = () => {
     setIsLoading(true)
 
     try {
-      await register(
-        {
-          email: registerData.email,
-          password: registerData.password,
-          firstName: registerData.firstName,
-          lastName: registerData.lastName,
-          rememberMe: registerData.rememberMe,
-        },
-        () => {
-          navigate('/verify-email', {
-            state: {
-              email: registerData.email,
-              rememberMe: registerData.rememberMe,
-            },
-          })
-        },
-      )
+      await register(registerData, () => {
+        navigate('/verify-email', {
+          state: {
+            email: registerData.email,
+            rememberMe: registerData.rememberMe,
+          },
+        })
+      })
     } catch (error) {
       toast.error('Registration failed. Please try again later.')
     } finally {
@@ -163,8 +168,10 @@ const AuthPage: React.FC = () => {
               type='email'
               label='Email Address'
               placeholder='Enter your email'
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={loginData.email}
+              onChange={(e) =>
+                setLoginData((prev) => ({ ...prev, email: e.target.value }))
+              }
               icon={Mail}
               required
               autoComplete='email'
@@ -187,7 +194,7 @@ const AuthPage: React.FC = () => {
           <form onSubmit={handlePasswordLogin} className='space-y-6'>
             <div className='mb-4 text-center'>
               <p className='text-gray-600 dark:text-gray-400'>
-                Welcome back, <strong>{email}</strong>
+                Welcome back, <strong>{loginData.email}</strong>
               </p>
             </div>
 
@@ -195,8 +202,10 @@ const AuthPage: React.FC = () => {
               type='email'
               label='Email Address'
               placeholder='Enter your email'
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              value={loginData.email}
+              onChange={(e) =>
+                setLoginData((prev) => ({ ...prev, email: e.target.value }))
+              }
               icon={Mail}
               required
               disabled
@@ -206,8 +215,10 @@ const AuthPage: React.FC = () => {
               type='password'
               label='Password'
               placeholder='Enter your password'
-              value={password}
-              onChange={(e) => setPassword(e.target.value)}
+              value={loginData.password}
+              onChange={(e) =>
+                setLoginData((prev) => ({ ...prev, password: e.target.value }))
+              }
               icon={Lock}
               required
               autoComplete='current-password'
@@ -218,8 +229,13 @@ const AuthPage: React.FC = () => {
               <label className='accent-primary-500 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400'>
                 <input
                   type='checkbox'
-                  checked={rememberMe}
-                  onChange={(e) => setRememberMe(e.target.checked)}
+                  checked={loginData.rememberMe}
+                  onChange={(e) =>
+                    setLoginData((prev) => ({
+                      ...prev,
+                      rememberMe: e.target.checked,
+                    }))
+                  }
                   className='text-primary-600 focus:ring-primary-500 rounded border-gray-300'
                 />
                 Remember me
@@ -276,7 +292,7 @@ const AuthPage: React.FC = () => {
                 <Fingerprint className='text-primary-600 h-8 w-8' />
               </div>
               <p className='text-gray-600 dark:text-gray-400'>
-                We found a passkey for <strong>{email}</strong>
+                We found a passkey for <strong>{loginData.email}</strong>
               </p>
             </div>
 

@@ -16,7 +16,11 @@ export default function AppRoutes() {
     <Routes>
       <Route element={<SidebarLayout />}>
         <Route path='/home' element={<Home />} />
-        <Route path='/settings' element={<SettingsPage />} />
+        <Route
+          path='/settings'
+          element={<Navigate to='/settings/security' replace />}
+        />
+        <Route path='/settings/:tab?' element={<SettingsPage />} />
       </Route>
 
       {/* Authentication routes */}

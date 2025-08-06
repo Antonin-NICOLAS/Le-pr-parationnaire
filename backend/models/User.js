@@ -31,10 +31,14 @@ const UserSchema = new mongoose.Schema({
   lastEmailChange: { type: Date },
   loginHistory: [
     {
+      sessionId: { type: String, unique: true },
       ip: String,
       userAgent: String,
       location: String,
-      date: { type: Date, default: Date.now },
+      deviceType: String,
+      browser: String,
+      os: String,
+      lastActive: { type: Date, default: Date.now },
       expiresAt: { type: Date },
     },
   ],
@@ -83,7 +87,7 @@ const UserSchema = new mongoose.Schema({
     preferredMethod: {
       type: String,
       enum: ['email', 'app', 'webauthn'],
-      default: 'email',
+      default: null,
     },
     backupCodes: [
       {

@@ -5,6 +5,12 @@
   "email2FAcode": {
     "subject": "Le Préparationnaire - Votre code de double authentification"
   },
+  "emailchange1": {
+    "subject": "Le Préparationnaire - Changement d'adresse mail"
+  },
+  "emailchange2": {
+    "subject": "Le Préparationnaire - Vérification de la nouvelle adresse mail"
+  },
   "emailverification": {
     "subject": "Le Préparationnaire - Vérifiez votre email"
   },

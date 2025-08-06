@@ -15,6 +15,8 @@ const {
   compareEmailCode,
 } = require('../helpers/2FAHelpers')
 const { generateCookie, findLocation } = require('../helpers/AuthHelpers')
+const { sendTwoFactorEmailActivation } = require('../emails/SendMail')
+const { default: i18next } = require('../i18n')
 // .env
 require('dotenv').config()
 
@@ -23,44 +25,31 @@ const getStatus = async (req, res) => {
   const { t } = req
   try {
     // 1. Vérifier si l'utilisateur est authentifié
-    const user = await UserModel.findById(req.user.id)
+    const user = await UserModel.findById(req.user._id)
     if (!user) {
       return res.status(404).json({
         error: t('auth:errors.user_not_found'),
       })
     }
-    // 2. Vérifier si la 2FA est activée
-    if (
-      !user.twoFactor.email.isEnabled &&
-      !user.twoFactor.app.isEnabled &&
-      !user.twoFactor.webauthn.isEnabled
-    ) {
-      return res.status(400).json({
-        success: false,
-        error: t('auth:errors.not_enabled'),
-      })
-    }
 
-    // 3. Récupérer les informations de la 2FA
-    const webauthnCredentials = user.twoFactor.webauthn.credentials.map(
-      (cred) => ({
+    // 2. Récupérer les informations de la 2FA
+    const webauthnCredentials =
+      user.twoFactor.webauthn.credentials.map((cred) => ({
         id: cred.id,
         deviceName: cred.deviceName,
         deviceType: cred.deviceType,
         createdAt: cred.createdAt,
-      }),
-    )
+      })) || []
 
     return res.status(200).json({
       success: true,
       twoFactor: {
-        email: user.twoFactor.email.isEnabled,
-        app: user.twoFactor.app.isEnabled,
-        webauthn: user.twoFactor.webauthn.isEnabled,
-        preferredMethod: user.twoFactor.preferredMethod,
-        backupCodes: user.twoFactor.backupCodes,
-        securityQuestions: user.twoFactor.securityQuestions,
-        webauthnCredentials: webauthnCredentials,
+        email: { isEnabled: user.twoFactor.email.isEnabled || false },
+        app: { isEnabled: user.twoFactor.app.isEnabled || false },
+        webauthn: { isEnabled: user.twoFactor.webauthn.isEnabled || false },
+        preferredMethod: user.twoFactor.preferredMethod || null,
+        backupCodes: user.twoFactor.backupCodes || [],
+        webauthnCredentials: webauthnCredentials || [],
       },
     })
   } catch (error) {
@@ -77,7 +66,7 @@ const configTwoFactorApp = async (req, res) => {
   const { t } = req
   try {
     // 1. Vérifier si l'utilisateur existe
-    const user = await UserModel.findById(req.user.id)
+    const user = await UserModel.findById(req.user._id)
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -124,7 +113,7 @@ const configTwoFactorEmail = async (req, res) => {
   const { t } = req
   try {
     // 1. Vérifier si l'utilisateur existe
-    const user = await UserModel.findById(req.user.id)
+    const user = await UserModel.findById(req.user._id)
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -155,7 +144,12 @@ const configTwoFactorEmail = async (req, res) => {
 
     await user.save()
     // 5. Envoyer le code de vérification par email
-    // TODO: Implémenter la fonction d'envoi d'email
+    await sendTwoFactorEmailActivation(
+      t,
+      user,
+      code,
+      user.twoFactor.email.expiration,
+    )
 
     return res.status(200).json({
       success: true,
@@ -175,7 +169,7 @@ const resendEmailCode = async (req, res) => {
   const { t } = req
   try {
     // 1. Vérifier si l'utilisateur existe
-    const user = await UserModel.findById(req.user.id)
+    const user = await UserModel.findById(req.user._id)
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -197,7 +191,22 @@ const resendEmailCode = async (req, res) => {
     user.twoFactor.email.expiration = new Date(Date.now() + 10 * 60 * 1000)
 
     // 4. Envoyer le code de vérification par email
-    // TODO: Implémenter la fonction d'envoi d'email
+    await sendTwoFactorEmailActivation(
+      t,
+      user,
+      code,
+      new Date(user.twoFactor.email.expiration).toLocaleString(
+        i18next.language,
+        {
+          day: 'numeric',
+          month: 'short',
+          year: 'numeric',
+          hour: 'numeric',
+          minute: 'numeric',
+          second: 'numeric',
+        },
+      ),
+    )
 
     await user.save()
 
@@ -215,7 +224,7 @@ const resendEmailCode = async (req, res) => {
 }
 
 // Vérifier et activer la 2FA
-const EnableTwoFactorApp = async (req, res) => {
+const enableTwoFactorApp = async (req, res) => {
   const { t } = req
   const { token } = req.body
 
@@ -227,7 +236,7 @@ const EnableTwoFactorApp = async (req, res) => {
   }
   try {
     // 1. Vérifier si l'utilisateur existe
-    const user = await UserModel.findById(req.user.id)
+    const user = await UserModel.findById(req.user._id)
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -298,7 +307,7 @@ const EnableTwoFactorApp = async (req, res) => {
 }
 
 // Vérifier et activer la 2FA par email
-const EnableTwoFactorEmail = async (req, res) => {
+const enableTwoFactorEmail = async (req, res) => {
   const { t } = req
   const { code } = req.body
 
@@ -311,7 +320,7 @@ const EnableTwoFactorEmail = async (req, res) => {
 
   try {
     // 1. Vérifier si l'utilisateur existe
-    const user = await UserModel.findById(req.user.id)
+    const user = await UserModel.findById(req.user._id)
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -345,6 +354,7 @@ const EnableTwoFactorEmail = async (req, res) => {
     }
 
     // 5. Si email est la première méthode 2FA, on génère des codes de sauvegarde ou certains sont utilisés, on les remplace
+    user.twoFactor.email.isEnabled = true
 
     if (
       !user.twoFactor.backupCodes ||
@@ -543,7 +553,7 @@ const setPreferredMethod = async (req, res) => {
     }
 
     // 2. Vérifier si l'utilisateur existe
-    const user = await UserModel.findById(req.user.id)
+    const user = await UserModel.findById(req.user._id)
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -611,7 +621,7 @@ const disableTwoFactorApp = async (req, res) => {
   }
   try {
     // 1. Vérifier si l'utilisateur existe
-    const user = await UserModel.findById(req.user.id)
+    const user = await UserModel.findById(req.user._id)
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -688,7 +698,7 @@ const disableTwoFactorEmail = async (req, res) => {
   }
   try {
     // 1. Vérifier si l'utilisateur existe
-    const user = await UserModel.findById(req.user.id)
+    const user = await UserModel.findById(req.user._id)
     if (!user) {
       return res.status(404).json({
         success: false,
@@ -827,7 +837,7 @@ const useBackupCode = async (req, res) => {
       ip,
       userAgent,
       location,
-      date: new Date(),
+      lastActive: new Date(),
       expiresAt: new Date(Date.now() + sessionDuration),
     })
 
@@ -865,8 +875,8 @@ module.exports = {
   configTwoFactorApp,
   configTwoFactorEmail,
   resendEmailCode,
-  EnableTwoFactorApp,
-  EnableTwoFactorEmail,
+  enableTwoFactorApp,
+  enableTwoFactorEmail,
   verifyLoginTwoFactor,
   disableTwoFactorApp,
   disableTwoFactorEmail,
