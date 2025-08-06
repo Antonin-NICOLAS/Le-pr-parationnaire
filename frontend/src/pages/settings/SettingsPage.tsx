@@ -1,25 +1,16 @@
-import React, { useState } from 'react'
-import {
-  Shield,
-  Mail,
-  Bell,
-  Trash2,
-  Key,
-  Smartphone,
-  Globe,
-  Download,
-  LogOut,
-  AlertTriangle,
-  Eye,
-  EyeOff,
-  Copy,
-  RefreshCw,
-  Monitor,
-  MapPin,
-  Calendar,
-} from 'lucide-react'
+import React, { useEffect, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { useUrlModal } from '../../routes/UseUrlModal'
 import { toast } from 'sonner'
+// Context & hooks
+import type {
+  PasswordStrength,
+  Session,
+  ChangePassword,
+} from '../../types/auth'
 import { useAuth } from '../../context/Auth'
+import useUserSettings from '../../hooks/UserSettings'
+// UI components
 import TabNavigation from '../../components/ui/TabNavigation'
 import SettingsCard from '../../components/ui/SettingsCard'
 import ToggleSwitch from '../../components/ui/ToggleSwitch'
@@ -28,15 +19,52 @@ import PrimaryButton from '../../components/ui/PrimaryButton'
 import PasswordStrengthMeter from '../../components/ui/PasswordStrengthMeter'
 import SixDigitCodeInput from '../../components/ui/SixDigitCodeInput'
 import Modal from '../../components/ui/Modal'
-import type { PasswordStrength } from '../../types/auth'
+import {
+  Smartphone,
+  Eye,
+  EyeOff,
+  Copy,
+  RefreshCw,
+  Shield,
+  Mail,
+  Bell,
+  Trash2,
+  Key,
+  Globe,
+  Download,
+  LogOut,
+  AlertTriangle,
+  Monitor,
+  MapPin,
+  Calendar,
+} from 'lucide-react'
 
 const SettingsPage: React.FC = () => {
-  const { user, logout } = useAuth()
-  const [activeTab, setActiveTab] = useState('security')
+  const { tab = 'security' } = useParams()
+  const navigate = useNavigate()
+  const { user, logout, checkActiveSessions, revokeSession } = useAuth()
+  const {
+    changePassword,
+    changeEmailStep1,
+    changeEmailStep2,
+    changeEmailStep3,
+    changeEmailStep4,
+    deleteAccount,
+  } = useUserSettings()
+
+  const tabs = [
+    { id: 'security', label: 'Sécurité', icon: Shield },
+    { id: 'notifications', label: 'Notifications', icon: Bell },
+    { id: '2fa', label: 'Double authentification', icon: Key },
+    { id: 'account', label: 'Compte', icon: Trash2 },
+  ]
   const [isLoading, setIsLoading] = useState(false)
 
+  // Active sessions state
+  const [activeSessions, setActiveSessions] = useState<Session[]>([])
+
   // Password change state
-  const [passwordForm, setPasswordForm] = useState({
+  const [passwordForm, setPasswordForm] = useState<ChangePassword>({
     currentPassword: '',
     newPassword: '',
     confirmPassword: '',
@@ -82,39 +110,45 @@ const SettingsPage: React.FC = () => {
   })
 
   // Delete account state
-  const [deleteAccountModal, setDeleteAccountModal] = useState(false)
+  const { isOpen, open, close } = useUrlModal('delete-account')
   const [deleteConfirmation, setDeleteConfirmation] = useState('')
   const [deletePassword, setDeletePassword] = useState('')
 
-  // Sessions state (mock data)
-  const [activeSessions] = useState([
-    {
-      id: '1',
-      ip: '192.168.1.100',
-      location: 'Paris, France',
-      device: 'Chrome on macOS',
-      lastActive: new Date('2024-01-15T10:30:00'),
-      isCurrent: true,
-    },
-    {
-      id: '2',
-      ip: '10.0.0.50',
-      location: 'Lyon, France',
-      device: 'Safari on iPhone',
-      lastActive: new Date('2024-01-14T15:45:00'),
-      isCurrent: false,
-    },
-  ])
+  useEffect(() => {
+    const fetchActiveSessions = async () => {
+      const activeSessions = await checkActiveSessions()
+      setActiveSessions(activeSessions)
+    }
 
-  const tabs = [
-    { id: 'security', label: 'Sécurité', icon: Shield },
-    { id: 'notifications', label: 'Notifications', icon: Bell },
-    { id: '2fa', label: 'Double authentification', icon: Key },
-    { id: 'account', label: 'Compte', icon: Trash2 },
-  ]
+    fetchActiveSessions()
+  }, [])
+
+  useEffect(() => {
+    // Auto-submit when code is complete
+    const codeValue = emailForm.currentEmailCode.join('')
+    if (codeValue.length === 6 && !isLoading) {
+      handleCurrentEmailVerification()
+    }
+  }, [emailForm.currentEmailCode])
+
+  useEffect(() => {
+    // Auto-submit when code is complete
+    const codeValue = emailForm.newEmailCode.join('')
+    if (codeValue.length === 6 && !isLoading) {
+      handleNewEmailVerification()
+    }
+  }, [emailForm.newEmailCode])
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (
+      !passwordForm.currentPassword ||
+      !passwordForm.newPassword ||
+      !passwordForm.confirmPassword
+    ) {
+      toast.error('Veuillez remplir tous les champs')
+      return
+    }
     if (passwordForm.newPassword !== passwordForm.confirmPassword) {
       toast.error('Les mots de passe ne correspondent pas')
       return
@@ -126,13 +160,12 @@ const SettingsPage: React.FC = () => {
 
     setIsLoading(true)
     try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-      toast.success('Mot de passe modifié avec succès')
-      setPasswordForm({
-        currentPassword: '',
-        newPassword: '',
-        confirmPassword: '',
+      await changePassword(passwordForm, () => {
+        setPasswordForm({
+          currentPassword: '',
+          newPassword: '',
+          confirmPassword: '',
+        })
       })
     } catch (error) {
       toast.error('Erreur lors de la modification du mot de passe')
@@ -141,16 +174,21 @@ const SettingsPage: React.FC = () => {
     }
   }
 
-  const handleEmailChangeStart = () => {
-    setEmailChangeStep('verify-current')
+  const handleEmailChangeStart = async () => {
+    await changeEmailStep1(() => {
+      setEmailChangeStep('verify-current')
+    })
   }
 
   const handleCurrentEmailVerification = async () => {
     setIsLoading(true)
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-      setEmailChangeStep('new-email')
-      toast.success('Email actuel vérifié')
+      if (emailForm.currentEmailCode.join('').length !== 6) {
+        return
+      }
+      await changeEmailStep2(emailForm.currentEmailCode.join(''), () =>
+        setEmailChangeStep('new-email'),
+      )
     } catch (error) {
       toast.error('Code de vérification incorrect')
     } finally {
@@ -161,9 +199,9 @@ const SettingsPage: React.FC = () => {
   const handleNewEmailSubmit = async () => {
     setIsLoading(true)
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-      setEmailChangeStep('verify-new')
-      toast.success('Code envoyé à votre nouvel email')
+      await changeEmailStep3(emailForm.newEmail, () =>
+        setEmailChangeStep('verify-new'),
+      )
     } catch (error) {
       toast.error("Erreur lors de l'envoi du code")
     } finally {
@@ -174,13 +212,14 @@ const SettingsPage: React.FC = () => {
   const handleNewEmailVerification = async () => {
     setIsLoading(true)
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-      toast.success('Email modifié avec succès')
-      setEmailChangeStep(null)
-      setEmailForm({
-        currentEmailCode: Array(6).fill(''),
-        newEmail: '',
-        newEmailCode: Array(6).fill(''),
+      await changeEmailStep4(emailForm.newEmailCode.join(''), () => {
+        ;(setEmailChangeStep(null),
+          user && (user.email = emailForm.newEmail),
+          setEmailForm({
+            currentEmailCode: Array(6).fill(''),
+            newEmail: '',
+            newEmailCode: Array(6).fill(''),
+          }))
       })
     } catch (error) {
       toast.error('Code de vérification incorrect')
@@ -211,8 +250,9 @@ const SettingsPage: React.FC = () => {
   const handleRevokeSession = async (sessionId: string) => {
     setIsLoading(true)
     try {
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      toast.success('Session révoquée')
+      await revokeSession(sessionId)
+      const activeSessions = await checkActiveSessions()
+      setActiveSessions(activeSessions)
     } catch (error) {
       toast.error('Erreur lors de la révocation')
     } finally {
@@ -224,7 +264,8 @@ const SettingsPage: React.FC = () => {
     setIsLoading(true)
     try {
       await new Promise((resolve) => setTimeout(resolve, 1500))
-      toast.success('Toutes les sessions ont été révoquées')
+      const activeSessions = await checkActiveSessions()
+      setActiveSessions(activeSessions)
     } catch (error) {
       toast.error('Erreur lors de la révocation')
     } finally {
@@ -234,7 +275,7 @@ const SettingsPage: React.FC = () => {
 
   const handleDeleteAccount = async () => {
     if (
-      deleteConfirmation.toLowerCase() !== 'supprimer' &&
+      deleteConfirmation.toLocaleUpperCase() !== 'SUPPRIMER' &&
       deleteConfirmation !== user?.email
     ) {
       toast.error('Confirmation incorrecte')
@@ -243,9 +284,14 @@ const SettingsPage: React.FC = () => {
 
     setIsLoading(true)
     try {
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-      toast.success('Compte supprimé')
-      logout(() => {})
+      await deleteAccount(() => {
+        setDeleteConfirmation('')
+        logout(() => {
+          ;() => {
+            navigate('/auth/login')
+          }
+        })
+      })
     } catch (error) {
       toast.error('Erreur lors de la suppression')
     } finally {
@@ -281,7 +327,7 @@ const SettingsPage: React.FC = () => {
         <div className='space-y-4'>
           {activeSessions.map((session) => (
             <div
-              key={session.id}
+              key={session.sessionId}
               className='flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg'
             >
               <div className='flex items-center space-x-3'>
@@ -310,7 +356,9 @@ const SettingsPage: React.FC = () => {
                     </span>
                     <span className='flex items-center space-x-1'>
                       <Calendar size={14} />
-                      <span>{session.lastActive.toLocaleDateString()}</span>
+                      <span>
+                        {new Date(session.lastActive).toLocaleString()}
+                      </span>
                     </span>
                   </div>
                 </div>
@@ -319,7 +367,7 @@ const SettingsPage: React.FC = () => {
                 <PrimaryButton
                   variant='outline'
                   size='sm'
-                  onClick={() => handleRevokeSession(session.id)}
+                  onClick={() => handleRevokeSession(session.sessionId)}
                   loading={isLoading}
                 >
                   Révoquer
@@ -327,14 +375,16 @@ const SettingsPage: React.FC = () => {
               )}
             </div>
           ))}
-          <PrimaryButton
-            variant='secondary'
-            onClick={handleRevokeAllSessions}
-            loading={isLoading}
-            icon={LogOut}
-          >
-            Déconnecter toutes les sessions
-          </PrimaryButton>
+          {activeSessions.length !== 1 && (
+            <PrimaryButton
+              variant='secondary'
+              onClick={handleRevokeAllSessions}
+              loading={isLoading}
+              icon={LogOut}
+            >
+              Déconnecter toutes les sessions
+            </PrimaryButton>
+          )}
         </div>
       </SettingsCard>
 
@@ -433,6 +483,7 @@ const SettingsPage: React.FC = () => {
                       currentEmailCode: value,
                     }))
                   }
+                  autoFocus
                 />
                 <div className='flex space-x-3'>
                   <PrimaryButton
@@ -872,7 +923,7 @@ const SettingsPage: React.FC = () => {
           </div>
           <PrimaryButton
             variant='secondary'
-            onClick={() => setDeleteAccountModal(true)}
+            onClick={open}
             className='bg-red-600 hover:bg-red-700 text-white'
           >
             Supprimer mon compte
@@ -895,22 +946,24 @@ const SettingsPage: React.FC = () => {
 
       <TabNavigation
         tabs={tabs}
-        activeTab={activeTab}
-        onTabChange={setActiveTab}
+        activeTab={tab}
+        onTabChange={(id) => {
+          navigate(`/settings/${id}`)
+        }}
         className='mb-8'
       />
 
       <div className='min-h-[600px]'>
-        {activeTab === 'security' && renderSecurityTab()}
-        {activeTab === 'notifications' && renderNotificationsTab()}
-        {activeTab === '2fa' && render2FATab()}
-        {activeTab === 'account' && renderAccountTab()}
+        {tab === 'security' && renderSecurityTab()}
+        {tab === 'notifications' && renderNotificationsTab()}
+        {tab === '2fa' && render2FATab()}
+        {tab === 'account' && renderAccountTab()}
       </div>
 
       {/* Modal de suppression de compte */}
       <Modal
-        isOpen={deleteAccountModal}
-        onClose={() => setDeleteAccountModal(false)}
+        isOpen={isOpen}
+        onClose={close}
         title='Supprimer mon compte'
         size='md'
       >
@@ -933,10 +986,10 @@ const SettingsPage: React.FC = () => {
 
           <div className='space-y-4'>
             <CustomInput
-              label="Pour confirmer, tapez 'supprimer' ou votre email"
+              label="Pour confirmer, tapez 'SUPPRIMER' ou votre email"
               value={deleteConfirmation}
               onChange={(e) => setDeleteConfirmation(e.target.value)}
-              placeholder='supprimer'
+              placeholder='SUPPRIMER'
             />
             <CustomInput
               type='password'
@@ -952,18 +1005,15 @@ const SettingsPage: React.FC = () => {
               onClick={handleDeleteAccount}
               loading={isLoading}
               disabled={
-                (deleteConfirmation.toLowerCase() !== 'supprimer' &&
-                  deleteConfirmation !== user?.email) ||
+                (deleteConfirmation.toLocaleUpperCase() !== 'SUPPRIMER' &&
+                  deleteConfirmation.toLocaleLowerCase() !== user?.email) ||
                 !deletePassword
               }
               className='bg-red-600 hover:bg-red-700 text-white'
             >
               Supprimer définitivement
             </PrimaryButton>
-            <PrimaryButton
-              variant='outline'
-              onClick={() => setDeleteAccountModal(false)}
-            >
+            <PrimaryButton variant='outline' onClick={close}>
               Annuler
             </PrimaryButton>
           </div>

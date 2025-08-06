@@ -14,16 +14,10 @@ const {
   resetPassword,
   verifyEmail,
   resendVerificationEmail,
-  changePassword,
+  getActiveSessions,
+  revokeSession,
+  revokeAllSessions,
 } = require('../controllers/AuthController')
-
-const {
-  generateRegistrationOpt,
-  verifyRegistration,
-  generateAuthenticationOpt,
-  removeWebAuthnCredential,
-  getWebAuthnDevices,
-} = require('../controllers/WebAuthnController')
 
 // Middlewares
 const { authenticate } = require('../middlewares/VerifyAuth')
@@ -43,44 +37,33 @@ router.use(
 // Routes
 router.get('/profile', authenticate, checkSession)
 
-// with rate limiting
-router.use(rateLimiterMiddleware)
-
 // Login Flow
-router.post('/login', login)
+router.post('/login', rateLimiterMiddleware, login)
 router.post('/logout', logout)
 router.get('/status', checkAuthStatus)
 
 // Register Flow
-router.post('/register', register)
-router.post('/verify-email', verifyEmail)
-router.post('/resend-verification-email', resendVerificationEmail)
+router.post('/register', rateLimiterMiddleware, register)
+router.post('/verify-email', rateLimiterMiddleware, verifyEmail)
+router.post(
+  '/resend-verification-email',
+  rateLimiterMiddleware,
+  resendVerificationEmail,
+)
 
 // Password Flow
-router.post('/forgot-password', forgotPassword)
-router.post('/resend-forgot-password', resendForgotPassword)
+router.post('/forgot-password', rateLimiterMiddleware, forgotPassword)
+router.post(
+  '/resend-forgot-password',
+  rateLimiterMiddleware,
+  resendForgotPassword,
+)
 router.post('/reset-password', resetPassword)
 
-// with authentication needed
-router.post('/change-password', authenticate, changePassword)
-router.post('/webauthn/verify-registration', authenticate, verifyRegistration)
+// with authentication
 
-router.get(
-  '/webauthn/generate-registration',
-  authenticate,
-  generateRegistrationOpt,
-)
-router.get(
-  '/webauthn/generate-authentication',
-  authenticate,
-  generateAuthenticationOpt,
-)
-router.get('/webauthn/devices', authenticate, getWebAuthnDevices)
-
-router.delete(
-  '/webauthn/remove-credential/:credentialId',
-  authenticate,
-  removeWebAuthnCredential,
-)
+router.get('/active-sessions', authenticate, getActiveSessions)
+router.delete('/revoke-session/:sessionId', authenticate, revokeSession)
+router.delete('/revoke-all-sessions', authenticate, revokeAllSessions)
 
 module.exports = router

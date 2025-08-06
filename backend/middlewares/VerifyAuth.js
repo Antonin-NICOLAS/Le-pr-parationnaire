@@ -19,7 +19,7 @@ const authenticate = async (req, res, next) => {
 
     // 3. Récupérer l'utilisateur avec les informations de session
     const user = await User.findById(decoded.id)
-      .select('-password -emailVerification.token')
+      .select('-resetPassword.token -emailVerification.token')
       .lean()
 
     if (!user) {

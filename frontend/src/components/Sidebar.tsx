@@ -47,7 +47,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
   const handleLogout = () => {
     logout(() => {
-      navigate('/login')
+      navigate('/auth/login')
       setSidebarOpen(false)
     })
   }

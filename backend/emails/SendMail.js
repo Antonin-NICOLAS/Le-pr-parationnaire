@@ -2,6 +2,11 @@ const nodemailer = require('nodemailer')
 const { LogIn } = require('./templates/LogIn.js')
 const { EmailVerification } = require('./templates/EmailVerification.js')
 const { ResetPassword } = require('./templates/ResetPassword.js')
+const { ChangeEmailStep1 } = require('./templates/ChangeEmailStep1.js')
+const { ChangeEmailStep2 } = require('./templates/ChangeEmailStep2.js')
+const {
+  EmailTwoFactorActivation,
+} = require('./templates/EmailTwoFactorActivation.js')
 
 // .env
 require('dotenv').config()
@@ -133,17 +138,53 @@ const sendTwoFactorBackupCodesEmail = async (t, user, backupCodes) => {
 }
 
 // Envoyer un code 2FA par email
-const sendTwoFactorEmailCode = async (user, code) => {
+const sendTwoFactorEmailActivation = async (t, user, code, expiration) => {
   const mailOptions = {
     from: process.env.NODEMAILER_USER,
     to: user.email,
     subject: t('emails:email2FAcode.subject'),
-    html: '',
+    html: EmailTwoFactorActivation(t, user, code, expiration),
   }
   try {
     await transporter.sendMail(mailOptions)
   } catch (error) {
     console.error("Erreur lors de l'envoi du code 2FA par email:", error)
+    throw error
+  }
+}
+
+const sendChangeEmailStep1 = async (t, user, verificationCode) => {
+  const mailOptions = {
+    from: process.env.NODEMAILER_USER,
+    to: user.email,
+    subject: t('emails:emailchange1.subject'),
+    html: ChangeEmailStep1(t, user, verificationCode),
+  }
+  try {
+    await transporter.sendMail(mailOptions)
+  } catch (error) {
+    console.error(
+      "Erreur lors de l'envoi du code de changement d'email:",
+      error,
+    )
+    throw error
+  }
+}
+
+const sendChangeEmailStep2 = async (t, user, verificationCode) => {
+  const mailOptions = {
+    from: process.env.NODEMAILER_USER,
+    to: user.email,
+    subject: t('emails:emailchange2.subject'),
+    html: ChangeEmailStep2(t, user, verificationCode),
+  }
+  try {
+    await transporter.sendMail(mailOptions)
+  } catch (error) {
+    console.error(
+      "Erreur lors de l'envoi du code de changement d'email:",
+      error,
+    )
     throw error
   }
 }
@@ -155,5 +196,7 @@ module.exports = {
   sendResetPasswordEmail,
   sendResetPasswordSuccessfulEmail,
   sendTwoFactorBackupCodesEmail,
-  sendTwoFactorEmailCode,
+  sendTwoFactorEmailActivation,
+  sendChangeEmailStep1,
+  sendChangeEmailStep2,
 }

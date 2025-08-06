@@ -9,23 +9,52 @@ export interface User {
     ip: string
     userAgent: string
     location: string
-    date: Date
+    lastActive: Date
   }>
   twoFactor?: {
     email?: {
       isEnabled: boolean
     }
-    app: {
+    app?: {
       isEnabled: boolean
     }
-    webauthn: {
+    webauthn?: {
       isEnabled: boolean
+      credentials?: Array<{
+        credentialId: string
+        deviceName: string
+        deviceType: string
+        createdAt: Date
+      }>
     }
     preferredMethod?: 'email' | 'app' | 'webauthn' | null
+    backupCodes?: Array<{
+      code: string
+      used: boolean
+    }>
   }
   role: string
   language: string
   theme: string
+}
+
+export interface Session {
+  sessionId: string
+  ip: string
+  location: string
+  device: string
+  deviceType: string
+  browser: string
+  os: string
+  lastActive: Date
+  isCurrent: boolean
+}
+
+export interface LoginData {
+  email: string
+  password: string
+  rememberMe: boolean
+  onSuccess?: () => void
 }
 
 export interface RegisterData {
@@ -50,6 +79,12 @@ export interface PasswordStrength {
     special: boolean
     sequential: boolean
   }
+}
+
+export interface ChangePassword {
+  currentPassword: string
+  newPassword: string
+  confirmPassword: string
 }
 
 export interface FormErrors {

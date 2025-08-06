@@ -1,5 +1,6 @@
-import React, { useEffect } from 'react'
+import React, { useEffect, useState, useCallback } from 'react'
 import { X } from 'lucide-react'
+import clsx from 'clsx'
 
 interface ModalProps {
   isOpen: boolean
@@ -29,41 +30,65 @@ const Modal: React.FC<ModalProps> = ({
     xl: 'max-w-4xl',
   }
 
+  const [isVisible, setIsVisible] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
+
+  // Ouverture / fermeture avec animation
   useEffect(() => {
     if (isOpen) {
+      setIsMounted(true)
+      setTimeout(() => setIsVisible(true), 10) // laisser le temps au DOM de monter
+    } else {
+      setIsVisible(false)
+      setTimeout(() => setIsMounted(false), 200) // attendre la fin de l’animation
+    }
+  }, [isOpen])
+
+  // Scroll lock lié à `isVisible`
+  useEffect(() => {
+    if (isVisible) {
       document.body.style.overflow = 'hidden'
     } else {
       document.body.style.overflow = 'unset'
     }
-
     return () => {
       document.body.style.overflow = 'unset'
     }
-  }, [isOpen])
+  }, [isVisible])
 
+  // Stable handleClose
+  const handleClose = useCallback(() => {
+    setIsVisible(false)
+    setTimeout(() => {
+      onClose()
+    }, 200)
+  }, [onClose])
+
+  // Escape key
   useEffect(() => {
-    const handleEscape = (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isOpen) {
-        onClose()
-      }
-      if ((e.ctrlKey || e.metaKey) && e.key === 'w') {
-        onClose()
-      }
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') handleClose()
+      if ((e.ctrlKey || e.metaKey) && e.key === 'w') handleClose()
     }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
+  }, [handleClose])
 
-    document.addEventListener('keydown', handleEscape)
-    return () => document.removeEventListener('keydown', handleEscape)
-  }, [isOpen, onClose])
-
-  if (!isOpen) return null
+  if (!isMounted) return null
 
   return (
     <div className='fixed inset-0 z-50 overflow-y-auto'>
       <div className='flex min-h-screen items-center justify-center p-4'>
         {/* Overlay */}
         <div
-          className='fixed inset-0 opacity-30 bg-gray-900 transition-opacity'
-          onClick={closeOnOverlayClick ? onClose : undefined}
+          className={clsx(
+            'fixed inset-0 bg-gray-900 transition-opacity duration-200',
+            {
+              'opacity-30': isVisible,
+              'opacity-0': !isVisible,
+            },
+          )}
+          onClick={closeOnOverlayClick ? handleClose : undefined}
         />
 
         {/* Modal */}
@@ -72,21 +97,26 @@ const Modal: React.FC<ModalProps> = ({
           aria-modal='true'
           aria-labelledby='modal-title'
           aria-describedby='modal-desc'
-          tabIndex={-1}
-          className={`
-            relative w-full ${sizeClasses[size]} transform rounded-lg bg-white dark:bg-gray-800 
-            shadow-xl transition-all duration-300 animate-fade-in
-            ${className}
-          `}
+          className={clsx(
+            `relative w-full ${sizeClasses[size]} transform rounded-lg bg-white dark:bg-gray-800 shadow-xl transition-all duration-200`,
+            {
+              'scale-100 opacity-100': isVisible,
+              'scale-95 opacity-0': !isVisible,
+            },
+            className,
+          )}
         >
           {/* Header */}
           <div className='flex items-center justify-between border-b border-gray-200 dark:border-gray-700 px-6 py-4'>
-            <h3 className='text-lg font-semibold text-gray-900 dark:text-gray-100'>
+            <h3
+              className='text-lg font-semibold text-gray-900 dark:text-gray-100'
+              id='modal-title'
+            >
               {title}
             </h3>
             {showCloseButton && (
               <button
-                onClick={onClose}
+                onClick={handleClose}
                 className='rounded-md p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-500 dark:hover:bg-gray-700 dark:hover:text-gray-300'
               >
                 <X size={20} />

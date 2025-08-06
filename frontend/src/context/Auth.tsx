@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import type { User } from '../types/auth'
+import type { User, Session, LoginData, RegisterData } from '../types/auth'
 import axios from 'axios'
 import { toast } from 'sonner'
 
@@ -12,23 +12,9 @@ type AuthContextType = {
   error: string | null
   checkAuth: () => Promise<void>
   checkAuthStatus: (email: string) => Promise<boolean>
-  login: (
-    email: string,
-    password: string,
-    rememberMe: boolean,
-    onSuccess?: () => void,
-  ) => Promise<void>
+  login: (data: LoginData, onSuccess?: () => void) => Promise<void>
   logout: (onSuccess?: () => void) => Promise<void>
-  register: (
-    data: {
-      email: string
-      password: string
-      lastName: string
-      firstName: string
-      rememberMe?: boolean
-    },
-    onSuccess?: () => void,
-  ) => Promise<void>
+  register: (data: RegisterData, onSuccess?: () => void) => Promise<void>
   emailVerification: (
     token: string,
     email: string,
@@ -36,6 +22,8 @@ type AuthContextType = {
     onSuccess?: () => void,
   ) => Promise<void>
   resendVerificationEmail: (email: string) => Promise<void>
+  checkActiveSessions: () => Promise<Session[]>
+  revokeSession: (sessionId: string) => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
@@ -80,17 +68,12 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }
 
-  const login = async (
-    email: string,
-    password: string,
-    rememberMe: boolean,
-    onSuccess?: () => void,
-  ) => {
+  const login = async (LoginData: LoginData, onSuccess?: () => void) => {
     try {
       setError(null)
       const { data } = await axios.post(
         `${import.meta.env.VITE_AUTH}/login`,
-        { email, password, rememberMe },
+        LoginData,
         { withCredentials: true },
       )
       if (data.success) {
@@ -136,13 +119,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   }
 
   const register = async (
-    registerData: {
-      email: string
-      password: string
-      lastName: string
-      firstName: string
-      rememberMe?: boolean
-    },
+    registerData: RegisterData,
     onSuccess?: () => void,
   ) => {
     try {
@@ -223,6 +200,55 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }
 
+  const checkActiveSessions = async () => {
+    try {
+      setError(null)
+      const { data } = await axios.get(
+        `${import.meta.env.VITE_AUTH}/active-sessions`,
+        {
+          withCredentials: true,
+        },
+      )
+      if (data.success) {
+        return data.sessions
+      }
+    } catch (err: any) {
+      toast.error(
+        err.response?.data?.error ||
+          'Erreur inconnue. Veuillez réessayer plus tard.',
+      )
+      setError(
+        err.response?.data?.message ||
+          'Erreur inconnue. Veuillez réessayer plus tard.',
+      )
+      return []
+    }
+  }
+
+  const revokeSession = async (sessionId: string) => {
+    try {
+      setError(null)
+      const { data } = await axios.delete(
+        `${import.meta.env.VITE_AUTH}/revoke-session/${sessionId}`,
+        {
+          withCredentials: true,
+        },
+      )
+      if (data.success) {
+        toast.success(data.message || 'Session revoked successfully!')
+      }
+    } catch (err: any) {
+      toast.error(
+        err.response?.data?.error ||
+          'Erreur inconnue. Veuillez réessayer plus tard.',
+      )
+      setError(
+        err.response?.data?.message ||
+          'Erreur inconnue. Veuillez réessayer plus tard.',
+      )
+    }
+  }
+
   useEffect(() => {
     checkAuth()
   }, [])
@@ -240,6 +266,8 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         register,
         emailVerification,
         resendVerificationEmail,
+        checkActiveSessions,
+        revokeSession,
       }}
     >
       {children}

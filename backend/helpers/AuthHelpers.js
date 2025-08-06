@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken')
 const bcrypt = require('bcrypt')
 const CryptoJS = require('crypto-js')
-const uap = require('ua-parser-js')
+const UAParser = require('ua-parser-js')
 const ms = require('ms')
 const { v4: uuidv4 } = require('uuid')
 
@@ -29,13 +29,13 @@ const validateName = (name) => {
 const validatePassword = (password) => {
   // Minimum 8 chars, at least one uppercase, one lowercase, one number and one special char
   const passwordRegex =
-    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[@$!%*?&])[A-Za-z\d@$!%*?&]{8,}$/
+    /^(?=.*[A-ZÁÉÍÓÚÀÈÌÒÙÂÊÎÔÛÄËÏÖÜÇÑ])(?=.*[a-záéíóúàèìòùâêîôûäëïöüçñ])(?=.*\d)(?=.*[\W_]).{8,}$/
   return passwordRegex.test(password)
 }
 
 // Device Info Extraction
 const getDeviceInfo = (userAgent) => {
-  const parser = new uap(userAgent)
+  const parser = new UAParser(userAgent)
   const device = parser.getDevice()
   const os = parser.getOS()
   const browser = parser.getBrowser()
@@ -61,14 +61,35 @@ const findLocation = async (t, language, ipAddress) => {
   }
 }
 
+const detectSimilarDevice = (userAgent1, userAgent2) => {
+  if (!userAgent1 || !userAgent2) return false
+
+  const parser = new UAParser()
+  const ua1 = parser.setUA(userAgent1).getResult()
+  const ua2 = parser.setUA(userAgent2).getResult()
+  console.log('Comparing devices:', ua1, ua2)
+
+  // Comparaison basique
+  if (ua1.browser.name !== ua2.browser.name) return false
+  if (ua1.os.name !== ua2.os.name) return false
+  if (ua1.device.type !== ua2.device.type) return false
+  if (ua1.device.vendor !== ua2.device.vendor) return false
+  if (ua1.cpu.architecture !== ua2.cpu.architecture) return false
+
+  // Comparaison plus avancée pour les mobiles
+  if (ua1.device.type === 'mobile' || ua2.device.type === 'mobile') {
+    return ua1.device.model === ua2.device.model
+  }
+
+  return true
+}
+
 // Cookie Generation
 
-const generateToken = (user, duration) => {
-  const jwtId = uuidv4()
-
+const generateToken = (user, duration, sessionId) => {
   return jwt.sign(
     {
-      jti: jwtId,
+      jti: sessionId || uuidv4(),
       id: user._id,
       email: user.email,
       role: user.role,
@@ -83,12 +104,14 @@ const generateToken = (user, duration) => {
 }
 
 // Génération de cookie sécurisé
-const generateCookie = (res, user, stayLoggedIn = false) => {
+const generateCookie = (res, user, stayLoggedIn = false, sessionId = null) => {
   const duration = stayLoggedIn
     ? process.env.SESSION_DURATION_LONG
     : process.env.SESSION_DURATION_SHORT
 
-  const token = generateToken(user, duration)
+  // Si aucun sessionId n'est fourni, on en génère un nouveau
+  const finalSessionId = sessionId || uuidv4()
+  const token = generateToken(user, duration, finalSessionId)
 
   const options = {
     secure: process.env.NODE_ENV === 'production',
@@ -102,7 +125,13 @@ const generateCookie = (res, user, stayLoggedIn = false) => {
   }
 
   res.cookie('jwtauth', token, options)
-  return token
+
+  res.cookie('sessionId', finalSessionId, {
+    ...options,
+    httpOnly: false,
+  })
+
+  return { token, sessionId: finalSessionId }
 }
 
 // Create 6-digit verification code
@@ -123,6 +152,7 @@ module.exports = {
   validatePassword,
   getDeviceInfo,
   findLocation,
+  detectSimilarDevice,
   generateCookie,
   generateVerificationCode,
   generateResetToken,

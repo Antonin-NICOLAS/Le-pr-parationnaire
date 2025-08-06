@@ -10,6 +10,8 @@ require('dotenv').config()
 
 //routes
 const AuthRoutes = require('../routes/AuthRoutes')
+const UserRoutes = require('../routes/UserRoutes')
+const TwoFactorRoutes = require('../routes/TwoFactorRoutes')
 
 //express app
 const app = express()
@@ -50,6 +52,8 @@ app.get('/', (req, res) => {
   res.send("Voici l'API du préparationnaire")
 })
 app.use('/auth', AuthRoutes)
+app.use('/auth/2fa', TwoFactorRoutes)
+app.use('/user', UserRoutes)
 
 //mongoDB connection
 mongoose

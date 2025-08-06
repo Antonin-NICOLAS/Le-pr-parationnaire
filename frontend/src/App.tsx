@@ -1,7 +1,7 @@
 import { BrowserRouter as Router } from 'react-router-dom'
 import { AuthProvider } from './context/Auth'
 import { ThemeProvider } from './context/Theme'
-import AxiosInterceptor from './routes/AxiosInterceptor'
+import AxiosInterceptor from './hooks/AxiosInterceptor'
 import { Toaster } from 'sonner'
 import AppRoutes from './routes/AppRoutes'
 import axios from 'axios'
