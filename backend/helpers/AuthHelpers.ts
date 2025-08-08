@@ -122,7 +122,7 @@ export function generateCookie(
     maxAge: ms(duration),
     path: '/',
     ...(process.env.NODE_ENV === 'production' && {
-      domain: process.env.FRONTEND_SERVER || undefined,
+      domain: process.env.DOMAIN || undefined,
     }),
   }
 

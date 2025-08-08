@@ -28,6 +28,11 @@ const i18nConfig = {
 // Créer une instance promisifiée
 const initializeI18n = async () => {
   await i18n.use(Backend).use(LanguageDetector).init(i18nConfig)
+  i18n.on('initialized', () => {
+    console.log('i18next initialized with config:', i18nConfig)
+    // try a simple translation to verify
+    console.log(i18n.t('auth:success.logged_in'))
+  })
   return i18n
 }
 
