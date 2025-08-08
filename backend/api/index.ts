@@ -72,3 +72,5 @@ mongoose
     console.error('failed to connect', err)
     process.exit(1)
   })
+
+export default app
