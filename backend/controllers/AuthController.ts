@@ -19,13 +19,13 @@ import {
   generateCookie,
   generateVerificationCode,
   generateResetToken,
-} from '../helpers/AuthHelpers'
+} from '../helpers/AuthHelpers.js'
 // Emails
 import {
   sendVerificationEmail,
   sendLoginEmail,
   sendResetPasswordEmail,
-} from '../emails/SendMail'
+} from '../emails/SendMail.js'
 
 export const register = asyncHandler(async (req: Request, res: Response) => {
   const { email, password, lastName, firstName, rememberMe } = req.body

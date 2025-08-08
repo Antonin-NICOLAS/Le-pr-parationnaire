@@ -6,7 +6,7 @@ import ms, { StringValue } from 'ms'
 import { v4 as uuidv4 } from 'uuid'
 import { Response } from 'express'
 import type { SignOptions } from 'jsonwebtoken'
-import type { IUser } from '../models/User'
+import type { IUser } from '../models/User.js'
 
 export async function handleUnverifiedUser(user: IUser) {
   if (

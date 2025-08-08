@@ -1,7 +1,7 @@
-import User from '../models/User'
-import { asyncHandler } from '../helpers/AsyncHandler'
-import { ApiResponse } from '../helpers/ApiResponse'
-import { SessionService } from '../services/SessionService'
+import User from '../models/User.js'
+import { asyncHandler } from '../helpers/AsyncHandler.js'
+import { ApiResponse } from '../helpers/ApiResponse.js'
+import { SessionService } from '../services/SessionService.js'
 import type { Request, Response } from 'express'
 import i18next, { TFunction } from 'i18next'
 // Helpers
@@ -30,17 +30,20 @@ import {
   generateCookie,
   getDeviceInfo,
   findLocation,
-} from '../helpers/AuthHelpers'
-import { generateBackupCodes, rotateBackupCodes } from '../helpers/2FAHelpers'
+} from '../helpers/AuthHelpers.js'
+import {
+  generateBackupCodes,
+  rotateBackupCodes,
+} from '../helpers/2FAHelpers.js'
 import {
   setChallenge,
   getActiveCredentials,
   clearChallenge,
   findCredentialById,
   updateCredentialCounter,
-} from '../helpers/WebAuthnHelpers'
+} from '../helpers/WebAuthnHelpers.js'
 // Emails
-import { sendLoginEmail } from '../emails/SendMail'
+import { sendLoginEmail } from '../emails/SendMail.js'
 
 // Configuration WebAuthn
 let rpName = 'Le préparationnaire'

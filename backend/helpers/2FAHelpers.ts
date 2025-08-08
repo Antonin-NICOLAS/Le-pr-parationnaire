@@ -2,7 +2,7 @@ import speakeasy from 'speakeasy'
 import QRCode from 'qrcode'
 import CryptoJS from 'crypto-js'
 import bcrypt from 'bcryptjs'
-import { IUser } from '../models/User'
+import { IUser } from '../models/User.js'
 
 type BackupCode = { code: string; used: boolean }
 

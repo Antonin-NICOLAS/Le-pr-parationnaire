@@ -1,4 +1,4 @@
-import type { WebAuthnCredential } from '../models/User'
+import type { WebAuthnCredential } from '../models/User.js'
 
 type UserWithWebauthn = {
   twoFactor: {

@@ -1,4 +1,4 @@
-import { IUser, LoginHistory } from '../models/User'
+import { IUser, LoginHistory } from '../models/User.js'
 import { UAParser } from 'ua-parser-js'
 import ms, { StringValue } from 'ms'
 import { v4 as uuidv4 } from 'uuid'
