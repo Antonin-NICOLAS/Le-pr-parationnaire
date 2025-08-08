@@ -1,5 +1,4 @@
 import i18n from 'i18next'
-import Backend from 'i18next-fs-backend'
 import { LanguageDetector } from 'i18next-http-middleware'
 import frAuth from './locales/fr/auth.json' assert { type: 'json' }
 import enAuth from './locales/en/auth.json' assert { type: 'json' }
@@ -36,7 +35,7 @@ const i18nConfig = {
 
 // Créer une instance promisifiée
 const initializeI18n = async () => {
-  await i18n.use(Backend).use(LanguageDetector).init(i18nConfig)
+  await i18n.use(LanguageDetector).init(i18nConfig)
   return i18n
 }
 
