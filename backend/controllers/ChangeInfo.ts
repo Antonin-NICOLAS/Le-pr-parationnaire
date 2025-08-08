@@ -1,6 +1,6 @@
-import User from '../models/User'
-import { asyncHandler } from '../helpers/AsyncHandler'
-import { ApiResponse } from '../helpers/ApiResponse'
+import User from '../models/User.js'
+import { asyncHandler } from '../helpers/AsyncHandler.js'
+import { ApiResponse } from '../helpers/ApiResponse.js'
 import { Request, Response } from 'express'
 import { TFunction } from 'i18next'
 // Helpers
@@ -10,8 +10,11 @@ import {
   comparePassword,
   validatePassword,
   validateEmail,
-} from '../helpers/AuthHelpers'
-import { sendChangeEmailStep1, sendChangeEmailStep2 } from '../emails/SendMail'
+} from '../helpers/AuthHelpers.js'
+import {
+  sendChangeEmailStep1,
+  sendChangeEmailStep2,
+} from '../emails/SendMail.js'
 
 export const changePassword = asyncHandler(
   async (req: Request, res: Response) => {

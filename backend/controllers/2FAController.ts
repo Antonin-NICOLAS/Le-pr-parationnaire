@@ -1,7 +1,7 @@
-import User from '../models/User'
-import { asyncHandler } from '../helpers/AsyncHandler'
-import { ApiResponse } from '../helpers/ApiResponse'
-import { SessionService } from '../services/SessionService'
+import User from '../models/User.js'
+import { asyncHandler } from '../helpers/AsyncHandler.js'
+import { ApiResponse } from '../helpers/ApiResponse.js'
+import { SessionService } from '../services/SessionService.js'
 import type { Request, Response } from 'express'
 import i18next, { TFunction } from 'i18next'
 // Helpers
@@ -13,18 +13,18 @@ import {
   verifyBackupCode,
   hashEmailCode,
   compareEmailCode,
-} from '../helpers/2FAHelpers'
+} from '../helpers/2FAHelpers.js'
 import {
   generateCookie,
   comparePassword,
   findLocation,
   getDeviceInfo,
-} from '../helpers/AuthHelpers'
+} from '../helpers/AuthHelpers.js'
 // Emails
 import {
   sendTwoFactorEmailActivation,
   sendLoginEmail,
-} from '../emails/SendMail'
+} from '../emails/SendMail.js'
 // .env
 import dotenv from 'dotenv'
 dotenv.config()
