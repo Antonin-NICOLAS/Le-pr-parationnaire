@@ -261,7 +261,9 @@ export const generateAuthenticationOpt = asyncHandler(
 
 export const verifyAuthentication = asyncHandler(
   async (req: Request, res: Response) => {
-    const { email, rememberMe, assertionResponse } = req.body
+    const { email, rememberMe } = req.body
+    const assertionResponse: AuthenticationResponseJSON =
+      req.body.assertionResponse
     const { t } = req
 
     // 1. Validation des données d'entrée
@@ -398,7 +400,7 @@ export const nameWebAuthnCredential = asyncHandler(
     credential.deviceName = deviceName
     await user.save()
 
-    return ApiResponse.success(res, {}, t('auth:success.name_updated'), 200)
+    return ApiResponse.success(res, {}, '', 200)
   },
 )
 

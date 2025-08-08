@@ -54,7 +54,7 @@ export const sendLoginEmail = async (
     await transporter.sendMail(mailOptions)
   } catch (error) {
     console.error("Erreur lors de l'envoi de l'email :", error)
-    throw new Error("Échec de l'envoi de l'email de nouvelle connection")
+    throw error
   }
 }
 
@@ -74,7 +74,7 @@ export const sendVerificationEmail = async (
     await transporter.sendMail(mailOptions)
   } catch (error) {
     console.error("Erreur lors de l'envoi de l'email :", error)
-    throw new Error("Échec de l'envoi de l'email de vérification")
+    throw error
   }
 }
 
@@ -94,7 +94,7 @@ export const sendWelcomeEmail = async (
     await transporter.sendMail(mailOptions)
   } catch (error) {
     console.error("Erreur lors de l'envoi de l'email :", error)
-    throw new Error("Échec de l'envoi de l'email de bienvenue")
+    throw error
   }
 }
 
@@ -114,9 +114,7 @@ export const sendResetPasswordEmail = async (
     await transporter.sendMail(mailOptions)
   } catch (error) {
     console.error("Erreur lors de l'envoi de l'email :", error)
-    throw new Error(
-      "Échec de l'envoi de l'email de réinitialisation de mot de passe",
-    )
+    throw error
   }
 }
 
@@ -135,9 +133,7 @@ export const sendResetPasswordSuccessfulEmail = async (
     await transporter.sendMail(mailOptions)
   } catch (error) {
     console.error("Erreur lors de l'envoi de l'email :", error)
-    throw new Error(
-      "Échec de l'envoi de l'email du succès de réinitialisation de mot de passe",
-    )
+    throw error
   }
 }
 
@@ -158,9 +154,7 @@ export const sendTwoFactorBackupCodesEmail = async (
     await transporter.sendMail(mailOptions)
   } catch (error) {
     console.error("Erreur lors de l'envoi de l'email :", error)
-    throw new Error(
-      "Échec de l'envoi de l'email des codes de secours pour l'authentification à deux facteurs",
-    )
+    throw error
   }
 }
 
