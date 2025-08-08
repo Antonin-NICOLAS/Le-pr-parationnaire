@@ -1,16 +1,25 @@
 import i18n from 'i18next'
 import Backend from 'i18next-fs-backend'
 import { LanguageDetector } from 'i18next-http-middleware'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
-
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
+import frAuth from './locales/fr/auth.json'
+import enAuth from './locales/en/auth.json'
+import frCommon from './locales/fr/common.json'
+import enCommon from './locales/en/common.json'
+import frEmails from './locales/fr/emails.json'
+import enEmails from './locales/en/emails.json'
 
 const i18nConfig = {
-  backend: {
-    loadPath: path.join(__dirname, 'locales/{{lng}}/{{ns}}.json'),
-    addPath: path.join(__dirname, 'locales/{{lng}}/{{ns}}.missing.json'),
+  resources: {
+    en: {
+      auth: enAuth,
+      common: enCommon,
+      emails: enEmails,
+    },
+    fr: {
+      auth: frAuth,
+      common: frCommon,
+      emails: frEmails,
+    },
   },
   fallbackLng: 'fr',
   returnNull: false,
@@ -28,11 +37,6 @@ const i18nConfig = {
 // Créer une instance promisifiée
 const initializeI18n = async () => {
   await i18n.use(Backend).use(LanguageDetector).init(i18nConfig)
-  i18n.on('initialized', () => {
-    console.log('i18next initialized with config:', i18nConfig)
-    // try a simple translation to verify
-    console.log(i18n.t('auth:success.logged_in'))
-  })
   return i18n
 }
 
