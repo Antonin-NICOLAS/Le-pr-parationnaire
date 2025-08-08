@@ -1,15 +1,11 @@
 import axios from 'axios'
 import { toast } from 'sonner'
-
-import.meta.env.VITE_2FA =
-  import.meta.env.VITE_NODE_ENV === 'development'
-    ? '/auth/2fa'
-    : '/api/auth/2fa'
+import { VITE_2FA } from '../../utils/env'
 
 const useTwoFactorAuth = () => {
   const getTwoFactorStatus = async () => {
     try {
-      const { data } = await axios.get(`${import.meta.env.VITE_2FA}/status`, {
+      const { data } = await axios.get(`${VITE_2FA}/status`, {
         withCredentials: true,
       })
       if (data.success) {
@@ -36,7 +32,7 @@ const useTwoFactorAuth = () => {
   const setPreferredMethod = async (method: 'email' | 'app' | 'webauthn') => {
     try {
       const { data } = await axios.post(
-        `${import.meta.env.VITE_2FA}/set-preferred-method`,
+        `${VITE_2FA}/set-preferred-method`,
         {
           method,
         },

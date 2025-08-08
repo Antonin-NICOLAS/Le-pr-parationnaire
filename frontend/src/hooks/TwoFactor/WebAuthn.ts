@@ -6,11 +6,7 @@ import {
   type RegistrationResponseJSON,
   type AuthenticationResponseJSON,
 } from '@simplewebauthn/browser'
-
-import.meta.env.VITE_2FA =
-  import.meta.env.VITE_NODE_ENV === 'development'
-    ? '/auth/2fa'
-    : '/api/auth/2fa'
+import { VITE_2FA_WEB_AUTHN } from '../../utils/env'
 
 interface WebAuthnCredential {
   id: string
@@ -43,7 +39,7 @@ const useWebAuthnTwoFactor = () => {
   const getRegistrationOptions = async (): Promise<RegistrationResponse> => {
     try {
       const { data } = await axios.get(
-        `${import.meta.env.VITE_2FA}/webauthn/generate-registration`,
+        `${VITE_2FA_WEB_AUTHN}/generate-registration`,
         { withCredentials: true },
       )
 
@@ -81,7 +77,7 @@ const useWebAuthnTwoFactor = () => {
   ): Promise<VerificationResponse> => {
     try {
       const { data } = await axios.post(
-        `${import.meta.env.VITE_2FA}/webauthn/verify-registration`,
+        `${VITE_2FA_WEB_AUTHN}/verify-registration`,
         {
           attestationResponse,
           deviceName: 'Nouvelle clé',
@@ -170,7 +166,7 @@ const useWebAuthnTwoFactor = () => {
   ): Promise<VerificationResponse> => {
     try {
       const { data } = await axios.post(
-        `${import.meta.env.VITE_2FA}/webauthn/set-name`,
+        `${VITE_2FA_WEB_AUTHN}/set-name`,
         { id, deviceName },
         { withCredentials: true },
       )
@@ -204,7 +200,7 @@ const useWebAuthnTwoFactor = () => {
   ): Promise<{ success: boolean; error?: string }> => {
     try {
       const { data } = await axios.delete(
-        `${import.meta.env.VITE_2FA}/webauthn/credential/${id}`,
+        `${VITE_2FA_WEB_AUTHN}/credential/${id}`,
         { withCredentials: true },
       )
 
@@ -235,7 +231,7 @@ const useWebAuthnTwoFactor = () => {
   ): Promise<RegistrationResponse> => {
     try {
       const { data } = await axios.get(
-        `${import.meta.env.VITE_2FA}/webauthn/generate-authentication`,
+        `${VITE_2FA_WEB_AUTHN}/generate-authentication`,
         { params: { email }, withCredentials: true },
       )
 
@@ -270,7 +266,7 @@ const useWebAuthnTwoFactor = () => {
   ): Promise<VerificationResponse> => {
     try {
       const { data } = await axios.post(
-        `${import.meta.env.VITE_2FA}/webauthn/verify-authentication`,
+        `${VITE_2FA_WEB_AUTHN}/verify-authentication`,
         { assertionResponse, email, rememberMe },
         { withCredentials: true },
       )
@@ -351,7 +347,7 @@ const useWebAuthnTwoFactor = () => {
     if (method === 'password') {
       try {
         const { data } = await axios.post(
-          `${import.meta.env.VITE_2FA}/webauthn/disable`,
+          `${VITE_2FA_WEB_AUTHN}/disable`,
           { method, value },
           { withCredentials: true },
         )
@@ -390,7 +386,7 @@ const useWebAuthnTwoFactor = () => {
 
         // 3. Vérifier l'authentification avec le serveur
         const { data } = await axios.post(
-          `${import.meta.env.VITE_2FA}/webauthn/disable`,
+          `${VITE_2FA_WEB_AUTHN}/disable`,
           { method, value: attestationResponse },
           { withCredentials: true },
         )
