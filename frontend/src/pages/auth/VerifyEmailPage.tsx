@@ -66,8 +66,11 @@ const EmailVerificationPage: React.FC = () => {
   }
 
   const handleBack = () => {
-    // Navigate back to auth page
-    console.log('Navigate back')
+    if (location.state?.from) {
+      navigate(location.state.from)
+    } else {
+      navigate('/auth/register')
+    }
   }
 
   return (
@@ -100,7 +103,7 @@ const EmailVerificationPage: React.FC = () => {
           />
 
           <div className='text-center text-sm text-gray-600 dark:text-gray-400'>
-            Enter the 6-digit code sent to your email
+            Entrez le code à 6 chiffres envoyé à votre adresse email
           </div>
         </div>
         <div className='space-y-2 text-center'>
@@ -113,7 +116,7 @@ const EmailVerificationPage: React.FC = () => {
           )}
         </div>
         <div className='text-center text-sm text-gray-600 dark:text-gray-400'>
-          Didn't receive the email? Check your spam folder or{' '}
+          Vous n'avez pas reçu l'email ? Vérifiez votre dossier Indésirables ou{' '}
           <PrimaryButton
             variant='ghost'
             onClick={handleResendCode}

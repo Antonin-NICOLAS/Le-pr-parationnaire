@@ -98,7 +98,7 @@ const Modal: React.FC<ModalProps> = ({
           aria-labelledby='modal-title'
           aria-describedby='modal-desc'
           className={clsx(
-            `relative w-full ${sizeClasses[size]} transform rounded-lg bg-white dark:bg-gray-800 shadow-xl transition-all duration-200`,
+            `relative w-full ${sizeClasses[size]} transform rounded-lg bg-white dark:bg-gray-800 shadow-xl transition-all duration-200 max-h-[80vh] overflow-y-auto mt-[4.25rem]`,
             {
               'scale-100 opacity-100': isVisible,
               'scale-95 opacity-0': !isVisible,

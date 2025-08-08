@@ -1,0 +1,10 @@
+{
+  "auth": {
+    "success": {
+      "webauthn": {
+        "registration_options_generated": "auth.success.webauthn.registration_options_generated"
+      }
+    },
+    "new_key": "auth.new_key"
+  }
+}

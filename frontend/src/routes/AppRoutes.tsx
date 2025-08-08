@@ -1,7 +1,7 @@
 import { Routes, Route, Navigate } from 'react-router-dom'
 import SidebarLayout from '../layouts/SidebarLayout'
 import Home from '../pages/Home'
-import SettingsPage from '../pages/settings/SettingsPage'
+import SettingsPage from '../pages/Settings'
 
 // authentification routes
 import AuthPage from '../pages/auth/AuthPage'

@@ -12,7 +12,7 @@ type AuthContextType = {
   error: string | null
   checkAuth: () => Promise<void>
   checkAuthStatus: (email: string) => Promise<boolean>
-  login: (data: LoginData, onSuccess?: () => void) => Promise<void>
+  login: (LoginData: LoginData) => Promise<{ success: boolean }>
   logout: (onSuccess?: () => void) => Promise<void>
   register: (data: RegisterData, onSuccess?: () => void) => Promise<void>
   emailVerification: (
@@ -68,7 +68,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     }
   }
 
-  const login = async (LoginData: LoginData, onSuccess?: () => void) => {
+  const login = async (LoginData: LoginData) => {
     try {
       setError(null)
       const { data } = await axios.post(
@@ -78,8 +78,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       )
       if (data.success) {
         toast.success(data.message || 'Login successful!')
-        onSuccess?.()
         await checkAuth()
+        return { success: true }
+      } else {
+        return { success: false }
       }
     } catch (err: any) {
       toast.error(
@@ -91,6 +93,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           'Erreur inconnue. Veuillez réessayer plus tard.',
       )
       setUser(null)
+      return { success: false }
     }
   }
 

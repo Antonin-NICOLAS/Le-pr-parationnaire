@@ -5,6 +5,12 @@
   "email2FAcode": {
     "subject": "The preparer - your double authentication code"
   },
+  "emailchange1": {
+    "subject": "The preparer - Change of email address"
+  },
+  "emailchange2": {
+    "subject": "The preparer - verification of the new email address"
+  },
   "emailverification": {
     "subject": "The preparer - Check your email"
   },

@@ -11,6 +11,8 @@ import type {
   RegisterData,
   PasswordStrength,
 } from '../../types/auth'
+import useWebAuthnTwoFactor from '../../hooks/TwoFactor/WebAuthn'
+import { validateRegistrationForm } from '../../utils/validation'
 
 const AuthPage: React.FC = () => {
   // Login state
@@ -18,7 +20,8 @@ const AuthPage: React.FC = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const isLogin = tab === 'login'
-  const { login, register, checkAuthStatus } = useAuth()
+  const { login, register, checkAuthStatus, checkAuth } = useAuth()
+  const { authenticate } = useWebAuthnTwoFactor()
   const [isLoading, setIsLoading] = useState(false)
   const [loginStep, setLoginStep] = useState<
     'email' | 'password' | 'webauthn-choice'
@@ -28,7 +31,6 @@ const AuthPage: React.FC = () => {
     email: '',
     password: '',
     rememberMe: false,
-    onSuccess: () => navigate('/home'),
   })
   const [hasWebAuthn, setHasWebAuthn] = useState(false)
 
@@ -78,9 +80,10 @@ const AuthPage: React.FC = () => {
     setIsLoading(true)
 
     try {
-      await login(loginData, () => {
+      const result = await login(loginData)
+      if (result?.success) {
         navigate('/home')
-      })
+      }
     } catch (error) {
       toast.error('Login failed. Please try again later.')
     } finally {
@@ -91,10 +94,12 @@ const AuthPage: React.FC = () => {
   const handleWebAuthnLogin = async () => {
     setIsLoading(true)
     try {
-      // Ici vous devrez implémenter la logique WebAuthn réelle
-      // Pour l'instant, c'est une simulation
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      toast.success('Authenticated with WebAuthn!')
+      const result = await authenticate(loginData.email, loginData.rememberMe)
+
+      if (result?.success) {
+        navigate('/home')
+        await checkAuth()
+      }
     } catch (error) {
       toast.error(
         'WebAuthn authentication failed. Please try password instead.',
@@ -116,23 +121,11 @@ const AuthPage: React.FC = () => {
   const handleRegister = async (e: React.FormEvent) => {
     e.preventDefault()
 
-    if (
-      !registerData.firstName ||
-      !registerData.lastName ||
-      !registerData.email ||
-      !registerData.password
-    ) {
-      toast.error('Please fill in all fields')
-      return
-    }
-
-    if (registerData.password !== registerData.confirmPassword) {
-      toast.error('Passwords do not match')
-      return
-    }
-
-    if (!registerData.acceptTerms) {
-      toast.error('Please accept the terms of service')
+    const errors = validateRegistrationForm(registerData)
+    if (Object.keys(errors).length > 0) {
+      for (const key in errors) {
+        toast.error(errors[key as keyof typeof errors])
+      }
       return
     }
 

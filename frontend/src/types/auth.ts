@@ -21,13 +21,14 @@ export interface User {
     webauthn?: {
       isEnabled: boolean
       credentials?: Array<{
-        credentialId: string
+        id: string
         deviceName: string
         deviceType: string
+        lastUsed: Date
         createdAt: Date
       }>
     }
-    preferredMethod?: 'email' | 'app' | 'webauthn' | null
+    preferredMethod?: 'email' | 'app' | 'webauthn' | 'none'
     backupCodes?: Array<{
       code: string
       used: boolean
@@ -54,7 +55,6 @@ export interface LoginData {
   email: string
   password: string
   rememberMe: boolean
-  onSuccess?: () => void
 }
 
 export interface RegisterData {
