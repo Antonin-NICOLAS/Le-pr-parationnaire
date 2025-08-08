@@ -47,8 +47,8 @@ export class SessionService {
         ip,
         userAgent,
         deviceType: uaResult.device.type || 'desktop',
-        browser: uaResult.browser.name || 'unknown',
-        os: uaResult.os.name || 'unknown',
+        browser: uaResult.browser.name || 'inconnu',
+        os: uaResult.os.name || 'inconnu',
         lastActive: new Date(),
         expiresAt: new Date(Date.now() + sessionDuration),
       })

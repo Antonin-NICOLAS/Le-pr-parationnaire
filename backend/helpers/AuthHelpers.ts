@@ -54,11 +54,11 @@ export function getDeviceInfo(userAgent: string): string {
   const os = parser.getOS()
   const browser = parser.getBrowser()
 
-  return `Appareil: ${device.type || 'inconnu'} (${device.vendor || ''} ${
-    device.model || ''
-  }), OS: ${os.name} ${os.version}, navigateur: ${browser.name} ${
-    browser.version
-  }`
+  return `Appareil: ${device.type || 'inconnu'} (${
+    device.vendor || 'inconnu'
+  } ${device.model || ''}), OS: ${os.name || 'inconnu'} ${
+    os.version || 'inconnu'
+  }, navigateur: ${browser.name || 'inconnu'} ${browser.version || 'inconnu'}`
 }
 
 export async function findLocation(
