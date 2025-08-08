@@ -1,12 +1,12 @@
 import i18n from 'i18next'
 import Backend from 'i18next-fs-backend'
 import { LanguageDetector } from 'i18next-http-middleware'
-import frAuth from './locales/fr/auth.json'
-import enAuth from './locales/en/auth.json'
-import frCommon from './locales/fr/common.json'
-import enCommon from './locales/en/common.json'
-import frEmails from './locales/fr/emails.json'
-import enEmails from './locales/en/emails.json'
+import frAuth from './locales/fr/auth.json' assert { type: 'json' }
+import enAuth from './locales/en/auth.json' assert { type: 'json' }
+import frCommon from './locales/fr/common.json' assert { type: 'json' }
+import enCommon from './locales/en/common.json' assert { type: 'json' }
+import frEmails from './locales/fr/emails.json' assert { type: 'json' }
+import enEmails from './locales/en/emails.json' assert { type: 'json' }
 
 const i18nConfig = {
   resources: {
