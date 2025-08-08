@@ -1,14 +1,30 @@
 import i18n from 'i18next'
-import Backend from 'i18next-fs-backend'
 import { LanguageDetector } from 'i18next-http-middleware'
-import path from 'path'
-import { fileURLToPath } from 'url'
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
-// Obtention du chemin du répertoire actuel
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
+const loadJson = (filePath: string) => {
+  const content = fs.readFileSync(filePath, 'utf-8')
+  return JSON.parse(content)
+}
+
 const i18nConfig = {
+  resources: {
+    fr: {
+      auth: loadJson(path.join(__dirname, 'locales/fr/auth.json')),
+      common: loadJson(path.join(__dirname, 'locales/fr/common.json')),
+      emails: loadJson(path.join(__dirname, 'locales/fr/emails.json')),
+    },
+    en: {
+      auth: loadJson(path.join(__dirname, 'locales/en/auth.json')),
+      common: loadJson(path.join(__dirname, 'locales/en/common.json')),
+      emails: loadJson(path.join(__dirname, 'locales/en/emails.json')),
+    },
+  },
   fallbackLng: 'fr',
   returnNull: false,
   returnEmptyString: false,
@@ -20,16 +36,10 @@ const i18nConfig = {
   },
   preload: ['en', 'fr'],
   saveMissing: process.env.NODE_ENV === 'development',
-  // Configuration du backend pour charger les fichiers
-  backend: {
-    loadPath: path.join(__dirname, 'locales', '{{lng}}', '{{ns}}.json'),
-    addPath: path.join(__dirname, 'locales', '{{lng}}', '{{ns}}.missing.json'),
-  },
 }
 
-// Créer une instance promisifiée
 const initializeI18n = async () => {
-  await i18n.use(Backend).use(LanguageDetector).init(i18nConfig)
+  await i18n.use(LanguageDetector).init(i18nConfig)
   return i18n
 }
 
