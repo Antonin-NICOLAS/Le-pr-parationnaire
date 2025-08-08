@@ -1,8 +1,6 @@
 {
-  "errors": {
-    "server_error": "Server error. \nPlease repeat later."
-  },
+  "errors.server_error": "Server error. Please try again later.",
   "min": "minutes",
-  "request_limit": "Too many queries, please try again in",
+  "request_limit": "Too many requests, please try again in",
   "sec": "seconds"
 }
