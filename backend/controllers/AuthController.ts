@@ -1,10 +1,11 @@
-import User, { LoginHistory } from '../models/User'
+import User from '../models/User'
+import type { LoginHistory } from '../models/User'
 import { asyncHandler } from '../helpers/AsyncHandler'
 import { ApiResponse } from '../helpers/ApiResponse'
 import { SessionService } from '../services/SessionService'
 import ms, { StringValue } from 'ms'
 import { Request, Response } from 'express'
-import i18next, { TFunction, use } from 'i18next'
+import i18next, { TFunction } from 'i18next'
 // Helpers
 import {
   handleUnverifiedUser,
