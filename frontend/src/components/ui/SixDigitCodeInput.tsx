@@ -27,7 +27,7 @@ const SixDigitCodeInput: React.FC<SixDigitCodeInputProps> = ({
 }) => {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
   const [focusedIndex, setFocusedIndex] = useState<number>(-1)
-  const [clipboardError, setClipboardError] = useState<string | null>(null)
+  const [clipboardError, setClipboardError] = useState<React.ReactNode>(null)
   const [isClipboardSupported, setIsClipboardSupported] =
     useState<boolean>(false)
 
