@@ -1,10 +1,8 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
+import { VITE_AUTH } from '../utils/env'
 import type { User, Session, LoginData, RegisterData } from '../types/auth'
 import axios from 'axios'
 import { toast } from 'sonner'
-
-import.meta.env.VITE_AUTH =
-  import.meta.env.VITE_NODE_ENV === 'development' ? '/auth' : '/api/auth'
 
 type AuthContextType = {
   user: User | null
@@ -35,7 +33,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
 
   const checkAuth = async () => {
     try {
-      const { data } = await axios.get(`${import.meta.env.VITE_AUTH}/profile`, {
+      const { data } = await axios.get(`${VITE_AUTH}/profile`, {
         withCredentials: true,
       })
       if (data.success) {
@@ -50,7 +48,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const checkAuthStatus = async (email: string) => {
     try {
       setError(null)
-      const res = await axios.get(`${import.meta.env.VITE_AUTH}/status`, {
+      const res = await axios.get(`${VITE_AUTH}/status`, {
         params: { email },
         withCredentials: true,
       })
@@ -71,11 +69,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const login = async (LoginData: LoginData) => {
     try {
       setError(null)
-      const { data } = await axios.post(
-        `${import.meta.env.VITE_AUTH}/login`,
-        LoginData,
-        { withCredentials: true },
-      )
+      const { data } = await axios.post(`${VITE_AUTH}/login`, LoginData, {
+        withCredentials: true,
+      })
       if (data.success) {
         toast.success(data.message || 'Login successful!')
         await checkAuth()
@@ -100,7 +96,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const logout = async (onSuccess?: () => void) => {
     try {
       const { data } = await axios.post(
-        `${import.meta.env.VITE_AUTH}/logout`,
+        `${VITE_AUTH}/logout`,
         {},
         { withCredentials: true },
       )
@@ -127,13 +123,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   ) => {
     try {
       setError(null)
-      const { data } = await axios.post(
-        `${import.meta.env.VITE_AUTH}/register`,
-        registerData,
-        {
-          withCredentials: true,
-        },
-      )
+      const { data } = await axios.post(`${VITE_AUTH}/register`, registerData, {
+        withCredentials: true,
+      })
       if (data.success) {
         toast.success(data.message || 'Registration successful!')
         onSuccess?.()
@@ -159,7 +151,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       setError(null)
       const { data } = await axios.post(
-        `${import.meta.env.VITE_AUTH}/verify-email`,
+        `${VITE_AUTH}/verify-email`,
         { token, email, rememberMe },
         { withCredentials: true },
       )
@@ -184,7 +176,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       setError(null)
       const { data } = await axios.post(
-        `${import.meta.env.VITE_AUTH}/resend-verification-email`,
+        `${VITE_AUTH}/resend-verification-email`,
         { email },
         { withCredentials: true },
       )
@@ -206,12 +198,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const checkActiveSessions = async () => {
     try {
       setError(null)
-      const { data } = await axios.get(
-        `${import.meta.env.VITE_AUTH}/active-sessions`,
-        {
-          withCredentials: true,
-        },
-      )
+      const { data } = await axios.get(`${VITE_AUTH}/active-sessions`, {
+        withCredentials: true,
+      })
       if (data.success) {
         return data.sessions
       }
@@ -232,7 +221,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     try {
       setError(null)
       const { data } = await axios.delete(
-        `${import.meta.env.VITE_AUTH}/revoke-session/${sessionId}`,
+        `${VITE_AUTH}/revoke-session/${sessionId}`,
         {
           withCredentials: true,
         },

@@ -4,19 +4,14 @@ import type {
   SecurityQuestion,
   UserSecurityQuestion,
 } from '../../types/twoFactor'
-
-import.meta.env.VITE_2FA =
-  import.meta.env.VITE_NODE_ENV === 'development'
-    ? '/auth/2fa'
-    : '/api/auth/2fa'
+import { VITE_2FA_QUESTIONS } from '../../utils/env'
 
 const useSecurityQuestions = () => {
   const getAvailableQuestions = async (): Promise<SecurityQuestion[]> => {
     try {
-      const { data } = await axios.get(
-        `${import.meta.env.VITE_2FA}/security-questions/available`,
-        { withCredentials: true },
-      )
+      const { data } = await axios.get(`${VITE_2FA_QUESTIONS}/available`, {
+        withCredentials: true,
+      })
       return data.questions || []
     } catch (error) {
       toast.error('Erreur lors du chargement des questions')
@@ -27,7 +22,7 @@ const useSecurityQuestions = () => {
   const setSecurityQuestions = async (questions: UserSecurityQuestion[]) => {
     try {
       const { data } = await axios.post(
-        `${import.meta.env.VITE_2FA}/security-questions/set`,
+        `${VITE_2FA_QUESTIONS}/set`,
         { questions },
         { withCredentials: true },
       )
@@ -48,7 +43,7 @@ const useSecurityQuestions = () => {
   ) => {
     try {
       const { data } = await axios.post(
-        `${import.meta.env.VITE_2FA}/security-questions/verify`,
+        `${VITE_2FA_QUESTIONS}/verify`,
         { answers },
         { withCredentials: true },
       )

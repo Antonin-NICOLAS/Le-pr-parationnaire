@@ -1,9 +1,7 @@
 import type { ChangePassword } from '../types/auth'
+import { VITE_USER } from '../utils/env'
 import axios from 'axios'
 import { toast } from 'sonner'
-
-import.meta.env.VITE_USER =
-  import.meta.env.VITE_NODE_ENV === 'development' ? '/user' : '/api/user'
 
 const useUserSettings = () => {
   const changePassword = async (
@@ -12,7 +10,7 @@ const useUserSettings = () => {
   ) => {
     try {
       const { data } = await axios.post(
-        `${import.meta.env.VITE_USER}/change-password`,
+        `${VITE_USER}/change-password`,
         changePasswordData,
         { withCredentials: true },
       )
@@ -32,10 +30,9 @@ const useUserSettings = () => {
   // Email change flow
   const changeEmailStep1 = async (onSuccess: () => void) => {
     try {
-      const { data } = await axios.post(
-        `${import.meta.env.VITE_USER}/change-email/step1`,
-        { withCredentials: true },
-      )
+      const { data } = await axios.post(`${VITE_USER}/change-email/step1`, {
+        withCredentials: true,
+      })
 
       if (data.success) {
         toast.success(data.message || 'Code de vérification envoyé.')
@@ -52,7 +49,7 @@ const useUserSettings = () => {
   const changeEmailStep2 = async (code: string, onSuccess: () => void) => {
     try {
       const { data } = await axios.post(
-        `${import.meta.env.VITE_USER}/change-email/step2`,
+        `${VITE_USER}/change-email/step2`,
         { code },
         { withCredentials: true },
       )
@@ -74,7 +71,7 @@ const useUserSettings = () => {
   const changeEmailStep3 = async (email: string, onSuccess: () => void) => {
     try {
       const { data } = await axios.post(
-        `${import.meta.env.VITE_USER}/change-email/step3`,
+        `${VITE_USER}/change-email/step3`,
         { email },
         { withCredentials: true },
       )
@@ -94,7 +91,7 @@ const useUserSettings = () => {
   const changeEmailStep4 = async (code: string, onSuccess: () => void) => {
     try {
       const { data } = await axios.post(
-        `${import.meta.env.VITE_USER}/change-email/step4`,
+        `${VITE_USER}/change-email/step4`,
         { code },
         { withCredentials: true },
       )
@@ -113,10 +110,9 @@ const useUserSettings = () => {
 
   const deleteAccount = async (onSuccess: () => void) => {
     try {
-      const { data } = await axios.delete(
-        `${import.meta.env.VITE_USER}/delete-account`,
-        { withCredentials: true },
-      )
+      const { data } = await axios.delete(`${VITE_USER}/delete-account`, {
+        withCredentials: true,
+      })
 
       if (data.success) {
         toast.success(data.message || 'Compte supprimé avec succès.')

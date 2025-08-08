@@ -1,16 +1,12 @@
 import axios from 'axios'
 import { toast } from 'sonner'
-
-import.meta.env.VITE_2FA =
-  import.meta.env.VITE_NODE_ENV === 'development'
-    ? '/auth/2fa'
-    : '/api/auth/2fa'
+import { VITE_2FA_EMAIL } from '../../utils/env'
 
 const useEmailTwoFactor = () => {
   const configureEmail = async () => {
     try {
       const { data } = await axios.post(
-        `${import.meta.env.VITE_2FA}/email/config`,
+        `${VITE_2FA_EMAIL}/config`,
         {},
         { withCredentials: true },
       )
@@ -29,7 +25,7 @@ const useEmailTwoFactor = () => {
   const resendCode = async () => {
     try {
       const { data } = await axios.post(
-        `${import.meta.env.VITE_2FA}/email/resend`,
+        `${VITE_2FA_EMAIL}/resend`,
         {},
         { withCredentials: true },
       )
@@ -48,7 +44,7 @@ const useEmailTwoFactor = () => {
   const enableEmail = async (code: string) => {
     try {
       const { data } = await axios.post(
-        `${import.meta.env.VITE_2FA}/email/enable`,
+        `${VITE_2FA_EMAIL}/enable`,
         { code },
         { withCredentials: true },
       )
@@ -69,7 +65,7 @@ const useEmailTwoFactor = () => {
   const disableEmail = async (method: 'otp' | 'password', value: string) => {
     try {
       const { data } = await axios.post(
-        `${import.meta.env.VITE_2FA}/email/disable`,
+        `${VITE_2FA_EMAIL}/disable`,
         { method, value },
         { withCredentials: true },
       )
