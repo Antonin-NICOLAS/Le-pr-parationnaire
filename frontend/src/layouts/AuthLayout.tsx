@@ -26,7 +26,7 @@ const AuthLayout: React.FC<AuthLayoutProps> = ({
         {showBackButton && onBack && (
           <button
             onClick={onBack}
-            className='mb-3 py-2 px-2 flex items-center gap-2 text-gray-600 rounded-md hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 hover:border-[1px] hover:py-[calc(0.5rem-1px)] hover:px-[calc(0.5rem-1px)] cursor-pointer'
+            className='mb-3 flex cursor-pointer items-center gap-2 rounded-md px-2 py-2 text-gray-600 hover:border-[1px] hover:px-[calc(0.5rem-1px)] hover:py-[calc(0.5rem-1px)] hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
           >
             <ArrowLeft size={20} />
             <span>Back</span>

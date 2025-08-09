@@ -3,7 +3,7 @@ import type { LoginHistory } from '../models/User.js'
 import { asyncHandler } from '../helpers/AsyncHandler.js'
 import { ApiResponse } from '../helpers/ApiResponse.js'
 import { SessionService } from '../services/SessionService.js'
-import ms, { StringValue } from 'ms'
+import bcrypt from 'bcrypt'
 import { Request, Response } from 'express'
 import i18next, { TFunction } from 'i18next'
 // Helpers
@@ -69,14 +69,6 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   const expiration = new Date(Date.now() + 24 * 60 * 60 * 1000)
 
   // 8. On crée l'utilisateur
-  const ip =
-    req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress
-  const userAgent = req.headers['user-agent'] || 'unknown'
-  const location = await findLocation(t, i18next.language, ip as string)
-  const duration = rememberMe
-    ? ms(process.env.SESSION_DURATION_LONG as StringValue)
-    : ms(process.env.SESSION_DURATION_SHORT as StringValue)
-
   const user = await User.create({
     lastName,
     firstName,
@@ -86,16 +78,6 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
       token: emailToken,
       expiration,
     },
-    lastLogin: new Date(),
-    loginHistory: [
-      {
-        ip,
-        userAgent,
-        location,
-        lastActive: new Date(),
-        expiresAt: new Date(Date.now() + duration),
-      },
-    ],
     language: i18next.language,
   })
 
@@ -104,7 +86,6 @@ export const register = asyncHandler(async (req: Request, res: Response) => {
   return ApiResponse.success(
     res,
     {
-      success: true,
       requiresVerification: true,
       email: user.email,
       rememberMe: rememberMe,
@@ -118,11 +99,16 @@ export const checkAuthStatus = asyncHandler(
   async (req: Request, res: Response) => {
     const { email } = req.query
 
-    // Check if user is authenticated
-    const user = await User.findOne({ email })
+    let isLoginWithWebAuthn = false
 
-    const isLoginWithWebAuthn =
-      (user?.loginWithWebAuthn && user?.twoFactor.webauthn.isEnabled) || false
+    // 1. Vérification de l'email
+    if (email && validateEmail(decodeURIComponent(email as string))) {
+      const user = await User.findOne({ email })
+      if (user) {
+        isLoginWithWebAuthn =
+          (user.loginWithWebAuthn && user.twoFactor.webauthn.isEnabled) || false
+      }
+    }
 
     return ApiResponse.success(res, {
       webauthn: isLoginWithWebAuthn,
@@ -180,6 +166,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
         },
       },
       t('auth:errors.two_factor_required'),
+      202,
     )
   }
 
@@ -289,7 +276,7 @@ export const forgotPassword = asyncHandler(
 
     // 3. Si l'email n'est pas vérifié, on ne peut pas envoyer de lien de réinitialisation
     if (!user.emailVerification.isVerified) {
-      return ApiResponse.error(res, t('auth:errors.email_not_verified'), 400, {
+      return ApiResponse.error(res, t('auth:errors.email_not_verified'), 403, {
         requiresVerification: true,
         email: user.email,
         rememberMe: false,
@@ -300,9 +287,8 @@ export const forgotPassword = asyncHandler(
     const resetToken = generateResetToken()
     const expiration = new Date(Date.now() + 60 * 60 * 1000) // 1h
     user.resetPassword = { token: resetToken, expiration }
-    const link = `${
-      process.env.FRONTEND_SERVER
-    }/reset-password?token=${resetToken}&email=${encodeURIComponent(email)}`
+    const hashedEmail = bcrypt.hashSync(email, 10)
+    const link = `${process.env.FRONTEND_SERVER}/reset-password?token=${resetToken}&email=${hashedEmail}`
     await user.save()
 
     // 5. On envoie un email avec le token
@@ -328,7 +314,7 @@ export const resendForgotPassword = asyncHandler(
 
     // 3. Si l'email n'est pas vérifié, on ne peut pas envoyer de lien de réinitialisation
     if (!user.emailVerification.isVerified) {
-      return ApiResponse.error(res, t('auth:errors.email_not_verified'), 400, {
+      return ApiResponse.error(res, t('auth:errors.email_not_verified'), 403, {
         requiresVerification: true,
         email: user.email,
         rememberMe: false,
@@ -345,9 +331,8 @@ export const resendForgotPassword = asyncHandler(
       user.resetPassword.expiration = new Date(Date.now() + 24 * 60 * 60 * 1000)
       await user.save()
     }
-    const link = `${process.env.FRONTEND_SERVER}/reset-password?token=${
-      user.resetPassword.token
-    }&email=${encodeURIComponent(email)}`
+    const hashedEmail = bcrypt.hashSync(email, 10)
+    const link = `${process.env.FRONTEND_SERVER}/reset-password?token=${user.resetPassword.token}&email=${hashedEmail}`
 
     // 5. On envoie un email avec le token
     await sendResetPasswordEmail(t as TFunction, user, link)
@@ -375,10 +360,10 @@ export const resetPassword = asyncHandler(
     }
 
     // 4. On cherche l'utilisateur
-    const user = await User.findOne({ email })
+    const user = await User.findOne({ resetPassword: { token } })
 
-    // 5. Vérification du token
-    if (!user || !user.resetPassword || user.resetPassword.token !== token) {
+    // 5. Vérification de l'email
+    if (!user || !bcrypt.compareSync(user.email, email)) {
       return ApiResponse.error(res, t('auth:errors.invalid_token'), 400)
     }
     if (
@@ -407,7 +392,7 @@ export const resetPassword = asyncHandler(
 )
 
 export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
-  const { token, email, rememberMe } = req.body
+  const { token, email, rememberMe = false } = req.body
   const { t } = req
 
   // 1. Validation des champs

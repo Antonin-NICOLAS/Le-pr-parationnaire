@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
 import { VITE_AUTH } from '../utils/env'
-import type { User, Session, LoginData, RegisterData } from '../types/auth'
+import type { User, LoginHistory } from '../types/user'
+import type { LoginData, RegisterData } from '../types/auth'
 import axios from 'axios'
 import { toast } from 'sonner'
 
@@ -28,7 +29,7 @@ type AuthContextType = {
     onSuccess?: () => void,
   ) => Promise<void>
   resendVerificationEmail: (email: string) => Promise<void>
-  checkActiveSessions: () => Promise<Session[]>
+  checkActiveSessions: () => Promise<LoginHistory[]>
   revokeSession: (sessionId: string) => Promise<void>
 }
 
@@ -101,7 +102,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         }
       } else {
         toast.error(data.error || 'Login failed. Please try again.')
-        setError(data.message || 'Login failed. Please try again.')
+        setError(data.error || 'Login failed. Please try again.')
         setUser(null)
         return { success: false }
       }

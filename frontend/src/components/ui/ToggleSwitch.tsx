@@ -39,7 +39,7 @@ const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
 
   return (
     <div className={`flex items-center ${className}`}>
-      <div className='flex flex-col flex-1'>
+      <div className='flex flex-1 flex-col'>
         {label && (
           <span className='text-sm font-medium text-gray-900 dark:text-gray-100'>
             {label}
@@ -53,24 +53,14 @@ const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
       </div>
       <button
         type='button'
-        className={`
-          relative inline-flex flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent 
-          transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-primary-500 focus:ring-offset-2
-          ${sizeClasses[size]}
-          ${checked ? 'bg-primary-500' : 'bg-gray-200 dark:bg-gray-700'}
-          ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
-        `}
+        className={`focus:ring-primary-500 relative inline-flex flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 ${sizeClasses[size]} ${checked ? 'bg-primary-500' : 'bg-gray-200 dark:bg-gray-700'} ${disabled ? 'cursor-not-allowed opacity-50' : ''} `}
         role='switch'
         aria-checked={checked}
         disabled={disabled}
         onClick={() => !disabled && onChange(!checked)}
       >
         <span
-          className={`
-            ${thumbSizeClasses[size]}
-            ${translateClasses[size]}
-            pointer-events-none inline-block rounded-full bg-white shadow transform ring-0 transition duration-200 ease-in-out
-          `}
+          className={` ${thumbSizeClasses[size]} ${translateClasses[size]} pointer-events-none inline-block transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
         />
       </button>
     </div>

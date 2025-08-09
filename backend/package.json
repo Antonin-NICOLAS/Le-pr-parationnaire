@@ -5,13 +5,16 @@
   "description": "backend of Le préparationnaire",
   "exports": "./index.ts",
   "scripts": {
-    "dev": "tsx watch api/index.ts"
+    "dev": "tsx watch api/index.ts",
+    "generate:docs": "tsx docs/swaggerGenerator.ts"
   },
   "author": "Antonin NICOLAS",
   "license": "ISC",
   "dependencies": {
     "@simplewebauthn/server": "^13.1.2",
     "@simplewebauthn/types": "^12.0.0",
+    "@types/swagger-jsdoc": "^6.0.4",
+    "@types/swagger-ui-express": "^4.1.8",
     "bcrypt": "^6.0.0",
     "cookie-parser": "^1.4.7",
     "cors": "^2.8.5",
@@ -30,6 +33,8 @@
     "qrcode": "^1.5.4",
     "rate-limiter-flexible": "^7.1.1",
     "speakeasy": "^2.0.0",
+    "swagger-jsdoc": "^6.2.8",
+    "swagger-ui-express": "^5.0.1",
     "typescript": "^5.9.2",
     "ua-parser-js": "^2.0.4",
     "url": "^0.11.4",

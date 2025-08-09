@@ -10,7 +10,7 @@ import {
   changeEmailStep2Step4,
   changeEmailStep3,
   deleteAccount,
-} from '../controllers/ChangeInfo.js'
+} from '../controllers/UserController.js'
 
 // Middlewares
 import { authenticate } from '../middlewares/VerifyAuth.js'

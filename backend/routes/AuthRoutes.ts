@@ -38,12 +38,12 @@ router.use(
 // Routes
 router.get('/profile', authenticate, checkSession)
 
-// Login Flow
+// Authentication Flow
+router.get('/status', rateLimiterMiddleware, checkAuthStatus)
 router.post('/login', rateLimiterMiddleware, login)
 router.post('/logout', authenticate, logout)
-router.get('/status', checkAuthStatus)
 
-// Register Flow
+// Registration Flow
 router.post('/register', rateLimiterMiddleware, register)
 router.post('/verify-email', rateLimiterMiddleware, verifyEmail)
 router.post(
@@ -61,8 +61,7 @@ router.post(
 )
 router.post('/reset-password', resetPassword)
 
-// with authentication
-
+// Session Management
 router.get('/active-sessions', authenticate, getActiveSessions)
 router.delete('/revoke-session/:sessionId', authenticate, revokeSession)
 router.delete('/revoke-all-sessions', authenticate, revokeAllSessions)

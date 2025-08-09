@@ -56,14 +56,14 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
 
   return (
     <div
-      className={`relative md:border-b border-gray-200 dark:border-gray-700 ${className}`}
+      className={`relative border-gray-200 md:border-b dark:border-gray-700 ${className}`}
     >
       {/* Version desktop/tablette (visible à partir de md) */}
       <div
         ref={navRef}
-        className='hidden md:block overflow-x-auto pb-1 scrollbar-hide'
+        className='scrollbar-hide hidden overflow-x-auto pb-1 md:block'
       >
-        <nav className='flex space-x-4 lg:space-x-8 -mb-px'>
+        <nav className='-mb-px flex space-x-4 lg:space-x-8'>
           {tabs.map((tab) => {
             const Icon = tab.icon
             const isActive = activeTab === tab.id
@@ -72,40 +72,31 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
               <button
                 key={tab.id}
                 onClick={() => onTabChange(tab.id)}
-                className={`
-                  group inline-flex items-center py-3 px-1 border-b-2 font-medium text-sm transition-colors duration-200 whitespace-nowrap cursor-pointer
-                  ${
-                    isActive
-                      ? 'border-primary-500 text-primary-600 dark:text-primary-400'
-                      : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300 dark:text-gray-400 dark:hover:text-gray-300'
-                  }
-                `}
+                className={`group inline-flex cursor-pointer items-center whitespace-nowrap border-b-2 px-1 py-3 text-sm font-medium transition-colors duration-200 ${
+                  isActive
+                    ? 'border-primary-500 text-primary-600 dark:text-primary-400'
+                    : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                } `}
                 aria-current={isActive ? 'page' : undefined}
               >
                 {Icon && (
                   <Icon
                     size={20}
-                    className={`
-                      -ml-0.5 mr-2
-                      ${
-                        isActive
-                          ? 'text-primary-500 dark:text-primary-400'
-                          : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300'
-                      }
-                    `}
+                    className={`-ml-0.5 mr-2 ${
+                      isActive
+                        ? 'text-primary-500 dark:text-primary-400'
+                        : 'text-gray-400 group-hover:text-gray-500 dark:group-hover:text-gray-300'
+                    } `}
                   />
                 )}
                 <span className='hidden sm:inline'>{tab.label}</span>
                 {tab.count !== undefined && (
                   <span
-                    className={`
-                      ml-2 py-0.5 px-2.5 rounded-full text-xs font-medium
-                      ${
-                        isActive
-                          ? 'bg-primary-100 text-primary-600 dark:bg-primary-900/20 dark:text-primary-400'
-                          : 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-300'
-                      }
-                    `}
+                    className={`ml-2 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                      isActive
+                        ? 'bg-primary-100 text-primary-600 dark:bg-primary-900/20 dark:text-primary-400'
+                        : 'bg-gray-100 text-gray-900 dark:bg-gray-800 dark:text-gray-300'
+                    } `}
                   >
                     {tab.count}
                   </span>
@@ -117,9 +108,9 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
       </div>
 
       {/* Version mobile/téléphone (visible en dessous de md) */}
-      <div className='md:hidden relative' ref={dropdownRef}>
+      <div className='relative md:hidden' ref={dropdownRef}>
         <button
-          className='w-full flex items-center justify-between py-3 px-4 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800'
+          className='flex w-full items-center justify-between rounded-lg border border-gray-300 bg-white px-4 py-3 dark:border-gray-600 dark:bg-gray-800'
           onClick={() => setDropdownOpen(!dropdownOpen)}
         >
           <div className='flex items-center'>
@@ -132,19 +123,19 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
             <span className='font-medium text-gray-900 dark:text-white'>
               {activeTabData?.label}
               {activeTabData?.count !== undefined && (
-                <span className='ml-2 py-0.5 px-2.5 rounded-full text-xs bg-primary-100 text-primary-600 dark:bg-primary-900/20 dark:text-primary-400'>
+                <span className='bg-primary-100 text-primary-600 dark:bg-primary-900/20 dark:text-primary-400 ml-2 rounded-full px-2.5 py-0.5 text-xs'>
                   {activeTabData.count}
                 </span>
               )}
             </span>
           </div>
           <ChevronDown
-            className={`h-5 w-5 text-gray-400 transform transition-transform ${dropdownOpen ? 'rotate-180' : ''}`}
+            className={`h-5 w-5 transform text-gray-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`}
           />
         </button>
 
         {dropdownOpen && (
-          <div className='absolute z-10 mt-1 w-full bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-md shadow-lg overflow-hidden'>
+          <div className='absolute z-10 mt-1 w-full overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800'>
             {tabs.map((tab) => {
               const Icon = tab.icon
               const isActive = activeTab === tab.id
@@ -156,35 +147,26 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
                     onTabChange(tab.id)
                     setDropdownOpen(false)
                   }}
-                  className={`
-                    w-full flex items-center px-4 py-2 text-left text-sm
-                    ${
-                      isActive
-                        ? 'bg-gray-100 text-primary-600 dark:bg-gray-700 dark:text-primary-400'
-                        : 'text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700'
-                    }
-                  `}
+                  className={`flex w-full items-center px-4 py-2 text-left text-sm ${
+                    isActive
+                      ? 'text-primary-600 dark:text-primary-400 bg-gray-100 dark:bg-gray-700'
+                      : 'text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700'
+                  } `}
                 >
                   {Icon && (
                     <Icon
                       size={18}
-                      className={`
-                        mr-2
-                        ${isActive ? 'text-primary-500 dark:text-primary-400' : 'text-gray-400'}
-                      `}
+                      className={`mr-2 ${isActive ? 'text-primary-500 dark:text-primary-400' : 'text-gray-400'} `}
                     />
                   )}
                   {tab.label}
                   {tab.count !== undefined && (
                     <span
-                      className={`
-                        ml-auto py-0.5 px-2 rounded-full text-xs
-                        ${
-                          isActive
-                            ? 'bg-primary-100 text-primary-600 dark:bg-primary-900/20 dark:text-primary-400'
-                            : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
-                        }
-                      `}
+                      className={`ml-auto rounded-full px-2 py-0.5 text-xs ${
+                        isActive
+                          ? 'bg-primary-100 text-primary-600 dark:bg-primary-900/20 dark:text-primary-400'
+                          : 'bg-gray-200 text-gray-700 dark:bg-gray-700 dark:text-gray-300'
+                      } `}
                     >
                       {tab.count}
                     </span>
@@ -198,7 +180,7 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
 
       {/* Indicateur visuel pour le défilement */}
       {overflowing && (
-        <div className='hidden md:block absolute right-0 top-0 bottom-0 w-8 bg-gradient-to-l from-white to-transparent dark:from-gray-900 pointer-events-none' />
+        <div className='pointer-events-none absolute bottom-0 right-0 top-0 hidden w-8 bg-gradient-to-l from-white to-transparent md:block dark:from-gray-900' />
       )}
     </div>
   )

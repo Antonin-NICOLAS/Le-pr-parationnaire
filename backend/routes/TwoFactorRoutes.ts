@@ -16,16 +16,6 @@ import {
   setPreferredMethod,
   twoFactorLogin,
 } from '../controllers/2FAController.js'
-import {
-  generateRegistrationOpt,
-  verifyRegistration,
-  generateAuthenticationOpt,
-  verifyAuthentication,
-  nameWebAuthnCredential,
-  removeWebAuthnCredential,
-  getWebAuthnDevices,
-  disableWebAuthn,
-} from '../controllers/WebAuthnController.js'
 
 // Middlewares
 import { authenticate } from '../middlewares/VerifyAuth.js'
@@ -67,49 +57,5 @@ router.post(
 )
 router.post('/app/enable', authenticate, enableTwoFactorApp)
 router.post('/app/disable', authenticate, disableTwoFactorApp)
-
-// WebAuthn Registration
-router.post(
-  '/webauthn/verify-registration',
-  rateLimiterMiddleware,
-  authenticate,
-  verifyRegistration,
-)
-
-router.get(
-  '/webauthn/generate-registration',
-  rateLimiterMiddleware,
-  authenticate,
-  generateRegistrationOpt,
-)
-router.post(
-  '/webauthn/verify-authentication',
-  rateLimiterMiddleware,
-  verifyAuthentication,
-)
-router.get(
-  '/webauthn/generate-authentication',
-  rateLimiterMiddleware,
-  generateAuthenticationOpt,
-)
-router.post(
-  '/webauthn/set-name',
-  rateLimiterMiddleware,
-  authenticate,
-  nameWebAuthnCredential,
-)
-router.post(
-  '/webauthn/disable',
-  rateLimiterMiddleware,
-  authenticate,
-  disableWebAuthn,
-)
-router.get('/webauthn/devices', authenticate, getWebAuthnDevices)
-
-router.delete(
-  '/webauthn/credential/:id',
-  authenticate,
-  removeWebAuthnCredential,
-)
 
 export default router

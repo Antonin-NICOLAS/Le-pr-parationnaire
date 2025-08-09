@@ -2,9 +2,7 @@ import speakeasy from 'speakeasy'
 import QRCode from 'qrcode'
 import CryptoJS from 'crypto-js'
 import bcrypt from 'bcrypt'
-import { IUser } from '../models/User.js'
-
-type BackupCode = { code: string; used: boolean }
+import { IUser, BackupCode } from '../models/User.js'
 
 export function generateTwoFactorSecret() {
   return speakeasy.generateSecret({ name: 'Le préparationnaire', length: 20 })

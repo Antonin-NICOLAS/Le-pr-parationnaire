@@ -65,7 +65,7 @@ const authenticate = async (
 
     return res.status(401).json({
       success: false,
-      error: req.t('auth:errors.invalid_token'),
+      error: req.t('auth:errors.unauthorized'),
     })
   }
 }

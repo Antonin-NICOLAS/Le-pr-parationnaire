@@ -6,7 +6,7 @@ import {
   type RegistrationResponseJSON,
   type AuthenticationResponseJSON,
 } from '@simplewebauthn/browser'
-import { VITE_2FA_WEB_AUTHN } from '../../utils/env'
+import { VITE_WEB_AUTHN } from '../../utils/env'
 
 interface WebAuthnCredential {
   id: string
@@ -39,7 +39,7 @@ const useWebAuthnTwoFactor = () => {
   const getRegistrationOptions = async (): Promise<RegistrationResponse> => {
     try {
       const { data } = await axios.get(
-        `${VITE_2FA_WEB_AUTHN}/generate-registration`,
+        `${VITE_WEB_AUTHN}/generate-registration`,
         { withCredentials: true },
       )
 
@@ -77,7 +77,7 @@ const useWebAuthnTwoFactor = () => {
   ): Promise<VerificationResponse> => {
     try {
       const { data } = await axios.post(
-        `${VITE_2FA_WEB_AUTHN}/verify-registration`,
+        `${VITE_WEB_AUTHN}/verify-registration`,
         {
           attestationResponse,
           deviceName: 'Nouvelle clé',
@@ -166,7 +166,7 @@ const useWebAuthnTwoFactor = () => {
   ): Promise<VerificationResponse> => {
     try {
       const { data } = await axios.post(
-        `${VITE_2FA_WEB_AUTHN}/set-name`,
+        `${VITE_WEB_AUTHN}/set-name`,
         { id, deviceName },
         { withCredentials: true },
       )
@@ -200,7 +200,7 @@ const useWebAuthnTwoFactor = () => {
   ): Promise<{ success: boolean; error?: string }> => {
     try {
       const { data } = await axios.delete(
-        `${VITE_2FA_WEB_AUTHN}/credential/${id}`,
+        `${VITE_WEB_AUTHN}/credential/${id}`,
         { withCredentials: true },
       )
 
@@ -231,7 +231,7 @@ const useWebAuthnTwoFactor = () => {
   ): Promise<RegistrationResponse> => {
     try {
       const { data } = await axios.get(
-        `${VITE_2FA_WEB_AUTHN}/generate-authentication`,
+        `${VITE_WEB_AUTHN}/generate-authentication`,
         { params: { email }, withCredentials: true },
       )
 
@@ -266,7 +266,7 @@ const useWebAuthnTwoFactor = () => {
   ): Promise<VerificationResponse> => {
     try {
       const { data } = await axios.post(
-        `${VITE_2FA_WEB_AUTHN}/verify-authentication`,
+        `${VITE_WEB_AUTHN}/verify-authentication`,
         { assertionResponse, email, rememberMe },
         { withCredentials: true },
       )
@@ -349,7 +349,7 @@ const useWebAuthnTwoFactor = () => {
     if (method === 'password') {
       try {
         const { data } = await axios.post(
-          `${VITE_2FA_WEB_AUTHN}/disable`,
+          `${VITE_WEB_AUTHN}/disable`,
           { method, value },
           { withCredentials: true },
         )
@@ -388,7 +388,7 @@ const useWebAuthnTwoFactor = () => {
 
         // 3. Vérifier l'authentification avec le serveur
         const { data } = await axios.post(
-          `${VITE_2FA_WEB_AUTHN}/disable`,
+          `${VITE_WEB_AUTHN}/disable`,
           { method, value: attestationResponse },
           { withCredentials: true },
         )

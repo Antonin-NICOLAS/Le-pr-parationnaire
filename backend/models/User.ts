@@ -40,17 +40,7 @@ export interface IUser extends Document {
   tokenVersion: number
   lastLogin?: Date
   lastEmailChange?: Date
-  loginHistory: {
-    sessionId: string
-    ip?: string
-    userAgent?: string
-    location?: string
-    deviceType?: string
-    browser?: string
-    os?: string
-    lastActive?: Date
-    expiresAt?: Date
-  }[]
+  loginHistory: LoginHistory[]
   emailVerification: {
     token?: string
     expiration?: Date
@@ -82,6 +72,7 @@ export interface IUser extends Document {
     securityQuestions: {
       question: string
       answer: string
+      undefined?: boolean
     }[]
   }
   role: 'user' | 'admin'
@@ -125,7 +116,7 @@ const UserSchema = new Schema<IUser>({
     isVerified: { type: Boolean, default: false },
   },
   resetPassword: {
-    token: String,
+    token: { type: String, unique: true },
     expiration: Date,
   },
   twoFactor: {
@@ -169,8 +160,19 @@ const UserSchema = new Schema<IUser>({
     ],
     securityQuestions: [
       {
-        question: String,
+        question: {
+          type: String,
+          enum: [
+            'Quelle est votre couleur préférée ?',
+            'Quel est le nom de votre premier animal ?',
+            'Quel est le nom de votre école primaire ?',
+            'Quelle est votre ville natale ?',
+            'Quel est votre plat préféré ?',
+            'Quel est votre film préféré ?',
+          ],
+        },
         answer: { type: String, select: false },
+        undefined: { type: Boolean, default: true },
       },
     ],
   },

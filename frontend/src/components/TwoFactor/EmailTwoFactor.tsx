@@ -287,7 +287,7 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
               ? disableCode.join('').length !== 6
               : !disablePassword
           }
-          className='bg-red-600 hover:bg-red-700 text-white'
+          className='bg-red-600 text-white hover:bg-red-700'
           fullWidth
         >
           Désactiver
@@ -305,9 +305,9 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
 
   return (
     <>
-      <div className='bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6'>
-        <div className='flex items-center space-x-3 mb-4'>
-          <div className='p-2 bg-blue-100 dark:bg-blue-900/20 rounded-lg'>
+      <div className='rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800'>
+        <div className='mb-4 flex items-center space-x-3'>
+          <div className='rounded-lg bg-blue-100 p-2 dark:bg-blue-900/20'>
             <Mail className='text-blue-600 dark:text-blue-400' size={20} />
           </div>
           <div>
@@ -320,9 +320,9 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
           </div>
         </div>
 
-        <div className='flex items-center justify-between mb-4'>
+        <div className='mb-4 flex items-center justify-between'>
           <span
-            className={`px-2 py-1 rounded-full text-xs ${
+            className={`rounded-full px-2 py-1 text-xs ${
               isEnabled
                 ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
                 : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
@@ -332,10 +332,10 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
           </span>
           {isEnabled && (
             <button
-              className={`flex px-2 py-1 rounded-full text-xs ${
+              className={`flex rounded-full px-2 py-1 text-xs ${
                 isPreferredMethod
-                  ? 'bg-blue-100 dark:bg-blue-900/20 text-blue-600 dark:text-blue-400'
-                  : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600'
+                  ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400'
+                  : 'cursor-pointer bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
               }`}
               disabled={isLoading}
               {...(!isPreferredMethod && { onClick: handleSetPreferredMethod })}

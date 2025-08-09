@@ -3,10 +3,7 @@ import { HelpCircle, Check } from 'lucide-react'
 import PrimaryButton from '../ui/PrimaryButton'
 import CustomInput from '../ui/CustomInput'
 import useSecurityQuestions from '../../hooks/TwoFactor/SecurityQuestions'
-import type {
-  SecurityQuestion,
-  UserSecurityQuestion,
-} from '../../types/twoFactor'
+import type { SecurityQuestion } from '../../types/user'
 
 interface SecurityQuestionsSetupProps {
   onComplete: () => void
@@ -22,10 +19,10 @@ const SecurityQuestionsSetup: React.FC<SecurityQuestionsSetupProps> = ({
     SecurityQuestion[]
   >([])
   const [selectedQuestions, setSelectedQuestions] = useState<
-    UserSecurityQuestion[]
+    SecurityQuestion[]
   >([
-    { questionId: '', question: '', answer: '' },
-    { questionId: '', question: '', answer: '' },
+    { id: '', question: '', answer: '' },
+    { id: '', question: '', answer: '' },
   ])
 
   const { getAvailableQuestions, setSecurityQuestions } = useSecurityQuestions()
@@ -43,7 +40,7 @@ const SecurityQuestionsSetup: React.FC<SecurityQuestionsSetupProps> = ({
     if (question) {
       const newQuestions = [...selectedQuestions]
       newQuestions[index] = {
-        questionId: question.id,
+        id: question.id,
         question: question.question,
         answer: '',
       }
@@ -58,7 +55,7 @@ const SecurityQuestionsSetup: React.FC<SecurityQuestionsSetupProps> = ({
   }
 
   const handleSubmit = async () => {
-    if (!selectedQuestions.every((q) => q.questionId && q.answer.trim())) {
+    if (!selectedQuestions.every((q) => q.id && q.answer!.trim())) {
       return
     }
 
@@ -71,11 +68,11 @@ const SecurityQuestionsSetup: React.FC<SecurityQuestionsSetupProps> = ({
   }
 
   const isValid =
-    selectedQuestions.every((q) => q.questionId && q.answer.trim()) &&
-    selectedQuestions[0].questionId !== selectedQuestions[1].questionId
+    selectedQuestions.every((q) => q.id && q.answer!.trim()) &&
+    selectedQuestions[0].id !== selectedQuestions[1].id
 
   const getAvailableQuestionsForSelect = (currentIndex: number) => {
-    const otherSelectedId = selectedQuestions[1 - currentIndex]?.questionId
+    const otherSelectedId = selectedQuestions[1 - currentIndex]?.id
     return availableQuestions.filter((q) => q.id !== otherSelectedId)
   }
 
@@ -94,11 +91,11 @@ const SecurityQuestionsSetup: React.FC<SecurityQuestionsSetupProps> = ({
         </p>
       </div>
 
-      <div className='bg-blue-50 dark:bg-blue-900/10 border border-blue-200 dark:border-blue-800/30 rounded-lg p-4'>
-        <h4 className='font-medium text-blue-900 dark:text-blue-100 mb-2'>
+      <div className='rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800/30 dark:bg-blue-900/10'>
+        <h4 className='mb-2 font-medium text-blue-900 dark:text-blue-100'>
           Conseils pour des réponses sécurisées :
         </h4>
-        <ul className='text-sm text-blue-800 dark:text-blue-200 space-y-1'>
+        <ul className='space-y-1 text-sm text-blue-800 dark:text-blue-200'>
           <li>• Choisissez des réponses que vous seul connaissez</li>
           <li>• Évitez les informations facilement trouvables en ligne</li>
           <li>• Utilisez des réponses cohérentes (majuscules, accents...)</li>
@@ -110,13 +107,13 @@ const SecurityQuestionsSetup: React.FC<SecurityQuestionsSetupProps> = ({
         {selectedQuestions.map((selectedQuestion, index) => (
           <div key={index} className='space-y-3'>
             <div>
-              <label className='block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2'>
+              <label className='mb-2 block text-sm font-medium text-gray-700 dark:text-gray-300'>
                 Question {index + 1}
               </label>
               <select
-                value={selectedQuestion.questionId}
+                value={selectedQuestion.id}
                 onChange={(e) => handleQuestionSelect(index, e.target.value)}
-                className='w-full p-3 border-2 border-gray-200 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-800 text-gray-900 dark:text-gray-100 focus:border-primary-500 focus:outline-none'
+                className='focus:border-primary-500 w-full rounded-lg border-2 border-gray-200 bg-white p-3 text-gray-900 focus:outline-none dark:border-gray-600 dark:bg-gray-800 dark:text-gray-100'
               >
                 <option value=''>Sélectionnez une question...</option>
                 {getAvailableQuestionsForSelect(index).map((question) => (
@@ -127,7 +124,7 @@ const SecurityQuestionsSetup: React.FC<SecurityQuestionsSetupProps> = ({
               </select>
             </div>
 
-            {selectedQuestion.questionId && (
+            {selectedQuestion.id && (
               <CustomInput
                 label='Votre réponse'
                 value={selectedQuestion.answer}

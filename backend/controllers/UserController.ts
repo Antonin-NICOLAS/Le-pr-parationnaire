@@ -1,7 +1,8 @@
 import User from '../models/User.js'
+import { logout } from './AuthController.js'
 import { asyncHandler } from '../helpers/AsyncHandler.js'
 import { ApiResponse } from '../helpers/ApiResponse.js'
-import { Request, Response } from 'express'
+import { NextFunction, Request, Response } from 'express'
 import { TFunction } from 'i18next'
 // Helpers
 import {
@@ -30,7 +31,7 @@ export const changePassword = asyncHandler(
     // 2. Vérification de l'ancien mot de passe
     const isMatch = await comparePassword(currentPassword, user.password)
     if (!isMatch) {
-      return ApiResponse.error(res, t('auth:errors.invalid_password'), 400)
+      return ApiResponse.error(res, t('auth:errors.password_incorrect'), 400)
     }
 
     // 3. Vérification du nouveau mot de passe
@@ -149,15 +150,13 @@ export const changeEmailStep2Step4 = asyncHandler(
 )
 
 export const deleteAccount = asyncHandler(
-  async (req: Request, res: Response) => {
+  async (req: Request, res: Response, next: NextFunction) => {
     const { t } = req
-    const user = await User.findById(req.user._id)
-    if (!user) {
-      return ApiResponse.error(res, t('auth:errors.user_not_found'), 404)
-    }
+
+    await logout(req, res, next)
 
     // Delete user account
-    await User.findByIdAndDelete(user._id)
+    await User.findByIdAndDelete(req.user._id)
 
     return ApiResponse.success(res, {}, t('auth:success.account_deleted'), 200)
   },
