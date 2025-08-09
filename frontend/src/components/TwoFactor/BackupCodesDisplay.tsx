@@ -68,11 +68,11 @@ Ces codes vous permettront d'accéder à votre compte si vous perdez l'accès à
             className='text-yellow-600 dark:text-yellow-400'
             size={16}
           />
-          <span className='text-sm font-medium text-yellow-800 dark:text-yellow-200'>
+          <span className='text-sm font-medium text-yellow-800 dark:text-yellow-600'>
             Important à retenir
           </span>
         </div>
-        <ul className='text-sm text-yellow-800 dark:text-yellow-200 space-y-1'>
+        <ul className='text-sm text-yellow-800 dark:text-yellow-600 space-y-1'>
           <li>• Chaque code ne peut être utilisé qu'une seule fois</li>
           <li>• Stockez-les dans un endroit sûr et accessible</li>
           <li>• Ne les partagez avec personne</li>
@@ -81,7 +81,7 @@ Ces codes vous permettront d'accéder à votre compte si vous perdez l'accès à
       </div>
 
       <div className='space-y-4'>
-        <div className='flex items-center justify-between'>
+        <div className='flex flex-col items-center justify-between sm:flex-row gap-y-4'>
           <span className='text-sm font-medium text-gray-900 dark:text-gray-100'>
             Vos codes de secours
           </span>
@@ -114,7 +114,7 @@ Ces codes vous permettront d'accéder à votre compte si vous perdez l'accès à
         </div>
 
         {showCodes && (
-          <div className='grid grid-cols-2 gap-2'>
+          <div className='grid-cols-[repeat(auto-fit,_minmax(150px,_1fr))] grid gap-2'>
             {codes.map(
               (code, index) => (
                 console.log(codes),
@@ -123,7 +123,9 @@ Ces codes vous permettront d'accéder à votre compte si vous perdez l'accès à
                     key={index}
                     className='flex items-center justify-between bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-lg px-3 py-2'
                   >
-                    <span className='font-mono text-sm'>{code}</span>
+                    <span className='font-mono text-sm text-gray-900 dark:text-gray-400'>
+                      {code}
+                    </span>
                     <button
                       onClick={() => handleCopyCode(code)}
                       className='text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 p-1'

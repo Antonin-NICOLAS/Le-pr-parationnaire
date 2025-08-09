@@ -57,7 +57,8 @@
   --radius-lg: 12px;
 
   /* Breakpoints */
-  --breakpoint-sidebar: 1150px;
+  --breakpoint-640: 640px;
+  --breakpoint-1150: 1150px;
 }
 
 /* Dark mode overrides */

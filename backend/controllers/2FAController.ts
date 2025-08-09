@@ -31,10 +31,10 @@ dotenv.config()
 
 // Obtenir le statut de la 2FA
 export const getStatus = asyncHandler(async (req: Request, res: Response) => {
-  const { t } = req
   const user = req.user
 
   return ApiResponse.success(res, {
+    isEnabled: user.twoFactor.isEnabled || false,
     email: { isEnabled: user.twoFactor.email.isEnabled || false },
     app: { isEnabled: user.twoFactor.app.isEnabled || false },
     webauthn: { isEnabled: user.twoFactor.webauthn.isEnabled || false },
@@ -135,9 +135,10 @@ export const configTwoFactorEmail = asyncHandler(
 export const resendEmailCode = asyncHandler(
   async (req: Request, res: Response) => {
     const { t } = req
+    const { email } = req.body
 
     // 1. Vérifier si l'utilisateur existe
-    const user = await User.findById(req.user._id)
+    const user = await User.findOne({ email })
     if (!user) {
       return ApiResponse.error(res, t('auth:errors.user_not_found'), 404)
     }
@@ -206,6 +207,7 @@ export const enableTwoFactorApp = asyncHandler(
     }
 
     // 4. Activer la 2FA
+    user.twoFactor.isEnabled = true
     user.twoFactor.app.isEnabled = true
 
     // 5. Si l'app est la première méthode 2FA, on génère des codes de sauvegarde ou certains sont utilisés, on les remplace
@@ -262,9 +264,13 @@ export const enableTwoFactorEmail = asyncHandler(
       return ApiResponse.error(res, t('auth:errors.2fa.invalid_code'), 400)
     }
 
-    // 5. Si email est la première méthode 2FA, on génère des codes de sauvegarde ou certains sont utilisés, on les remplace
+    // 5. Activer la 2FA par email
+    user.twoFactor.isEnabled = true
     user.twoFactor.email.isEnabled = true
+    user.twoFactor.email.token = undefined
+    user.twoFactor.email.expiration = undefined
 
+    // 6. Si email est la première méthode 2FA, on génère des codes de sauvegarde ou certains sont utilisés, on les remplace
     rotateBackupCodes(user)
 
     if (user.twoFactor.preferredMethod === 'none') {
@@ -353,6 +359,8 @@ export const disableTwoFactorApp = asyncHandler(
 
     // 4. Désactiver la 2FA
     user.twoFactor.app.isEnabled = false
+    user.twoFactor.isEnabled =
+      user.twoFactor.webauthn.isEnabled || user.twoFactor.email.isEnabled
     user.twoFactor.app.secret = undefined
 
     // 5. Si l'app est la méthode préférée, on la change
@@ -425,6 +433,8 @@ export const disableTwoFactorEmail = asyncHandler(
 
     // 4. Désactiver la 2FA par email
     user.twoFactor.email.isEnabled = false
+    user.twoFactor.isEnabled =
+      user.twoFactor.app.isEnabled || user.twoFactor.webauthn.isEnabled
     user.twoFactor.email.token = undefined
     user.twoFactor.email.expiration = undefined
 
@@ -458,12 +468,12 @@ export const disableTwoFactorEmail = asyncHandler(
 )
 
 // Utiliser un code de secours
-export const useBackupCode = asyncHandler(
+export const twoFactorLogin = asyncHandler(
   async (req: Request, res: Response) => {
     const { t } = req
-    const { email, rememberMe, backupCode } = req.body
+    const { email, rememberMe, method, value } = req.body
 
-    if (!email || !backupCode) {
+    if (!email || !value || !method) {
       return ApiResponse.error(res, t('auth:errors.missing_fields'), 400)
     }
 
@@ -474,16 +484,35 @@ export const useBackupCode = asyncHandler(
     }
 
     // 2. Vérifier que la 2FA est activée
-    if (
-      !user.twoFactor.app.isEnabled &&
-      !user.twoFactor.email.isEnabled &&
-      !user.twoFactor.webauthn.isEnabled
-    ) {
+    if (!user.twoFactor.isEnabled) {
       return ApiResponse.error(res, t('auth:errors.not_enabled'), 400)
     }
 
-    // 3. Vérifier que le code de secours est correct
-    const isValid = verifyBackupCode(user, backupCode)
+    // 3. Vérifier que la valeur est correcte
+    let isValid = false
+    if (method === 'app' && user.twoFactor.app.isEnabled) {
+      isValid = verifyTwoFactorCode(user.twoFactor.app.secret!, value)
+    } else if (method === 'email' && user.twoFactor.email.isEnabled) {
+      isValid = await compareEmailCode(user.twoFactor.email.token || '', value)
+    } else if (method === 'backup_code') {
+      isValid = verifyBackupCode(user, value)
+      if (isValid) {
+        const backupCodeIndex = user.twoFactor.backupCodes.findIndex(
+          (code) => code.code === value,
+        )
+        if (backupCodeIndex === -1) {
+          return ApiResponse.error(
+            res,
+            t('auth:errors.2fa.invalid_backup_code'),
+            400,
+          )
+        }
+        user.twoFactor.backupCodes[backupCodeIndex].used = true
+        await user.save()
+      }
+    } else {
+      return ApiResponse.error(res, t('auth:errors.2fa.invalid_method'), 400)
+    }
     if (!isValid) {
       return ApiResponse.error(
         res,
@@ -492,20 +521,7 @@ export const useBackupCode = asyncHandler(
       )
     }
 
-    // 4. Marquer le code de secours comme utilisé
-    const backupCodeIndex = user.twoFactor.backupCodes.findIndex(
-      (code) => code.code === backupCode,
-    )
-    if (backupCodeIndex === -1) {
-      return ApiResponse.error(
-        res,
-        t('auth:errors.2fa.invalid_backup_code'),
-        400,
-      )
-    }
-    user.twoFactor.backupCodes[backupCodeIndex].used = true
-
-    // 5. Créer une nouvelle session
+    // 4. Créer une nouvelle session
     const session = await SessionService.createOrUpdateSession(
       user,
       req,
@@ -515,13 +531,13 @@ export const useBackupCode = asyncHandler(
 
     await user.save()
 
-    // Générer le cookie de session
+    // 5. Générer le cookie de session
     generateCookie(res, user, rememberMe, session.sessionId)
 
     const deviceInfo = getDeviceInfo(session.userAgent)
     const localisation = await findLocation(t, i18next.language, session.ip)
 
-    // 7. Send login email notification
+    // 6. Send login email notification
     await sendLoginEmail(
       t as TFunction,
       user,

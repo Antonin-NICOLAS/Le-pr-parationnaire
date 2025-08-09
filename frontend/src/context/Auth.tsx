@@ -10,7 +10,15 @@ type AuthContextType = {
   error: string | null
   checkAuth: () => Promise<void>
   checkAuthStatus: (email: string) => Promise<boolean>
-  login: (LoginData: LoginData) => Promise<{ success: boolean }>
+  login: (LoginData: LoginData) => Promise<{
+    success: boolean
+    email?: string
+    requiresTwoFactor?: boolean
+    email2FA?: boolean
+    app2FA?: boolean
+    webauthn2FA?: boolean
+    preferredMethod?: 'email' | 'app' | 'webauthn'
+  }>
   logout: (onSuccess?: () => void) => Promise<void>
   register: (data: RegisterData, onSuccess?: () => void) => Promise<void>
   emailVerification: (
@@ -73,10 +81,30 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         withCredentials: true,
       })
       if (data.success) {
-        toast.success(data.message || 'Login successful!')
-        await checkAuth()
-        return { success: true }
+        if (data.requiresTwoFactor) {
+          toast.error(
+            data.message ||
+              'Two-factor authentication required. Please verify.',
+          )
+          return {
+            requiresTwoFactor: true,
+            success: true,
+            email: data.email,
+            rememberMe: data.rememberMe,
+            email2FA: data.twoFactor.email,
+            app2FA: data.twoFactor.app,
+            webauthn2FA: data.twoFactor.webauthn,
+            preferredMethod: data.twoFactor.preferredMethod,
+          }
+        } else {
+          toast.success(data.message || 'Login successful!')
+          await checkAuth()
+          return { success: true }
+        }
       } else {
+        toast.error(data.error || 'Login failed. Please try again.')
+        setError(data.message || 'Login failed. Please try again.')
+        setUser(null)
         return { success: false }
       }
     } catch (err: any) {

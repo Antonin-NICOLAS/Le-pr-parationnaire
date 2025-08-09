@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react'
+import React, { useState, useEffect, use } from 'react'
 import { Star, Mail, Shield, AlertCircle, RefreshCw } from 'lucide-react'
 import CountdownTimer from '../ui/CountdownTimer'
 import ErrorMessage from '../ui/ErrorMessage'
@@ -10,6 +10,7 @@ import BackupCodesDisplay from './BackupCodesDisplay'
 import SecurityQuestionsSetup from './SecurityQuestionsSetup'
 import useEmailTwoFactor from '../../hooks/TwoFactor/Email'
 import useTwoFactorAuth from '../../hooks/TwoFactor/Main'
+import { useAuth } from '../../context/Auth'
 
 interface EmailTwoFactorProps {
   isEnabled: boolean
@@ -22,6 +23,7 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
   isPreferredMethod,
   onStatusChange,
 }) => {
+  const { user } = useAuth()
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [showEnableFlow, setShowEnableFlow] = useState(false)
@@ -69,7 +71,7 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
 
   const handleResendCode = async () => {
     setIsLoading(true)
-    await resendCode()
+    await resendCode(user?.email || '')
     setCanResend(false)
     setIsLoading(false)
   }

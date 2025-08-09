@@ -53,9 +53,40 @@ const useTwoFactorAuth = () => {
     }
   }
 
+  const twoFactorLogin = async (
+    email: string,
+    rememberMe: boolean,
+    method: 'email' | 'app' | 'webauthn' | 'backup_code' | 'securityquestions',
+    value: string,
+  ) => {
+    try {
+      const { data } = await axios.post(
+        `${VITE_2FA}/login`,
+        {
+          email,
+          rememberMe,
+          method,
+          value,
+        },
+        { withCredentials: true },
+      )
+      if (data.success) {
+        toast.success(data.message || 'Connexion réussie')
+        return true
+      } else {
+        toast.error(data.error || 'Échec de la connexion')
+        return false
+      }
+    } catch (error) {
+      toast.error('Erreur lors de la connexion')
+      return false
+    }
+  }
+
   return {
     getTwoFactorStatus,
     setPreferredMethod,
+    twoFactorLogin,
   }
 }
 

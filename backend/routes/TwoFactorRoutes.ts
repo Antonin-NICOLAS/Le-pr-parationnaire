@@ -14,7 +14,7 @@ import {
   enableTwoFactorEmail,
   disableTwoFactorEmail,
   setPreferredMethod,
-  useBackupCode,
+  twoFactorLogin,
 } from '../controllers/2FAController.js'
 import {
   generateRegistrationOpt,
@@ -45,12 +45,7 @@ router.use(
 // Routes
 router.get('/status', authenticate, getStatus)
 router.post('/set-preferred-method', authenticate, setPreferredMethod)
-router.post(
-  '/use-backup-code',
-  rateLimiterMiddleware,
-  authenticate,
-  useBackupCode,
-)
+router.post('/login', rateLimiterMiddleware, twoFactorLogin)
 
 // Email 2FA
 router.post(
@@ -61,12 +56,7 @@ router.post(
 )
 router.post('/email/enable', authenticate, enableTwoFactorEmail)
 router.post('/email/disable', authenticate, disableTwoFactorEmail)
-router.post(
-  '/email/resend',
-  rateLimiterMiddleware,
-  authenticate,
-  resendEmailCode,
-)
+router.post('/email/resend', rateLimiterMiddleware, resendEmailCode)
 
 // App 2FA
 router.post(

@@ -36,6 +36,7 @@ export interface IUser extends Document {
   avatarUrl?: string
   email: string
   password: string
+  loginWithWebAuthn?: boolean
   tokenVersion: number
   lastLogin?: Date
   lastEmailChange?: Date
@@ -60,6 +61,7 @@ export interface IUser extends Document {
     expiration?: Date
   }
   twoFactor: {
+    isEnabled: boolean
     email: {
       isEnabled: boolean
       token?: string
@@ -100,6 +102,7 @@ const UserSchema = new Schema<IUser>({
     trim: true,
   },
   password: { type: String, required: true, minlength: 8 },
+  loginWithWebAuthn: { type: Boolean, default: false },
   tokenVersion: { type: Number, default: 0 },
   lastLogin: Date,
   lastEmailChange: Date,
@@ -126,6 +129,7 @@ const UserSchema = new Schema<IUser>({
     expiration: Date,
   },
   twoFactor: {
+    isEnabled: { type: Boolean, default: false },
     email: {
       isEnabled: { type: Boolean, default: false },
       token: String,

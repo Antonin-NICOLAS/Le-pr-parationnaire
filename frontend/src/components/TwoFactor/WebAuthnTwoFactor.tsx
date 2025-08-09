@@ -68,10 +68,11 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
 
     if (result.success) {
       onStatusChange()
+      setBackupCodes(result.backupCodes || [])
       if (result.credentialId) {
+        setCurrentCredentialId(result.credentialId)
         setShowCredentialsList(false)
         setShowEnableFlow(true)
-        setCurrentCredentialId(result.credentialId)
         setCurrentStep('name')
       }
     }
@@ -250,7 +251,7 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
               size='sm'
               onClick={() => handleDeleteCredential(credential.id)}
               icon={Trash2}
-              className='text-red-600 hover:text-red-700 border-red-200 hover:border-red-300 hover:bg-red-50'
+              className='text-red-600 dark:text-red-500 hover:text-red-700 border-red-200 dark:border-red-300 hover:border-red-300 dark:hover:border-red-400 hover:bg-red-50 dark:hover:bg-red-900/20'
             >
               Supprimer
             </PrimaryButton>

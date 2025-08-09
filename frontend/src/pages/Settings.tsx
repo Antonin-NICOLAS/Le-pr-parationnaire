@@ -648,7 +648,7 @@ const SettingsPage: React.FC = () => {
       </div>
 
       {/* Méthodes 2FA */}
-      <div className='grid grid-cols-1 md:grid-cols-3 gap-6'>
+      <div className='grid grid-cols-[repeat(auto-fit,_minmax(280px,_1fr))] gap-6'>
         <EmailTwoFactor
           isEnabled={twoFactorSettings.email.enabled}
           isPreferredMethod={twoFactorSettings.preferredMethod === 'email'}
@@ -728,7 +728,7 @@ const SettingsPage: React.FC = () => {
   )
 
   return (
-    <div className='mx-auto p-6'>
+    <div className='mx-auto p-2 sm:p-4 md:p-6'>
       <div className='mb-8'>
         <h1 className='text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2'>
           Paramètres
