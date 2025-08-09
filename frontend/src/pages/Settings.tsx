@@ -101,7 +101,7 @@ const SettingsPage: React.FC = () => {
   })
 
   // Delete account state
-  const { isOpen, open, close } = useUrlModal('delete-account')
+  const { open, close } = useUrlModal('delete-account')
   const [deleteConfirmation, setDeleteConfirmation] = useState('')
   const [deletePassword, setDeletePassword] = useState('')
 
@@ -756,10 +756,10 @@ const SettingsPage: React.FC = () => {
 
       {/* Modal de suppression de compte */}
       <Modal
-        isOpen={isOpen}
         onClose={close}
         title='Supprimer mon compte'
         size='md'
+        urlName='delete-account'
       >
         <div className='space-y-6'>
           <div className='bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 rounded-lg p-4'>

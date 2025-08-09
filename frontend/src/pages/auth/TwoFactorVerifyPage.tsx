@@ -46,7 +46,10 @@ const TwoFactorPage: React.FC = () => {
 
   const changeMethod = (newMethod: typeof currentMethod) => {
     setCurrentMethod(newMethod)
-    navigate(`/2fa-verify/${newMethod}`, { replace: true })
+    navigate(`/2fa-verify/${newMethod}`, {
+      replace: true,
+      state: { email, rememberMe, email2FA, app2FA, webauthn2FA },
+    })
   }
 
   const handleVerification = async (verificationCode: string) => {

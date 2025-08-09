@@ -89,8 +89,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
           return {
             requiresTwoFactor: true,
             success: true,
-            email: data.email,
-            rememberMe: data.rememberMe,
             email2FA: data.twoFactor.email,
             app2FA: data.twoFactor.app,
             webauthn2FA: data.twoFactor.webauthn,
