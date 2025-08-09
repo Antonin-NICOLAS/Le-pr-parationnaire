@@ -1,28 +1,38 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { X } from 'lucide-react'
 import clsx from 'clsx'
+import { useUrlModal } from '../../routes/UseUrlModal'
 
 interface ModalProps {
-  isOpen: boolean
-  onClose: () => void
   title: string
   children: React.ReactNode
   size?: 'sm' | 'md' | 'lg' | 'xl'
   showCloseButton?: boolean
   closeOnOverlayClick?: boolean
   className?: string
+  urlName?: string
+  isOpen?: boolean
+  onClose?: () => void
 }
 
 const Modal: React.FC<ModalProps> = ({
-  isOpen,
-  onClose,
   title,
   children,
   size = 'md',
   showCloseButton = true,
   closeOnOverlayClick = true,
   className = '',
+  urlName,
+  isOpen: controlledIsOpen,
+  onClose: controlledOnClose,
 }) => {
+  // Gestion ouverture via URL
+  const urlModal = urlName ? useUrlModal(urlName) : null
+
+  // On choisit la source (URL ou props)
+  const isOpen = urlName ? urlModal!.isOpen : (controlledIsOpen ?? false)
+  const onClose = urlName ? urlModal!.close : (controlledOnClose ?? (() => {}))
+
   const sizeClasses = {
     sm: 'max-w-md',
     md: 'max-w-lg',
@@ -33,18 +43,16 @@ const Modal: React.FC<ModalProps> = ({
   const [isVisible, setIsVisible] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
 
-  // Ouverture / fermeture avec animation
   useEffect(() => {
     if (isOpen) {
       setIsMounted(true)
-      setTimeout(() => setIsVisible(true), 10) // laisser le temps au DOM de monter
+      setTimeout(() => setIsVisible(true), 10)
     } else {
       setIsVisible(false)
-      setTimeout(() => setIsMounted(false), 200) // attendre la fin de l’animation
+      setTimeout(() => setIsMounted(false), 200)
     }
   }, [isOpen])
 
-  // Scroll lock lié à `isVisible`
   useEffect(() => {
     if (isVisible) {
       document.body.style.overflow = 'hidden'
@@ -56,7 +64,6 @@ const Modal: React.FC<ModalProps> = ({
     }
   }, [isVisible])
 
-  // Stable handleClose
   const handleClose = useCallback(() => {
     setIsVisible(false)
     setTimeout(() => {
@@ -64,7 +71,6 @@ const Modal: React.FC<ModalProps> = ({
     }, 200)
   }, [onClose])
 
-  // Escape key
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'Escape') handleClose()

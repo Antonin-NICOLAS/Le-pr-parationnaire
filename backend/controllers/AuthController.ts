@@ -172,7 +172,6 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
       res,
       {
         requiresTwoFactor: true,
-        email: user.email,
         twoFactor: {
           email: user.twoFactor.email.isEnabled,
           app: user.twoFactor.app.isEnabled,

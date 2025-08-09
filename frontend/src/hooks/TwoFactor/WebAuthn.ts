@@ -131,7 +131,7 @@ const useWebAuthnTwoFactor = () => {
 
       // 2. Lancer l'enregistrement avec le navigateur
       const attestationResponse: RegistrationResponseJSON =
-        await startRegistration(registrationOptions.options)
+        await startRegistration({ optionsJSON: registrationOptions.options })
       console.log("Réponse d'attestation:", attestationResponse)
 
       // 3. Vérifier l'enregistrement avec le serveur
@@ -308,7 +308,9 @@ const useWebAuthnTwoFactor = () => {
 
       // 2. Lancer l'authentification avec le navigateur
       const attestationResponse: AuthenticationResponseJSON =
-        await startAuthentication(authenticationOptions.options)
+        await startAuthentication({
+          optionsJSON: authenticationOptions.options,
+        })
       console.log("Réponse d'attestation:", attestationResponse)
 
       // 3. Vérifier l'authentification avec le serveur

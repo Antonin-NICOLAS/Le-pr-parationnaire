@@ -1,4 +1,4 @@
-import React, { useState, useEffect, use } from 'react'
+import React, { useState, useEffect } from 'react'
 import { Star, Mail, Shield, AlertCircle, RefreshCw } from 'lucide-react'
 import CountdownTimer from '../ui/CountdownTimer'
 import ErrorMessage from '../ui/ErrorMessage'

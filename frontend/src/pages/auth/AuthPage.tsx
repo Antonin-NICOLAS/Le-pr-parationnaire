@@ -83,9 +83,10 @@ const AuthPage: React.FC = () => {
       const result = await login(loginData)
       if (result?.success) {
         if (result.requiresTwoFactor) {
+          console.log(result)
           navigate(`/2fa-verify/${result.preferredMethod}`, {
             state: {
-              email: result.email,
+              email: loginData.email,
               rememberMe: loginData.rememberMe,
               email2FA: result.email2FA,
               app2FA: result.app2FA,
