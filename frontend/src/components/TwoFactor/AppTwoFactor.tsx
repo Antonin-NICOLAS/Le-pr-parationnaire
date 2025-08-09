@@ -139,11 +139,11 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
 
             {qrData?.qrCode && (
               <div className='flex justify-center'>
-                <div className='p-1 bg-white rounded-lg border'>
+                <div className='rounded-lg border bg-white p-1'>
                   <img
                     src={qrData.qrCode}
                     alt='QR Code'
-                    className='w-48 h-48'
+                    className='h-48 w-48'
                   />
                 </div>
               </div>
@@ -154,7 +154,7 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
                 Ou entrez cette clé manuellement :
               </p>
               <div className='flex items-center space-x-2'>
-                <code className='flex-1 p-3 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm font-mono break-all'>
+                <code className='flex-1 break-all rounded-lg bg-gray-100 p-3 font-mono text-sm dark:bg-gray-700'>
                   {qrData?.secret}
                 </code>
                 <PrimaryButton
@@ -168,11 +168,11 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
               </div>
             </div>
 
-            <div className='bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800/30 rounded-lg p-4'>
-              <h4 className='font-medium text-blue-900 dark:text-blue-100 mb-2'>
+            <div className='rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800/30 dark:bg-blue-900/20'>
+              <h4 className='mb-2 font-medium text-blue-900 dark:text-blue-100'>
                 Applications recommandées :
               </h4>
-              <ul className='text-sm text-blue-800 dark:text-blue-200 space-y-1'>
+              <ul className='space-y-1 text-sm text-blue-800 dark:text-blue-200'>
                 <li>• Google Authenticator</li>
                 <li>• Authy</li>
                 <li>• Microsoft Authenticator</li>
@@ -277,7 +277,7 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
             type='checkbox'
             checked={requirePassword}
             onChange={(e) => setRequirePassword(e.target.checked)}
-            className='rounded border-gray-300 text-primary-600 focus:ring-primary-500'
+            className='text-primary-600 focus:ring-primary-500 rounded border-gray-300'
           />
           <span className='text-sm text-gray-700 dark:text-gray-300'>
             Confirmer avec le mot de passe (sécurité renforcée)
@@ -302,7 +302,7 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
             disableCode.join('').length !== 6 ||
             (requirePassword && !disablePassword)
           }
-          className='bg-red-600 hover:bg-red-700 text-white'
+          className='bg-red-600 text-white hover:bg-red-700'
           fullWidth
         >
           Désactiver
@@ -320,9 +320,9 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
 
   return (
     <>
-      <div className='bg-white dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700 p-6'>
-        <div className='flex items-center space-x-3 mb-4'>
-          <div className='p-2 bg-yellow-100 dark:bg-yellow-900/20 rounded-lg'>
+      <div className='rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800'>
+        <div className='mb-4 flex items-center space-x-3'>
+          <div className='rounded-lg bg-yellow-100 p-2 dark:bg-yellow-900/20'>
             <Smartphone
               className='text-yellow-600 dark:text-yellow-400'
               size={20}
@@ -338,9 +338,9 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
           </div>
         </div>
 
-        <div className='flex items-center justify-between mb-4'>
+        <div className='mb-4 flex items-center justify-between'>
           <span
-            className={`px-2 py-1 rounded-full text-xs ${
+            className={`rounded-full px-2 py-1 text-xs ${
               isEnabled
                 ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
                 : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
@@ -350,10 +350,10 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
           </span>
           {isEnabled && (
             <button
-              className={`flex px-2 py-1 rounded-full text-xs ${
+              className={`flex rounded-full px-2 py-1 text-xs ${
                 isPreferredMethod
                   ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
-                  : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300 cursor-pointer hover:bg-gray-200 dark:hover:bg-gray-600'
+                  : 'cursor-pointer bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
               }`}
               disabled={isLoading}
               {...(!isPreferredMethod && { onClick: handleSetPreferredMethod })}

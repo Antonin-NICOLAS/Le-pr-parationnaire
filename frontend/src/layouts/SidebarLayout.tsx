@@ -27,7 +27,7 @@ const SidebarLayout: React.FC = () => {
         isMobileView={isMobileView}
       />
       <main
-        className={`mb-3 ml-3 mr-3 mt-[5rem] [transition:padding_0.4s] pl-[0] ${
+        className={`mb-3 ml-3 mr-3 mt-[5rem] pl-[0] [transition:padding_0.4s] ${
           sidebarOpen && '1150:pl-[calc(290px+0.75rem)]'
         } ${!sidebarOpen && '1150:pl-[calc(90px+0.75rem)]'}`}
         id='main'

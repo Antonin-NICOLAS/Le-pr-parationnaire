@@ -546,11 +546,6 @@ export const twoFactorLogin = asyncHandler(
       localisation,
     )
 
-    return ApiResponse.success(
-      res,
-      {},
-      t('auth:success.2fa.backup_code_used'),
-      200,
-    )
+    return ApiResponse.success(res, {}, t('auth:success.logged_in'), 200)
   },
 )

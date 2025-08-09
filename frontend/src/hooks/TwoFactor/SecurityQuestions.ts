@@ -1,9 +1,6 @@
 import axios from 'axios'
 import { toast } from 'sonner'
-import type {
-  SecurityQuestion,
-  UserSecurityQuestion,
-} from '../../types/twoFactor'
+import type { SecurityQuestion } from '../../types/user'
 import { VITE_2FA_QUESTIONS } from '../../utils/env'
 
 const useSecurityQuestions = () => {
@@ -19,7 +16,7 @@ const useSecurityQuestions = () => {
     }
   }
 
-  const setSecurityQuestions = async (questions: UserSecurityQuestion[]) => {
+  const setSecurityQuestions = async (questions: SecurityQuestion[]) => {
     try {
       const { data } = await axios.post(
         `${VITE_2FA_QUESTIONS}/set`,

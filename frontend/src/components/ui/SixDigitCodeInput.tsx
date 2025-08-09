@@ -200,7 +200,7 @@ const SixDigitCodeInput: React.FC<SixDigitCodeInputProps> = ({
 
   return (
     <div
-      className={`flex justify-center items-center flex-col gap-3 ${className}`}
+      className={`flex flex-col items-center justify-center gap-3 ${className}`}
     >
       <div className={`flex justify-center gap-3 ${className}`}>
         {Array.from({ length: 6 }, (_, index) => (
@@ -248,7 +248,7 @@ const SixDigitCodeInput: React.FC<SixDigitCodeInputProps> = ({
             Coller le code depuis le presse-papiers
           </PrimaryButton>
           {clipboardError && (
-            <p className='text-red-500 text-sm mt-2'>{clipboardError}</p>
+            <p className='mt-2 text-sm text-red-500'>{clipboardError}</p>
           )}
         </>
       )}

@@ -39,11 +39,7 @@ const SettingsCard: React.FC<SettingsCardProps> = ({
 
   return (
     <div
-      className={`
-        rounded-lg border p-6 transition-all duration-200 hover:shadow-md
-        ${variantClasses[variant]}
-        ${className}
-      `}
+      className={`rounded-lg border p-6 transition-all duration-200 hover:shadow-md ${variantClasses[variant]} ${className} `}
     >
       <div className='flex items-start justify-between'>
         <div className='flex items-start space-x-3'>
@@ -52,7 +48,7 @@ const SettingsCard: React.FC<SettingsCardProps> = ({
               <Icon size={24} className={iconVariantClasses[variant]} />
             </div>
           )}
-          <div className='flex-1 min-w-0'>
+          <div className='min-w-0 flex-1'>
             <h3
               className={`text-lg font-semibold ${titleVariantClasses[variant]}`}
             >

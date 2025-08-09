@@ -14,10 +14,10 @@ export const VITE_2FA_EMAIL =
   import.meta.env.VITE_NODE_ENV === 'development'
     ? '/auth/2fa/email'
     : '/api/auth/2fa/email'
-export const VITE_2FA_WEB_AUTHN =
+export const VITE_WEB_AUTHN =
   import.meta.env.VITE_NODE_ENV === 'development'
-    ? '/auth/2fa/webauthn'
-    : '/api/auth/2fa/webauthn'
+    ? '/auth/webauthn'
+    : '/api/auth/webauthn'
 export const VITE_2FA_QUESTIONS =
   import.meta.env.VITE_NODE_ENV === 'development'
     ? '/auth/2fa/security-questions'

@@ -4,6 +4,8 @@ import cors from 'cors'
 import cookieParser from 'cookie-parser'
 import { handle } from 'i18next-http-middleware'
 import i18nInit from '../i18n/index.js'
+import swaggerUi from 'swagger-ui-express'
+import swaggerSpec from '../docs/swagger.config.js'
 import dotenv from 'dotenv'
 
 dotenv.config()
@@ -11,6 +13,7 @@ dotenv.config()
 import AuthRoutes from '../routes/AuthRoutes.js'
 import UserRoutes from '../routes/UserRoutes.js'
 import TwoFactorRoutes from '../routes/TwoFactorRoutes.js'
+import WebAuthnRoutes from '../routes/WebAuthnRoutes.js'
 
 const app = express()
 
@@ -19,6 +22,20 @@ app.use(express.json({ limit: '50mb' }))
 app.use(cookieParser())
 app.use(express.static('public'))
 app.use(express.urlencoded({ extended: false, limit: '50mb' }))
+if (process.env.NODE_ENV !== 'production') {
+  const swaggerOptions = {
+    explorer: true,
+    customSiteTitle: 'Le Préparationnaire API Docs',
+    customCss: '.swagger-ui .topbar { display: none }',
+    customfavIcon: './public/favicon.png',
+  }
+
+  app.use(
+    '/api-docs',
+    swaggerUi.serve,
+    swaggerUi.setup(swaggerSpec, swaggerOptions),
+  )
+}
 
 const corsOptions = {
   origin: process.env.FRONTEND_SERVER,
@@ -50,6 +67,7 @@ app.get('/', (req, res) => {
 
 app.use('/auth', AuthRoutes)
 app.use('/auth/2fa', TwoFactorRoutes)
+app.use('/auth/webauthn', WebAuthnRoutes)
 app.use('/user', UserRoutes)
 
 mongoose

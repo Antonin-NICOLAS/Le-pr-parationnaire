@@ -25,7 +25,6 @@ import type {
 } from '@simplewebauthn/server'
 
 import {
-  validateEmail,
   comparePassword,
   generateCookie,
   getDeviceInfo,

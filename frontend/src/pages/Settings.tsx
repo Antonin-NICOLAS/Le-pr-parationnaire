@@ -9,7 +9,8 @@ import WebAuthnTwoFactor from '../components/TwoFactor/WebAuthnTwoFactor'
 import useTwoFactorAuth from '../hooks/TwoFactor/Main'
 import BackupCodesDisplay from '../components/TwoFactor/BackupCodesDisplay'
 // Context & hooks
-import type { PasswordStrength, Session, ChangePassword } from '../types/auth'
+import type { LoginHistory } from '../types/user'
+import type { PasswordStrength, ChangePassword } from '../types/auth'
 import { useAuth } from '../context/Auth'
 import useUserSettings from '../hooks/UserSettings'
 // UI components
@@ -58,7 +59,7 @@ const SettingsPage: React.FC = () => {
   const [isLoading, setIsLoading] = useState(false)
 
   // Active sessions state
-  const [activeSessions, setActiveSessions] = useState<Session[]>([])
+  const [activeSessions, setActiveSessions] = useState<LoginHistory[]>([])
 
   // 2FA state
   const { getTwoFactorStatus } = useTwoFactorAuth()
@@ -298,7 +299,7 @@ const SettingsPage: React.FC = () => {
           {activeSessions.map((session) => (
             <div
               key={session.sessionId}
-              className='flex items-center justify-between p-4 bg-gray-50 dark:bg-gray-700/50 rounded-lg'
+              className='flex items-center justify-between rounded-lg bg-gray-50 p-4 dark:bg-gray-700/50'
             >
               <div className='flex items-center space-x-3'>
                 <div className='flex-shrink-0'>
@@ -307,10 +308,10 @@ const SettingsPage: React.FC = () => {
                 <div>
                   <div className='flex items-center space-x-2'>
                     <span className='font-medium text-gray-900 dark:text-gray-100'>
-                      {session.device}
+                      {session.deviceType}
                     </span>
                     {session.isCurrent && (
-                      <span className='px-2 py-1 text-xs bg-green-100 text-green-800 rounded-full dark:bg-green-900/20 dark:text-green-400'>
+                      <span className='rounded-full bg-green-100 px-2 py-1 text-xs text-green-800 dark:bg-green-900/20 dark:text-green-400'>
                         Session actuelle
                       </span>
                     )}
@@ -327,7 +328,7 @@ const SettingsPage: React.FC = () => {
                     <span className='flex items-center space-x-1'>
                       <Calendar size={14} />
                       <span>
-                        {new Date(session.lastActive).toLocaleString()}
+                        {session.lastActive?.toLocaleString() || 'Inconnu'}
                       </span>
                     </span>
                   </div>
@@ -591,22 +592,22 @@ const SettingsPage: React.FC = () => {
     <div className='space-y-6'>
       {/* Header avec statistiques */}
       <div className='bg-primary-50 dark:bg-primary-900/20 rounded-lg p-6'>
-        <div className='flex items-center space-x-3 mb-4'>
+        <div className='mb-4 flex items-center space-x-3'>
           <Shield
             className='text-primary-600 dark:text-primary-400'
             size={24}
           />
-          <h3 className='text-lg font-semibold text-primary-900 dark:text-primary-100'>
+          <h3 className='text-primary-900 dark:text-primary-100 text-lg font-semibold'>
             Configuration de la double authentification
           </h3>
         </div>
-        <p className='text-primary-700 dark:text-primary-300 text-sm mb-4'>
+        <p className='text-primary-700 dark:text-primary-300 mb-4 text-sm'>
           La double authentification ajoute une couche de sécurité
           supplémentaire à votre compte.
         </p>
         <div className='grid grid-cols-3 gap-4 text-center'>
           <div>
-            <div className='text-2xl font-bold text-primary-600 dark:text-primary-400'>
+            <div className='text-primary-600 dark:text-primary-400 text-2xl font-bold'>
               {
                 Object.entries(twoFactorSettings).filter(
                   ([key, value]) =>
@@ -618,12 +619,12 @@ const SettingsPage: React.FC = () => {
               }
               /3
             </div>
-            <div className='text-sm text-primary-700 dark:text-primary-300'>
+            <div className='text-primary-700 dark:text-primary-300 text-sm'>
               méthodes activées
             </div>
           </div>
           <div>
-            <div className='text-2xl font-bold text-primary-600 dark:text-primary-400'>
+            <div className='text-primary-600 dark:text-primary-400 text-2xl font-bold'>
               {twoFactorSettings.preferredMethod === 'none'
                 ? 'Aucune'
                 : twoFactorSettings.preferredMethod === 'webauthn'
@@ -632,15 +633,15 @@ const SettingsPage: React.FC = () => {
                     ? 'Application'
                     : 'Email'}
             </div>
-            <div className='text-sm text-primary-700 dark:text-primary-300'>
+            <div className='text-primary-700 dark:text-primary-300 text-sm'>
               méthode préférée
             </div>
           </div>
           <div>
-            <div className='text-2xl font-bold text-primary-600 dark:text-primary-400'>
+            <div className='text-primary-600 dark:text-primary-400 text-2xl font-bold'>
               {twoFactorSettings.backupCodes.length}
             </div>
-            <div className='text-sm text-primary-700 dark:text-primary-300'>
+            <div className='text-primary-700 dark:text-primary-300 text-sm'>
               codes de secours
             </div>
           </div>
@@ -700,8 +701,8 @@ const SettingsPage: React.FC = () => {
         variant='danger'
       >
         <div className='space-y-4'>
-          <div className='bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 rounded-lg p-4'>
-            <div className='flex items-center space-x-2 mb-2'>
+          <div className='rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800/30 dark:bg-red-900/10'>
+            <div className='mb-2 flex items-center space-x-2'>
               <AlertTriangle
                 className='text-red-600 dark:text-red-400'
                 size={16}
@@ -718,7 +719,7 @@ const SettingsPage: React.FC = () => {
           <PrimaryButton
             variant='secondary'
             onClick={open}
-            className='bg-red-600 hover:bg-red-700 text-white'
+            className='bg-red-600 text-white hover:bg-red-700'
           >
             Supprimer mon compte
           </PrimaryButton>
@@ -730,7 +731,7 @@ const SettingsPage: React.FC = () => {
   return (
     <div className='mx-auto p-2 sm:p-4 md:p-6'>
       <div className='mb-8'>
-        <h1 className='text-3xl font-bold text-gray-900 dark:text-gray-100 mb-2'>
+        <h1 className='mb-2 text-3xl font-bold text-gray-900 dark:text-gray-100'>
           Paramètres
         </h1>
         <p className='text-gray-600 dark:text-gray-400'>
@@ -762,8 +763,8 @@ const SettingsPage: React.FC = () => {
         urlName='delete-account'
       >
         <div className='space-y-6'>
-          <div className='bg-red-50 dark:bg-red-900/10 border border-red-200 dark:border-red-800/30 rounded-lg p-4'>
-            <div className='flex items-center space-x-2 mb-2'>
+          <div className='rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800/30 dark:bg-red-900/10'>
+            <div className='mb-2 flex items-center space-x-2'>
               <AlertTriangle
                 className='text-red-600 dark:text-red-400'
                 size={20}
@@ -803,7 +804,7 @@ const SettingsPage: React.FC = () => {
                   deleteConfirmation.toLocaleLowerCase() !== user?.email) ||
                 !deletePassword
               }
-              className='bg-red-600 hover:bg-red-700 text-white'
+              className='bg-red-600 text-white hover:bg-red-700'
             >
               Supprimer définitivement
             </PrimaryButton>
