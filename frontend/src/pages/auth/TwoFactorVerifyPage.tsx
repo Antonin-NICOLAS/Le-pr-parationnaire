@@ -1,84 +1,91 @@
-'use client'
-
 import type React from 'react'
-import { useState } from 'react'
-import { Shield, Smartphone, Mail, Key } from 'lucide-react'
-import { toast } from 'sonner'
+import { useState, useEffect } from 'react'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
+import { Shield, Smartphone, Mail, Key, Fingerprint } from 'lucide-react'
 import AuthLayout from '../../layouts/AuthLayout'
 import SixDigitCodeInput from '../../components/ui/SixDigitCodeInput'
 import PrimaryButton from '../../components/ui/PrimaryButton'
 import CountdownTimer from '../../components/ui/CountdownTimer'
 import ErrorMessage from '../../components/ui/ErrorMessage'
+import useEmailTwoFactor from '../../hooks/TwoFactor/Email'
+import useWebAuthnTwoFactor from '../../hooks/TwoFactor/WebAuthn'
+import { useAuth } from '../../context/Auth'
+import useTwoFactorAuth from '../../hooks/TwoFactor/Main'
 
 const TwoFactorPage: React.FC = () => {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const {
+    email,
+    rememberMe = false,
+    email2FA = false,
+    app2FA = false,
+    webauthn2FA = false,
+  } = location.state || {}
   const [code, setCode] = useState<string[]>(Array(6).fill(''))
   const [isLoading, setIsLoading] = useState(false)
+  const { method } = useParams<{ method: string }>()
   const [currentMethod, setCurrentMethod] = useState<
-    'email' | 'app' | 'webauthn' | 'backup'
-  >('email')
+    'email' | 'app' | 'webauthn' | 'backup_code' | 'securityquestions'
+  >(method as any)
   const [canResend, setCanResend] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [backupCodes, setBackupCodes] = useState<string[]>(Array(8).fill(''))
+  const { resendCode } = useEmailTwoFactor()
+  const { authenticate } = useWebAuthnTwoFactor()
+  const { twoFactorLogin } = useTwoFactorAuth()
+  const { checkAuth } = useAuth()
 
-  // Mock user 2FA settings
-  const user2FA = {
-    email: true,
-    app: true,
-    webauthn: true,
-    preferredMethod: 'email' as const,
+  useEffect(() => {
+    // Auto-submit when code is complete
+    const codeValue = code.join('')
+    if (codeValue.length === 6 && !isLoading) {
+      handleVerification(codeValue)
+    }
+  }, [code])
+
+  const changeMethod = (newMethod: typeof currentMethod) => {
+    setCurrentMethod(newMethod)
+    navigate(`/2fa-verify/${newMethod}`, { replace: true })
   }
 
   const handleVerification = async (verificationCode: string) => {
     setIsLoading(true)
     setError(null)
-
-    try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-
-      // Mock validation
-      if (verificationCode === '123456' || verificationCode === 'ABCD1234') {
-        toast.success('2FA verification successful!')
-        // Navigate to dashboard
-      } else {
-        throw new Error('Invalid code')
-      }
-    } catch (error) {
-      setError('Invalid verification code. Please try again later.')
+    const result = await twoFactorLogin(
+      email,
+      rememberMe,
+      currentMethod,
+      verificationCode,
+    )
+    if (result) {
       setCode(Array(6).fill(''))
       setBackupCodes(Array(8).fill(''))
-    } finally {
-      setIsLoading(false)
+      navigate('/home')
+      await checkAuth()
     }
+    setError('Invalid verification code. Please try again later.')
+    setIsLoading(false)
   }
 
   const handleResendCode = async () => {
     if (currentMethod !== 'email') return
 
     setIsLoading(true)
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      toast.success('New code sent to your email!')
-      setCanResend(false)
-    } catch (error) {
-      toast.error('Failed to resend code.')
-    } finally {
-      setIsLoading(false)
-    }
+    await resendCode(email)
+    setCanResend(false)
+    setIsLoading(false)
   }
 
   const handleWebAuthn = async () => {
     setIsLoading(true)
-    try {
-      // Simulate WebAuthn authentication
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-      toast.success('WebAuthn authentication successful!')
-      // Navigate to dashboard
-    } catch (error) {
-      toast.error('WebAuthn authentication failed.')
-    } finally {
-      setIsLoading(false)
+    const result = await authenticate(email, rememberMe)
+
+    if (result?.success) {
+      navigate('/home')
+      await checkAuth()
     }
+    setIsLoading(false)
   }
 
   const handleBackupCodeSubmit = () => {
@@ -101,8 +108,8 @@ const TwoFactorPage: React.FC = () => {
         title: 'Authenticator App',
         subtitle: 'Enter the 6-digit code from your authenticator app',
         icon: Smartphone,
-        color: 'text-green-600 dark:text-green-400',
-        bgColor: 'bg-green-100 dark:bg-green-900/20',
+        color: 'text-yellow-600 dark:text-yellow-400',
+        bgColor: 'bg-yellow-100 dark:bg-yellow-900/20',
       },
       webauthn: {
         title: 'Security Key',
@@ -111,9 +118,16 @@ const TwoFactorPage: React.FC = () => {
         color: 'text-purple-600 dark:text-purple-400',
         bgColor: 'bg-purple-100 dark:bg-purple-900/20',
       },
-      backup: {
+      backup_code: {
         title: 'Backup Codes',
         subtitle: 'Enter one of your 8-character backup codes',
+        icon: Shield,
+        color: 'text-orange-600 dark:text-orange-400',
+        bgColor: 'bg-orange-100 dark:bg-orange-900/20',
+      },
+      securityquestions: {
+        title: 'Security Questions',
+        subtitle: 'Answer your security questions',
         icon: Shield,
         color: 'text-orange-600 dark:text-orange-400',
         bgColor: 'bg-orange-100 dark:bg-orange-900/20',
@@ -142,10 +156,10 @@ const TwoFactorPage: React.FC = () => {
         </div>
 
         {/* Method Selection */}
-        <div className='grid grid-cols-2 gap-2'>
-          {user2FA.email && (
+        <div className='grid grid-cols-3 gap-2'>
+          {email2FA && (
             <button
-              onClick={() => setCurrentMethod('email')}
+              onClick={() => changeMethod('email')}
               className={`rounded-lg border-2 p-3 transition-all ${
                 currentMethod === 'email'
                   ? 'border-blue-500 bg-blue-50 dark:bg-blue-900/20'
@@ -157,17 +171,31 @@ const TwoFactorPage: React.FC = () => {
             </button>
           )}
 
-          {user2FA.app && (
+          {app2FA && (
             <button
-              onClick={() => setCurrentMethod('app')}
+              onClick={() => changeMethod('app')}
               className={`rounded-lg border-2 p-3 transition-all ${
                 currentMethod === 'app'
-                  ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                  ? 'border-yellow-500 bg-yellow-50 dark:bg-yellow-900/20'
                   : 'border-gray-200 hover:border-gray-300 dark:border-gray-600'
               }`}
             >
-              <Smartphone className='mx-auto mb-1 h-5 w-5 text-green-600 dark:text-green-400' />
+              <Smartphone className='mx-auto mb-1 h-5 w-5 text-yellow-600 dark:text-yellow-400' />
               <div className='text-xs font-medium'>App</div>
+            </button>
+          )}
+
+          {webauthn2FA && (
+            <button
+              onClick={() => changeMethod('webauthn')}
+              className={`rounded-lg border-2 p-3 transition-all ${
+                currentMethod === 'webauthn'
+                  ? 'border-purple-500 bg-purple-50 dark:bg-purple-900/20'
+                  : 'border-gray-200 hover:border-gray-300 dark:border-gray-600'
+              }`}
+            >
+              <Fingerprint className='mx-auto mb-1 h-5 w-5 text-purple-600 dark:text-purple-400' />
+              <div className='text-xs font-medium'>WebAuthn</div>
             </button>
           )}
         </div>
@@ -199,7 +227,7 @@ const TwoFactorPage: React.FC = () => {
               Use Security Key
             </PrimaryButton>
           </div>
-        ) : currentMethod === 'backup' ? (
+        ) : currentMethod === 'backup_code' ? (
           <div className='space-y-4'>
             <div className='grid grid-cols-4 gap-2'>
               {backupCodes.map((code, index) => (
@@ -266,18 +294,18 @@ const TwoFactorPage: React.FC = () => {
           </div>
 
           <div className='flex flex-col gap-2'>
-            {user2FA.webauthn && currentMethod !== 'webauthn' && (
+            {webauthn2FA && currentMethod !== 'webauthn' && (
               <button
-                onClick={() => setCurrentMethod('webauthn')}
+                onClick={() => changeMethod('webauthn')}
                 className='text-primary-600 hover:text-primary-700 dark:text-primary-400 py-1 text-sm'
               >
                 Use Security Key / Biometric
               </button>
             )}
 
-            {currentMethod !== 'backup' && (
+            {currentMethod !== 'backup_code' && (
               <button
-                onClick={() => setCurrentMethod('backup')}
+                onClick={() => changeMethod('backup_code')}
                 className='text-primary-600 hover:text-primary-700 dark:text-primary-400 py-1 text-sm'
               >
                 Use Backup Codes

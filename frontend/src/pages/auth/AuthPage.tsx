@@ -82,7 +82,19 @@ const AuthPage: React.FC = () => {
     try {
       const result = await login(loginData)
       if (result?.success) {
-        navigate('/home')
+        if (result.requiresTwoFactor) {
+          navigate(`/2fa-verify/${result.preferredMethod}`, {
+            state: {
+              email: result.email,
+              rememberMe: loginData.rememberMe,
+              email2FA: result.email2FA,
+              app2FA: result.app2FA,
+              webauthn2FA: result.webauthn2FA,
+            },
+          })
+        } else {
+          navigate('/home')
+        }
       }
     } catch (error) {
       toast.error('Login failed. Please try again later.')

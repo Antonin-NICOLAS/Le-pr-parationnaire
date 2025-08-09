@@ -84,10 +84,10 @@ const Sidebar: React.FC<SidebarProps> = ({
   return (
     <>
       <header
-        className={`z-9000 fixed left-0 right-0 top-0 m-3 [transition:padding_0.4s,_background-color_0.4s,_width_0.4s] ${sidebarOpen && !isMobileView && 'pl-[calc(290px+0.75rem)]'} ${!sidebarOpen && !isMobileView && 'pl-[calc(90px+0.75rem)]'} ${sidebarOpen && isMobileView && 'pl-[calc(290px+0.75rem)]'} ${!sidebarOpen && isMobileView && 'pl-[0]'}`}
+        className={`z-9000 fixed left-0 right-0 top-0 m-3 pl-[0] [transition:padding_0.4s,_background-color_0.4s,_width_0.4s] ${sidebarOpen && 'pl-[0]  640:pl-[calc(290px+0.75rem)]'} ${!sidebarOpen && '1150:pl-[calc(90px+0.75rem)] pl-[0]'}`}
         id='header'
       >
-        <div className='bg-deg-gray-100 flex h-[3.5rem] w-full items-center justify-between rounded-2xl px-6 shadow-xl transition-[background-color] duration-[0.4s]'>
+        <div className='bg-deg-gray-100 flex h-[3.5rem] w-full items-center justify-between rounded-2xl px-6 shadow-xl'>
           <NavLink
             to={user ? '/dashboard' : '/home'}
             onClick={handleNavClick}
@@ -173,7 +173,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               </div>
             )}
           </div>
-          <div className={isMobileView ? 'block' : 'hidden'}>
+          <div className='block 640:hidden'>
             <button
               className='text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[1.9rem] transition-[color] duration-[0.1s]'
               onClick={toggleSidebar}

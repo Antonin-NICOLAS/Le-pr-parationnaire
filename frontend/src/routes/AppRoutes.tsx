@@ -6,7 +6,6 @@ import SettingsPage from '../pages/Settings'
 // authentification routes
 import AuthPage from '../pages/auth/AuthPage'
 import VerifyEmailPage from '../pages/auth/VerifyEmailPage'
-import LoginStepsPage from '../pages/auth/LoginStepsPage'
 import TwoFactorVerifyPage from '../pages/auth/TwoFactorVerifyPage'
 import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage'
 import ResetPasswordPage from '../pages/auth/ResetPasswordPage'
@@ -27,8 +26,11 @@ export default function AppRoutes() {
       <Route path='/auth' element={<Navigate to='/auth/login' replace />} />
       <Route path='/auth/:tab?' element={<AuthPage />} />
       <Route path='/verify-email' element={<VerifyEmailPage />} />
-      <Route path='/login-steps' element={<LoginStepsPage />} />
-      <Route path='/2fa-verify' element={<TwoFactorVerifyPage />} />
+      <Route
+        path='/2fa-verify'
+        element={<Navigate to='/2fa-verify/backup_code' replace />}
+      />
+      <Route path='/2fa-verify/:method?' element={<TwoFactorVerifyPage />} />
       <Route path='/forgot-password' element={<ForgotPasswordPage />} />
       <Route path='/reset-password' element={<ResetPasswordPage />} />
     </Routes>

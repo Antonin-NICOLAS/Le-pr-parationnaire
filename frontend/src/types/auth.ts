@@ -12,6 +12,7 @@ export interface User {
     lastActive: Date
   }>
   twoFactor?: {
+    isEnabled: boolean
     email?: {
       isEnabled: boolean
     }

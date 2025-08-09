@@ -186,6 +186,7 @@ export const verifyRegistration = asyncHandler(
       clearChallenge(user)
 
       user.twoFactor.webauthn.isEnabled = true
+      user.twoFactor.isEnabled = true
 
       rotateBackupCodes(user)
 
@@ -435,6 +436,8 @@ export const removeWebAuthnCredential = asyncHandler(
     // 5. Si aucune clé WebAuthn n'est restante, on désactive WebAuthn
     if (user.twoFactor.webauthn.credentials.length === 0) {
       user.twoFactor.webauthn.isEnabled = false
+      user.twoFactor.isEnabled =
+        user.twoFactor.app.isEnabled || user.twoFactor.email.isEnabled
 
       // 6. Si WebAuthn est la méthode préférée, on la remplace par la méthode suivante disponible
       if (user.twoFactor.preferredMethod === 'webauthn') {
@@ -559,6 +562,8 @@ export const disableWebAuthn = asyncHandler(
 
     // 4. Désactiver WebAuthn
     user.twoFactor.webauthn.isEnabled = false
+    user.twoFactor.isEnabled =
+      user.twoFactor.app.isEnabled || user.twoFactor.email.isEnabled
 
     if (user.twoFactor.preferredMethod === 'webauthn') {
       user.twoFactor.preferredMethod = user.twoFactor.app.isEnabled

@@ -22,11 +22,11 @@ const useEmailTwoFactor = () => {
     }
   }
 
-  const resendCode = async () => {
+  const resendCode = async (email: string) => {
     try {
       const { data } = await axios.post(
         `${VITE_2FA_EMAIL}/resend`,
-        {},
+        { email },
         { withCredentials: true },
       )
       if (data.success) {

@@ -120,15 +120,12 @@ export const checkAuthStatus = asyncHandler(
 
     // Check if user is authenticated
     const user = await User.findOne({ email })
-    if (!user) {
-      return ApiResponse.error(res, '', 404, {
-        success: false,
-        webauthn: false,
-      })
-    }
+
+    const isLoginWithWebAuthn =
+      (user?.loginWithWebAuthn && user?.twoFactor.webauthn.isEnabled) || false
 
     return ApiResponse.success(res, {
-      webauthn: user.twoFactor.webauthn.isEnabled,
+      webauthn: isLoginWithWebAuthn,
     })
   },
 )
@@ -169,6 +166,24 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     })
   }
 
+  //5 bis. Check if user has 2FA enabled
+  if (user.twoFactor.isEnabled) {
+    return ApiResponse.success(
+      res,
+      {
+        requiresTwoFactor: true,
+        email: user.email,
+        twoFactor: {
+          email: user.twoFactor.email.isEnabled,
+          app: user.twoFactor.app.isEnabled,
+          webauthn: user.twoFactor.webauthn.isEnabled,
+          preferredMethod: user.twoFactor.preferredMethod,
+        },
+      },
+      t('auth:errors.two_factor_required'),
+    )
+  }
+
   // 6. Update last login and login history
   const session = await SessionService.createOrUpdateSession(
     user,
@@ -199,7 +214,7 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
 export const logout = asyncHandler(async (req: Request, res: Response) => {
   const { t } = req
   const sessionId = req.cookies?.sessionId
-  const user = req.user
+  const user = await User.findById(req.user._id)
 
   // Clear cookies
   res.clearCookie('jwtauth', {
@@ -221,7 +236,7 @@ export const logout = asyncHandler(async (req: Request, res: Response) => {
   if (user && sessionId) {
     SessionService.revokeSession(user, sessionId)
   }
-  await user.save()
+  await user?.save()
 
   return ApiResponse.success(res, {}, t('auth:success.logged_out'), 200)
 })
