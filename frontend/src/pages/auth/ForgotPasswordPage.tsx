@@ -1,11 +1,12 @@
+import { ArrowLeft, Mail } from 'lucide-react'
 import React, { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
-import { Mail, ArrowLeft } from 'lucide-react'
+import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import AuthLayout from '../../layouts/AuthLayout'
+
+import CountdownTimer from '../../components/ui/CountdownTimer'
 import CustomInput from '../../components/ui/CustomInput'
 import PrimaryButton from '../../components/ui/PrimaryButton'
-import CountdownTimer from '../../components/ui/CountdownTimer'
+import AuthLayout from '../../layouts/AuthLayout'
 import { validateEmail } from '../../utils/validation'
 
 const ForgotPasswordPage: React.FC = () => {

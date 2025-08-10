@@ -1,0 +1,3995 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "Le Préparationnaire API",
+    "version": "1.0.0",
+    "description": "Documentation complète de l'API du Préparationnaire",
+    "contact": {
+      "name": "Support",
+      "email": "contact@lepreparationnaire.com"
+    }
+  },
+  "servers": [
+    {
+      "url": "http://localhost:8000",
+      "description": "development server"
+    }
+  ],
+  "components": {
+    "securitySchemes": {
+      "cookieAuth": {
+        "type": "apiKey",
+        "in": "cookie",
+        "name": "sessionId"
+      },
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    },
+    "responses": {
+      "RateLimitExceeded": {
+        "description": "Trop de requêtes - Limite atteinte",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "success": false,
+              "error": "Trop de requêtes. Veuillez réessayer dans 15 minutes."
+            }
+          }
+        }
+      },
+      "ServerError": {
+        "description": "Erreur interne du serveur",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "success": false,
+              "error": "Erreur interne du serveur. Veuillez réessayer plus tard."
+            }
+          }
+        }
+      },
+      "UserNotFound": {
+        "description": "Utilisateur introuvable",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "example": {
+              "success": false,
+              "error": "Utilisateur introuvable."
+            }
+          }
+        }
+      },
+      "Unauthorized": {
+        "description": "Non autorisé - Cookie invalide, expiré, session introuvable ou utilisateur introuvable",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "#/components/schemas/ErrorResponse"
+            },
+            "examples": {
+              "unauthorized": {
+                "value": {
+                  "success": false,
+                  "error": "Vous n'êtes pas autorisé à effectuer cette action."
+                }
+              },
+              "session_expired": {
+                "value": {
+                  "success": false,
+                  "error": "La session est expirée. Veuillez vous reconnecter."
+                }
+              },
+              "user_not_found": {
+                "value": {
+                  "success": false,
+                  "error": "Utilisateur introuvable."
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "schemas": {
+      "User": {
+        "type": "object",
+        "properties": {
+          "_id": {
+            "type": "string",
+            "description": "L'identifiant unique de l'utilisateur",
+            "example": "507f1f77bcf86cd799439011"
+          },
+          "lastName": {
+            "type": "string",
+            "description": "Le nom de famille de l'utilisateur",
+            "example": "Dupont"
+          },
+          "firstName": {
+            "type": "string",
+            "description": "Le prénom de l'utilisateur",
+            "example": "Jean"
+          },
+          "avatarUrl": {
+            "type": "string",
+            "description": "URL de l'avatar de l'utilisateur",
+            "example": "https://example.com/avatar.jpg",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "format": "email",
+            "description": "L'adresse email de l'utilisateur",
+            "example": "jean.dupont@example.com"
+          },
+          "password": {
+            "type": "string",
+            "description": "Le mot de passe hashé de l'utilisateur",
+            "minLength": 8,
+            "writeOnly": true
+          },
+          "loginWithWebAuthn": {
+            "type": "boolean",
+            "description": "Indique si l'utilisateur utilise WebAuthn pour se connecter",
+            "default": false
+          },
+          "tokenVersion": {
+            "type": "number",
+            "description": "Version du token pour invalider les tokens existants",
+            "default": 0
+          },
+          "lastLogin": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Date de la dernière connexion",
+            "nullable": true
+          },
+          "lastEmailChange": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Date du dernier changement d'email",
+            "nullable": true
+          },
+          "loginHistory": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LoginHistory"
+            },
+            "description": "Historique des connexions de l'utilisateur"
+          },
+          "emailVerification": {
+            "$ref": "#/components/schemas/EmailVerification"
+          },
+          "resetPassword": {
+            "$ref": "#/components/schemas/ResetPassword"
+          },
+          "twoFactor": {
+            "$ref": "#/components/schemas/TwoFactorAuth"
+          },
+          "role": {
+            "type": "string",
+            "enum": [
+              "user",
+              "admin"
+            ],
+            "description": "Le rôle de l'utilisateur",
+            "default": "user"
+          },
+          "language": {
+            "type": "string",
+            "enum": [
+              "en",
+              "fr",
+              "es",
+              "de"
+            ],
+            "description": "La langue préférée de l'utilisateur",
+            "default": "en"
+          },
+          "theme": {
+            "type": "string",
+            "enum": [
+              "dark",
+              "light",
+              "auto"
+            ],
+            "description": "Le thème préféré de l'utilisateur",
+            "default": "light"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Date de création du compte"
+          }
+        }
+      },
+      "LoginHistory": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "description": "ID unique de la session",
+            "example": "507f1f77bcf86cd799439012"
+          },
+          "ip": {
+            "type": "string",
+            "description": "Adresse IP utilisée pour la connexion",
+            "example": "127.0.0.1",
+            "nullable": true
+          },
+          "userAgent": {
+            "type": "string",
+            "description": "User agent du navigateur",
+            "nullable": true
+          },
+          "location": {
+            "type": "string",
+            "description": "Localisation géographique approximative",
+            "example": "Paris, France",
+            "nullable": true
+          },
+          "deviceType": {
+            "type": "string",
+            "description": "Type de dispositif utilisé",
+            "example": "Desktop",
+            "nullable": true
+          },
+          "browser": {
+            "type": "string",
+            "description": "Navigateur utilisé",
+            "example": "Chrome",
+            "nullable": true
+          },
+          "os": {
+            "type": "string",
+            "description": "Système d'exploitation utilisé",
+            "example": "Windows",
+            "nullable": true
+          },
+          "lastActive": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Dernière activité enregistrée"
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Date d'expiration de la session",
+            "nullable": true
+          }
+        }
+      },
+      "EmailVerification": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Token de vérification",
+            "nullable": true
+          },
+          "expiration": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Date d'expiration du token",
+            "nullable": true
+          },
+          "isVerified": {
+            "type": "boolean",
+            "description": "Indique si l'email est vérifié",
+            "default": false
+          }
+        }
+      },
+      "ResetPassword": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "description": "Token pour la réinitialisation du mot de passe",
+            "nullable": true
+          },
+          "expiration": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Date d'expiration du token",
+            "nullable": true
+          }
+        }
+      },
+      "TwoFactorAuth": {
+        "type": "object",
+        "properties": {
+          "isEnabled": {
+            "type": "boolean",
+            "description": "Activation globale de la 2FA",
+            "default": false
+          },
+          "email": {
+            "type": "object",
+            "properties": {
+              "isEnabled": {
+                "type": "boolean",
+                "default": false
+              },
+              "token": {
+                "type": "string",
+                "nullable": true
+              },
+              "expiration": {
+                "type": "string",
+                "format": "date-time",
+                "nullable": true
+              }
+            }
+          },
+          "app": {
+            "type": "object",
+            "properties": {
+              "isEnabled": {
+                "type": "boolean",
+                "default": false
+              },
+              "secret": {
+                "type": "string",
+                "nullable": true
+              }
+            }
+          },
+          "webauthn": {
+            "type": "object",
+            "properties": {
+              "isEnabled": {
+                "type": "boolean",
+                "default": false
+              },
+              "challenge": {
+                "type": "string",
+                "nullable": true
+              },
+              "expiration": {
+                "type": "string",
+                "format": "date-time",
+                "nullable": true
+              },
+              "credentials": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/WebAuthnCredential"
+                }
+              }
+            }
+          },
+          "preferredMethod": {
+            "type": "string",
+            "enum": [
+              "email",
+              "app",
+              "webauthn",
+              "none"
+            ],
+            "default": "none"
+          },
+          "backupCodes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/BackupCode"
+            }
+          },
+          "securityQuestions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SecurityQuestion"
+            }
+          }
+        }
+      },
+      "WebAuthnCredential": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "Identifiant unique de la clé d'accès"
+          },
+          "publicKey": {
+            "type": "string",
+            "description": "Clé publique au format base64"
+          },
+          "counter": {
+            "type": "number",
+            "description": "Compteur de sécurité"
+          },
+          "deviceType": {
+            "type": "string",
+            "enum": [
+              "security-key",
+              "platform"
+            ],
+            "description": "Type d'authentificateur"
+          },
+          "deviceName": {
+            "type": "string",
+            "description": "Nom personnalisé de la clé"
+          },
+          "transports": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Méthodes de transport supportées"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Date de création"
+          },
+          "lastUsed": {
+            "type": "string",
+            "format": "date-time",
+            "nullable": true,
+            "description": "Dernière utilisation"
+          }
+        }
+      },
+      "BackupCode": {
+        "type": "object",
+        "properties": {
+          "code": {
+            "type": "string"
+          },
+          "used": {
+            "type": "boolean",
+            "default": false
+          }
+        }
+      },
+      "SecurityQuestion": {
+        "type": "object",
+        "properties": {
+          "question": {
+            "type": "string",
+            "enum": [
+              "Quelle est votre couleur préférée ?",
+              "Quel est le nom de votre premier animal ?",
+              "Quel est le nom de votre école primaire ?",
+              "Quelle est votre ville natale ?",
+              "Quel est votre plat préféré ?",
+              "Quel est votre film préféré ?"
+            ]
+          },
+          "answer": {
+            "type": "string",
+            "writeOnly": true
+          },
+          "undefined": {
+            "type": "boolean",
+            "default": true
+          }
+        }
+      },
+      "SuccessResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "description": "Indique si la requête a réussi"
+          },
+          "message": {
+            "type": "string",
+            "description": "Message optionnel",
+            "nullable": true
+          }
+        }
+      },
+      "ErrorResponse": {
+        "type": "object",
+        "properties": {
+          "success": {
+            "type": "boolean",
+            "default": false
+          },
+          "error": {
+            "type": "string",
+            "description": "Message d'erreur"
+          },
+          "details": {
+            "type": "object",
+            "description": "Détails supplémentaires sur l'erreur",
+            "additionalProperties": true,
+            "nullable": true
+          }
+        }
+      }
+    }
+  },
+  "paths": {
+    "/auth/profile": {
+      "get": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Vérifier la session active",
+        "description": "Cette route permet de vérifier si l'utilisateur est connecté\net retourne ses informations de profil essentielles.\nNécessite un cookie de session valide.\n",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session valide - Informations utilisateur retournées",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "user": {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string",
+                              "description": "ID de l'utilisateur"
+                            },
+                            "email": {
+                              "type": "string",
+                              "format": "email"
+                            },
+                            "lastName": {
+                              "type": "string"
+                            },
+                            "firstName": {
+                              "type": "string"
+                            },
+                            "language": {
+                              "type": "string",
+                              "enum": [
+                                "en",
+                                "fr",
+                                "es",
+                                "de"
+                              ]
+                            },
+                            "theme": {
+                              "type": "string",
+                              "enum": [
+                                "dark",
+                                "light",
+                                "auto"
+                              ]
+                            },
+                            "role": {
+                              "type": "string",
+                              "enum": [
+                                "user",
+                                "admin"
+                              ]
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "403": {
+            "description": "Email non vérifié",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "error": "Votre adresse email n'est pas vérifiée.",
+                  "requiresVerification": true,
+                  "email": "jean.dupont@example.com",
+                  "rememberMe": false
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/logout": {
+      "post": {
+        "tags": [
+          "Authentication"
+        ],
+        "summary": "Déconnexion de l'utilisateur",
+        "description": "Cette route déconnecte l'utilisateur en invalidant sa session\net en supprimant les cookies de session.\nNécessite un cookie de session valide.\n",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Déconnexion réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Déconnexion réussie."
+                }
+              }
+            },
+            "headers": {
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Supprime les cookies 'jwtauth' et 'sessionId'.\nExemple: \"jwtauth=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT\"\n"
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "tags": [
+          "Registration"
+        ],
+        "summary": "Créer un nouveau compte utilisateur",
+        "description": "Cette route permet de créer un nouveau compte utilisateur.\nUn email de vérification est envoyé après l'inscription.\nLa route est protégée par un rate limiting (5 requêtes par IP toutes les 2 minutes).\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "password",
+                  "lastName",
+                  "firstName"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "jean.dupont@example.com",
+                    "description": "L'adresse email de l'utilisateur"
+                  },
+                  "password": {
+                    "type": "string",
+                    "format": "password",
+                    "example": "MonMotDePasse123!",
+                    "description": "Le mot de passe doit contenir au moins :\n- 8 caractères\n- 1 majuscule\n- 1 minuscule\n- 1 chiffre\n- 1 caractère spécial\n"
+                  },
+                  "lastName": {
+                    "type": "string",
+                    "example": "Dupont",
+                    "description": "Le nom de famille (3-30 caractères)"
+                  },
+                  "firstName": {
+                    "type": "string",
+                    "example": "Jean",
+                    "description": "Le prénom (3-30 caractères)"
+                  },
+                  "rememberMe": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Si true, la session sera prolongée (30 jours au lieu de 1 jour).\nAffecte la durée du cookie de session.\n"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Compte créé avec succès - Email de vérification envoyé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "requiresVerification": {
+                          "type": "boolean",
+                          "example": true,
+                          "description": "Indique qu'une vérification email est nécessaire"
+                        },
+                        "email": {
+                          "type": "string",
+                          "format": "email",
+                          "example": "jean.dupont@example.com",
+                          "description": "L'email de l'utilisateur inscrit"
+                        },
+                        "rememberMe": {
+                          "type": "boolean",
+                          "example": false,
+                          "description": "État de la session prolongée"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Erreur de validation des champs",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "missing_fields": {
+                    "value": {
+                      "success": false,
+                      "error": "Tous les champs sont obligatoires"
+                    }
+                  },
+                  "invalid_email": {
+                    "value": {
+                      "success": false,
+                      "error": "L'email n'est pas valide"
+                    }
+                  },
+                  "invalid_password": {
+                    "value": {
+                      "success": false,
+                      "error": "Le mot de passe ne respecte pas les exigences de sécurité"
+                    }
+                  },
+                  "invalid_name": {
+                    "value": {
+                      "success": false,
+                      "error": "Le nom doit contenir entre 3 et 30 caractères"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "L'email est déjà utilisé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "error": "Cet email est déjà utilisé"
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/verify-email": {
+      "post": {
+        "tags": [
+          "Registration"
+        ],
+        "summary": "Vérifier l'email d'un utilisateur",
+        "description": "Cette route permet de vérifier l'email d'un utilisateur avec le code reçu.\nSi la vérification réussit, l'utilisateur est connecté automatiquement.\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "token",
+                  "email"
+                ],
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "example": "ABC123",
+                    "description": "Le code de vérification reçu par email"
+                  },
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "jean.dupont@example.com",
+                    "description": "L'email à vérifier"
+                  },
+                  "rememberMe": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Si true, la session sera prolongée (30 jours au lieu de 1 jour)\n"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Email vérifié avec succès - Utilisateur connecté",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Votre adresse est maintenant verifiée."
+                }
+              }
+            },
+            "headers": {
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string",
+                  "Exemple": "jwtauth=biunusjcrekzlaxknjqvslfcmiqjomke; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Erreur de validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "missing_fields": {
+                    "value": {
+                      "success": false,
+                      "error": "Tous les champs sont requis."
+                    }
+                  },
+                  "invalid_code": {
+                    "value": {
+                      "success": false,
+                      "error": "Le code est incorrect."
+                    }
+                  },
+                  "code_expired": {
+                    "value": {
+                      "success": false,
+                      "error": "Le code est expiré."
+                    }
+                  },
+                  "already_verified": {
+                    "value": {
+                      "success": false,
+                      "error": "Votre adresse email est déjà vérifiée."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/UserNotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/resend-verification-email": {
+      "post": {
+        "tags": [
+          "Registration"
+        ],
+        "summary": "Renvoyer l'email de vérification",
+        "description": "Cette route permet de renvoyer l'email de vérification à un utilisateur.\nUn nouveau code est généré si l'ancien a expiré.\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "jean.dupont@example.com",
+                    "description": "L'email à vérifier"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Email de vérification renvoyé avec succès",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Un nouveeau courriel de vérification a été envoyé à votre adresse mail."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Erreur de validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "invalid_email": {
+                    "value": {
+                      "success": false,
+                      "error": "Le format de l'adresse mail n'est pas valide."
+                    }
+                  },
+                  "already_verified": {
+                    "value": {
+                      "success": false,
+                      "error": "Votre adresse email est déjà vérifiée."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/UserNotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/status": {
+      "get": {
+        "tags": [
+          "Login Flow"
+        ],
+        "summary": "Vérifier le statut d'authentification",
+        "description": "Cette route permet de vérifier si un utilisateur peut se connecter via WebAuthn.\nElle est utilisée avant le login pour déterminer la méthode de connexion.\n",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "email",
+            "schema": {
+              "type": "string",
+              "format": "email"
+            },
+            "required": true,
+            "description": "L'email de l'utilisateur à vérifier",
+            "example": "jean.dupont@example.com"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Statut d'authentification récupéré",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "webauthn": {
+                          "type": "boolean",
+                          "description": "Si true, l'utilisateur peut se connecter avec WebAuthn.\nSi false, il doit utiliser un mot de passe.\n",
+                          "example": true
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/login": {
+      "post": {
+        "tags": [
+          "Login Flow"
+        ],
+        "summary": "Connexion d'un utilisateur",
+        "description": "Cette route permet à un utilisateur de se connecter.\nSi l'email n'est pas vérifié, un nouveau code est envoyé.\nSi la 2FA est activée, la réponse indiquera les méthodes disponibles.\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "password"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "jean.dupont@example.com"
+                  },
+                  "password": {
+                    "type": "string",
+                    "format": "password",
+                    "example": "MonMotDePasse123!"
+                  },
+                  "rememberMe": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Si true, la session sera prolongée (30 jours au lieu de 1 jour)\n"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Connexion réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Connexion réussie."
+                }
+              }
+            },
+            "headers": {
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string",
+                  "description": "Ajoute le cookie de session 'jwtauth' pour initialiser la session.\n",
+                  "example": "jwtauth=abcde12345; Path=/; HttpOnly"
+                }
+              }
+            }
+          },
+          "202": {
+            "description": "2FA requis - Réponse avec les méthodes disponibles",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "requiresTwoFactor": {
+                          "type": "boolean",
+                          "example": true
+                        },
+                        "twoFactor": {
+                          "type": "object",
+                          "properties": {
+                            "email": {
+                              "type": "boolean",
+                              "description": "2FA par email activée"
+                            },
+                            "app": {
+                              "type": "boolean",
+                              "description": "2FA par app activée"
+                            },
+                            "webauthn": {
+                              "type": "boolean",
+                              "description": "2FA par webauthn activée"
+                            },
+                            "preferredMethod": {
+                              "type": "string",
+                              "enum": [
+                                "email",
+                                "app",
+                                "webauthn",
+                                "none"
+                              ],
+                              "description": "Méthode de 2FA préférée"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Erreur de validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "missing_credentials": {
+                    "value": {
+                      "success": false,
+                      "error": "Email et mot de passe requis."
+                    }
+                  },
+                  "invalid_email": {
+                    "value": {
+                      "success": false,
+                      "error": "Le format de l'adresse email n'est pas valide."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Email non vérifié",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "error": "Votre adresse email n'est pas vérifiée.",
+                  "requiresVerification": true,
+                  "email": "jean.dupont@example.com",
+                  "rememberMe": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Identifiants invalides",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "error": "Email ou mot de passe incorrect."
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/forgot-password": {
+      "post": {
+        "tags": [
+          "Forgot Password Flow"
+        ],
+        "summary": "Demande de réinitialisation de mot de passe",
+        "description": "Cette route initie le processus de réinitialisation de mot de passe.\nUn email est envoyé avec un lien de réinitialisation valable 1 heure.\nPour des raisons de sécurité, la réponse est toujours positive même si l'email n'existe pas.\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "jean.dupont@example.com",
+                    "description": "L'email associé au compte"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Email envoyé si l'email existe et est vérifié.\nRéponse identique même si l'email n'existe pas (pour des raisons de sécurité).\n",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Si elle est enregistrée, un courriel de réinitialisation a été envoyé à l'adresse mail fournie."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Erreur de validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "invalid_email": {
+                    "value": {
+                      "success": false,
+                      "error": "L'email n'est pas valide"
+                    }
+                  },
+                  "email_not_verified": {
+                    "value": {
+                      "success": false,
+                      "error": "L'email n'est pas vérifié",
+                      "requiresVerification": true,
+                      "email": "jean.dupont@example.com",
+                      "rememberMe": false
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Email non vérifié",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "error": "Votre adresse email n'est pas vérifiée.",
+                  "requiresVerification": true,
+                  "email": "jean.dupont@example.com",
+                  "rememberMe": false
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/resend-forgot-password": {
+      "post": {
+        "tags": [
+          "Forgot Password Flow"
+        ],
+        "summary": "Renvoyer le lien de réinitialisation",
+        "description": "Cette route permet de renvoyer le lien de réinitialisation de mot de passe.\nSi le token existant est encore valide, il est réutilisé, sinon un nouveau est généré.\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "jean.dupont@example.com",
+                    "description": "L'email associé au compte"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Email de réinitialisation renvoyé",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Si elle est enregistrée, un courriel de réinitialisation a été envoyé à l'adresse mail fournie."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Erreur de validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "error": "Le format de l'adresse mail n'est pas valide"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Email non vérifié",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "error": "Votre adresse email n'est pas vérifiée.",
+                  "requiresVerification": true,
+                  "email": "jean.dupont@example.com",
+                  "rememberMe": false
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/UserNotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/reset-password": {
+      "post": {
+        "tags": [
+          "Forgot Password Flow"
+        ],
+        "summary": "Réinitialiser le mot de passe",
+        "description": "Cette route permet de définir un nouveau mot de passe après vérification du token.\nLe token doit avoir été obtenu via le lien envoyé par email.\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "token",
+                  "newPassword"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "example": "jean.dupont@example.com"
+                  },
+                  "token": {
+                    "type": "string",
+                    "description": "Token reçu par email",
+                    "example": "abc123def456"
+                  },
+                  "newPassword": {
+                    "type": "string",
+                    "format": "password",
+                    "description": "Le nouveau mot de passe doit contenir :\n- 8 caractères minimum\n- 1 majuscule\n- 1 minuscule\n- 1 chiffre\n- 1 caractère spécial\n",
+                    "example": "NouveauMotDePasse123!"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Mot de passe réinitialisé avec succès",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Votre mot de passe a été réinitialisé."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Erreur de validation",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "missing_fields": {
+                    "value": {
+                      "success": false,
+                      "error": "Tous les champs sont requis."
+                    }
+                  },
+                  "invalid_email": {
+                    "value": {
+                      "success": false,
+                      "error": "Le format de l'adresse email n'est pas valide."
+                    }
+                  },
+                  "invalid_password": {
+                    "value": {
+                      "success": false,
+                      "error": "Le mot de passe ne respecte pas les exigences de sécurité."
+                    }
+                  },
+                  "invalid_token": {
+                    "value": {
+                      "success": false,
+                      "error": "Lien invalide ou expiré."
+                    }
+                  },
+                  "token_expired": {
+                    "value": {
+                      "success": false,
+                      "error": "Le lien a expiré."
+                    }
+                  },
+                  "similar_password": {
+                    "value": {
+                      "success": false,
+                      "error": "Vous ne pouvez pas utiliser votre mot de passe actuel comme nouveau mot de passe."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/active-sessions": {
+      "get": {
+        "tags": [
+          "Session Management"
+        ],
+        "summary": "Récupérer les sessions actives",
+        "description": "Cette route retourne la liste de toutes les sessions actives de l'utilisateur,\nà l'exception de la session courante.\nNécessite une authentification valide.\n",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Liste des sessions actives récupérée avec succès",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "sessions": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "sessionId": {
+                                "type": "string",
+                                "description": "ID unique de la session"
+                              },
+                              "ip": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "Adresse IP utilisée"
+                              },
+                              "userAgent": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "User Agent du navigateur"
+                              },
+                              "location": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "Localisation géographique"
+                              },
+                              "deviceType": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "Type de dispositif"
+                              },
+                              "browser": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "Navigateur utilisé"
+                              },
+                              "os": {
+                                "type": "string",
+                                "nullable": true,
+                                "description": "Système d'exploitation"
+                              },
+                              "lastActive": {
+                                "type": "string",
+                                "format": "date-time",
+                                "description": "Dernière activité enregistrée"
+                              },
+                              "expiresAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "nullable": true,
+                                "description": "Date d'expiration de la session"
+                              },
+                              "isCurrent": {
+                                "type": "boolean",
+                                "description": "Indique si c'est la session courante"
+                              }
+                            },
+                            "example": {
+                              "sessionId": "a1b2c3d4-e5f6-7890",
+                              "ip": "192.168.1.1",
+                              "userAgent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64)",
+                              "location": "Paris, France",
+                              "deviceType": "desktop",
+                              "browser": "Chrome",
+                              "os": "Windows 10",
+                              "lastActive": "2023-06-15T14:30:00Z",
+                              "expiresAt": "2023-07-15T14:30:00Z",
+                              "isCurrent": false
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/UserNotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/revoke-session/{sessionId}": {
+      "delete": {
+        "tags": [
+          "Session Management"
+        ],
+        "summary": "Révoquer une session spécifique",
+        "description": "Cette route permet de révoquer une session active spécifique.\nLa session courante ne peut pas être révoquée via cette route.\nNécessite une authentification valide.\n",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "sessionId",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "ID de la session à révoquer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Session révoquée avec succès",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "La session est révoquée."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requête invalide",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "missing_session_id": {
+                    "value": {
+                      "success": false,
+                      "error": "Tous les champs sont requis."
+                    }
+                  },
+                  "revoke_current_session": {
+                    "value": {
+                      "success": false,
+                      "error": "Impossible de révoquer la session courante."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Ressource introuvable",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "user_not_found": {
+                    "value": {
+                      "success": false,
+                      "error": "Utilisateur introuvable."
+                    }
+                  },
+                  "session_not_found": {
+                    "value": {
+                      "success": false,
+                      "error": "Session introuvable."
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/revoke-all-sessions": {
+      "delete": {
+        "tags": [
+          "Session Management"
+        ],
+        "summary": "Révoquer toutes les sessions",
+        "description": "Cette route révoque toutes les sessions actives de l'utilisateur,\ny compris la session courante (ce qui déconnectera l'utilisateur).\nNécessite une authentification valide.\n",
+        "security": [
+          {
+            "bearerAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Toutes les sessions révoquées avec succès",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Toutes les sessions ont été révoquées"
+                }
+              }
+            },
+            "headers": {
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Supprime les cookies de session.\nExemple: \"jwtauth=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT\"\n"
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/UserNotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/2fa/status": {
+      "get": {
+        "tags": [
+          "Two-Factor Authentication"
+        ],
+        "summary": "Obtenir le statut de la 2FA",
+        "description": "Cette route retourne le statut actuel de la double authentification pour l'utilisateur,\nincluant les méthodes activées et les codes de secours.\nNécessite une authentification valide.\n",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Statut 2FA récupéré avec succès",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "isEnabled": {
+                          "type": "boolean",
+                          "description": "Indique si la 2FA est activée globalement"
+                        },
+                        "email": {
+                          "type": "object",
+                          "properties": {
+                            "isEnabled": {
+                              "type": "boolean",
+                              "description": "Indique si la 2FA par email est activée"
+                            }
+                          }
+                        },
+                        "app": {
+                          "type": "object",
+                          "properties": {
+                            "isEnabled": {
+                              "type": "boolean",
+                              "description": "Indique si la 2FA par application est activée"
+                            }
+                          }
+                        },
+                        "webauthn": {
+                          "type": "object",
+                          "properties": {
+                            "isEnabled": {
+                              "type": "boolean",
+                              "description": "Indique si la 2FA par WebAuthn est activée"
+                            }
+                          }
+                        },
+                        "preferredMethod": {
+                          "type": "string",
+                          "enum": [
+                            "email",
+                            "app",
+                            "webauthn",
+                            "none"
+                          ],
+                          "description": "Méthode 2FA préférée"
+                        },
+                        "backupCodes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Codes de secours disponibles"
+                        },
+                        "credentials": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/WebAuthnCredential"
+                          },
+                          "description": "Clés d'accès WebAuthn enregistrées"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/UserNotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/2fa/login": {
+      "post": {
+        "tags": [
+          "Two-Factor Authentication"
+        ],
+        "summary": "Connexion avec vérification 2FA",
+        "description": "Cette route permet de valider la deuxième étape d'authentification\naprès une connexion initiale réussie.\nProtégée par rate limiting (5 requêtes/2 minutes).\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "method",
+                  "value"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "description": "Email de l'utilisateur"
+                  },
+                  "rememberMe": {
+                    "type": "boolean",
+                    "default": false,
+                    "description": "Si true, la session sera prolongée (30 jours au lieu de 1 jour)\n"
+                  },
+                  "method": {
+                    "type": "string",
+                    "enum": [
+                      "email",
+                      "app",
+                      "backup_code"
+                    ],
+                    "description": "Méthode de vérification 2FA"
+                  },
+                  "value": {
+                    "type": "string",
+                    "description": "Code de vérification selon la méthode :\n- Code à 6 chiffres pour 'app'\n- Code de vérification pour 'email'\n- Code de secours pour 'backup_code'\n"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Connexion 2FA réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Connexion réussie"
+                }
+              }
+            },
+            "headers": {
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Définit les cookies de session\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Requête invalide",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "missing_fields": {
+                    "value": {
+                      "success": false,
+                      "error": "Email, méthode et valeur sont requis"
+                    }
+                  },
+                  "invalid_method": {
+                    "value": {
+                      "success": false,
+                      "error": "Méthode 2FA invalide"
+                    }
+                  },
+                  "invalid_code": {
+                    "value": {
+                      "success": false,
+                      "error": "Code de vérification invalide"
+                    }
+                  },
+                  "invalid_backup_code": {
+                    "value": {
+                      "success": false,
+                      "error": "Code de secours invalide ou déjà utilisé"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Échec d'authentification",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "error": "2FA non activée pour cet utilisateur"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/UserNotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/2fa/set-preferred-method": {
+      "post": {
+        "tags": [
+          "Two-Factor Authentication"
+        ],
+        "summary": "Définir la méthode 2FA préférée",
+        "description": "Cette route permet de définir la méthode de double authentification préférée.\nLa méthode doit être préalablement activée pour l'utilisateur.\nNécessite une authentification valide.\n",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "method"
+                ],
+                "properties": {
+                  "method": {
+                    "type": "string",
+                    "enum": [
+                      "email",
+                      "app",
+                      "webauthn"
+                    ],
+                    "description": "Méthode 2FA à définir comme préférée"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Méthode préférée mise à jour avec succès",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "preferredMethod": {
+                          "type": "string",
+                          "enum": [
+                            "email",
+                            "app",
+                            "webauthn",
+                            "none"
+                          ],
+                          "description": "Nouvelle méthode préférée"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requête invalide",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "missing_method": {
+                    "value": {
+                      "success": false,
+                      "error": "La méthode est requise"
+                    }
+                  },
+                  "invalid_method": {
+                    "value": {
+                      "success": false,
+                      "error": "Méthode 2FA invalide"
+                    }
+                  },
+                  "method_not_enabled": {
+                    "value": {
+                      "success": false,
+                      "error": "Cette méthode 2FA n'est pas activée"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/UserNotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/2fa/email/config": {
+      "post": {
+        "tags": [
+          "Two-Factor Authentication"
+        ],
+        "summary": "Configurer la 2FA par email",
+        "description": "Initialise la configuration de la double authentification par email.\nEnvoie un code de vérification à l'email de l'utilisateur.\nProtégée par rate limiting (5 requêtes/2 minutes) et authentification.\n",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Code de vérification envoyé par email",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Code de vérification envoyé à votre email"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requête invalide",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "email_not_verified": {
+                    "value": {
+                      "success": false,
+                      "error": "L'email n'est pas vérifié"
+                    }
+                  },
+                  "already_enabled": {
+                    "value": {
+                      "success": false,
+                      "error": "La 2FA par email est déjà activée"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/UserNotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/2fa/email/enable": {
+      "post": {
+        "tags": [
+          "Two-Factor Authentication"
+        ],
+        "summary": "Activer la 2FA par email",
+        "description": "Active la double authentification par email après vérification du code.\nNécessite une authentification valide.\n",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "code"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "pattern": "^\\d{6}$",
+                    "description": "Code de vérification à 6 chiffres",
+                    "example": "123456"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "2FA par email activée avec succès",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "backupCodes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Codes de secours générés"
+                        },
+                        "preferredMethod": {
+                          "type": "string",
+                          "enum": [
+                            "email",
+                            "app",
+                            "webauthn",
+                            "none"
+                          ],
+                          "description": "Méthode 2FA préférée mise à jour"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "2FA par email activée",
+                  "backupCodes": [
+                    "ABC123",
+                    "DEF456"
+                  ],
+                  "preferredMethod": "email"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requête invalide",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "invalid_code": {
+                    "value": {
+                      "success": false,
+                      "error": "Code de vérification invalide"
+                    }
+                  },
+                  "code_expired": {
+                    "value": {
+                      "success": false,
+                      "error": "Le code a expiré"
+                    }
+                  },
+                  "setup_required": {
+                    "value": {
+                      "success": false,
+                      "error": "Configuration 2FA requise"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/UserNotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/2fa/email/disable": {
+      "post": {
+        "tags": [
+          "Two-Factor Authentication"
+        ],
+        "summary": "Désactiver la 2FA par email",
+        "description": "Désactive la double authentification par email.\nNécessite une authentification valide.\n",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "2FA par email désactivée avec succès",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "preferredMethod": {
+                          "type": "string",
+                          "enum": [
+                            "email",
+                            "app",
+                            "webauthn",
+                            "none"
+                          ],
+                          "description": "Méthode 2FA préférée mise à jour"
+                        },
+                        "backupCodes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Codes de secours mis à jour"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "2FA par email désactivée",
+                  "preferredMethod": "none",
+                  "backupCodes": []
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requête invalide",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "error": "La 2FA par email n'est pas activée"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/UserNotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/2fa/email/resend": {
+      "post": {
+        "tags": [
+          "Two-Factor Authentication"
+        ],
+        "summary": "Renvoyer le code de vérification",
+        "description": "Renvoie un nouveau code de vérification pour la 2FA par email.\nProtégée par rate limiting (5 requêtes/2 minutes).\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "description": "Email de l'utilisateur",
+                    "example": "utilisateur@example.com"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Nouveau code envoyé avec succès",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Nouveau code envoyé"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requête invalide",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "error": "Configuration 2FA requise"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/UserNotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/2fa/app/config": {
+      "post": {
+        "tags": [
+          "Two-Factor Authentication"
+        ],
+        "summary": "Configurer la 2FA par application",
+        "description": "Initialise la configuration de la double authentification par application.\nGénère un secret et un QR code pour l'application d'authentification.\nProtégée par rate limiting (5 requêtes/2 minutes) et authentification.\n",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Configuration 2FA initialisée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "secret": {
+                          "type": "string",
+                          "description": "Secret en format base32",
+                          "example": "JBSWY3DPEHPK3PXP"
+                        },
+                        "qrCode": {
+                          "type": "string",
+                          "format": "byte",
+                          "description": "QR code au format base64 contenant le secret et les métadonnées\npour l'application d'authentification\n"
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requête invalide",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "error": "La 2FA par application est déjà activée"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/UserNotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/2fa/app/enable": {
+      "post": {
+        "tags": [
+          "Two-Factor Authentication"
+        ],
+        "summary": "Activer la 2FA par application",
+        "description": "Active la double authentification par application après vérification du code.\nNécessite une authentification valide.\n",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "token"
+                ],
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "pattern": "^\\d{6}$",
+                    "description": "Code à 6 chiffres généré par l'application",
+                    "example": "123456"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "2FA par application activée avec succès",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "backupCodes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Codes de secours générés"
+                        },
+                        "preferredMethod": {
+                          "type": "string",
+                          "enum": [
+                            "email",
+                            "app",
+                            "webauthn",
+                            "none"
+                          ],
+                          "description": "Méthode 2FA préférée mise à jour"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "2FA par application activée",
+                  "backupCodes": [
+                    "ABC123",
+                    "DEF456"
+                  ],
+                  "preferredMethod": "app"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requête invalide",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "invalid_code": {
+                    "value": {
+                      "success": false,
+                      "error": "Code de vérification invalide"
+                    }
+                  },
+                  "setup_required": {
+                    "value": {
+                      "success": false,
+                      "error": "Configuration 2FA requise"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/UserNotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/2fa/app/disable": {
+      "post": {
+        "tags": [
+          "Two-Factor Authentication"
+        ],
+        "summary": "Désactiver la 2FA par application",
+        "description": "Désactive la double authentification par application.\nNécessite une vérification par code et une authentification valide.\n",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "token"
+                ],
+                "properties": {
+                  "token": {
+                    "type": "string",
+                    "pattern": "^\\d{6}$",
+                    "description": "Code à 6 chiffres généré par l'application",
+                    "example": "654321"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "2FA par application désactivée avec succès",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "preferredMethod": {
+                          "type": "string",
+                          "enum": [
+                            "email",
+                            "app",
+                            "webauthn",
+                            "none"
+                          ],
+                          "description": "Méthode 2FA préférée mise à jour"
+                        },
+                        "backupCodes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          },
+                          "description": "Codes de secours mis à jour"
+                        }
+                      }
+                    }
+                  ]
+                },
+                "example": {
+                  "success": true,
+                  "message": "2FA par application désactivée",
+                  "preferredMethod": "email",
+                  "backupCodes": [
+                    "GHI789",
+                    "JKL012"
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requête invalide",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "invalid_code": {
+                    "value": {
+                      "success": false,
+                      "error": "Code de vérification invalide"
+                    }
+                  },
+                  "not_enabled": {
+                    "value": {
+                      "success": false,
+                      "error": "La 2FA par application n'est pas activée"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/UserNotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/change-password": {
+      "post": {
+        "tags": [
+          "User Management"
+        ],
+        "summary": "Changer le mot de passe de l'utilisateur",
+        "description": "Cette route permet à un utilisateur connecté de modifier son mot de passe.\nElle est protégée par un rate limiting (5 requêtes par IP toutes les 2 minutes).\n",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "currentPassword",
+                  "newPassword"
+                ],
+                "properties": {
+                  "currentPassword": {
+                    "type": "string",
+                    "format": "password",
+                    "description": "Le mot de passe actuel",
+                    "example": "AncienMotDePasse123!"
+                  },
+                  "newPassword": {
+                    "type": "string",
+                    "format": "password",
+                    "description": "Le nouveau mot de passe doit contenir :\n- 8 caractères minimum\n- 1 majuscule\n- 1 minuscule\n- 1 chiffre\n- 1 caractère spécial\n",
+                    "example": "NouveauMotDePasse456@"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Mot de passe changé avec succès",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Votre mot de passe a été modifié."
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requête invalide",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "missing_fields": {
+                    "value": {
+                      "success": false,
+                      "error": "Les champs currentPassword et newPassword sont requis"
+                    }
+                  },
+                  "invalid_password": {
+                    "value": {
+                      "success": false,
+                      "error": "Le mot de passe ne respecte pas les exigences de sécurité"
+                    }
+                  },
+                  "password_mismatch": {
+                    "value": {
+                      "success": false,
+                      "error": "Le mot de passe actuel est incorrect"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/change-email/step1": {
+      "post": {
+        "tags": [
+          "User Management"
+        ],
+        "summary": "Étape 1 - Vérification de l'email actuel",
+        "description": "Cette étape envoie un code de vérification à l'adresse email actuelle de l'utilisateur.\nProtégée par rate limiting (5 requêtes/2 minutes) et authentification.\n",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Code de vérification envoyé à l'email actuel",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Code de vérification envoyé à votre email actuel"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/UserNotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/change-email/step2": {
+      "post": {
+        "tags": [
+          "User Management"
+        ],
+        "summary": "Étape 2 - Validation du code de l'email actuel",
+        "description": "Cette étape vérifie le code reçu sur l'email actuel.\nProtégée par rate limiting (5 requêtes/2 minutes) et authentification.\n",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "code"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "minLength": 6,
+                    "maxLength": 6,
+                    "description": "Code de vérification reçu par email",
+                    "example": "ABCDEF"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Code de l'email actuel validé avec succès",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Email actuel vérifié avec succès"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requête invalide",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "missing_code": {
+                    "value": {
+                      "success": false,
+                      "error": "Le code de vérification est requis"
+                    }
+                  },
+                  "invalid_code": {
+                    "value": {
+                      "success": false,
+                      "error": "Code de vérification invalide"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/UserNotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/change-email/step3": {
+      "post": {
+        "tags": [
+          "User Management"
+        ],
+        "summary": "Étape 3 - Saisie et vérification du nouvel email",
+        "description": "Cette étape valide le nouvel email et envoie un code de vérification à cette nouvelle adresse.\nProtégée par rate limiting (5 requêtes/2 minutes) et authentification.\n",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email",
+                    "description": "Nouvelle adresse email",
+                    "example": "nouvel.email@example.com"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Code de vérification envoyé au nouvel email",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Code de vérification envoyé à votre nouvel email"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requête invalide",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "missing_email": {
+                    "value": {
+                      "success": false,
+                      "error": "L'email est requis"
+                    }
+                  },
+                  "invalid_email": {
+                    "value": {
+                      "success": false,
+                      "error": "L'email n'est pas valide"
+                    }
+                  },
+                  "email_exists": {
+                    "value": {
+                      "success": false,
+                      "error": "Cet email est déjà utilisé"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/UserNotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/change-email/step4": {
+      "post": {
+        "tags": [
+          "User Management"
+        ],
+        "summary": "Étape 4 - Validation finale du changement d'email",
+        "description": "Cette étape finale vérifie le code reçu sur le nouvel email et valide le changement d'email.\nProtégée par rate limiting (5 requêtes/2 minutes) et authentification.\n",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "code"
+                ],
+                "properties": {
+                  "code": {
+                    "type": "string",
+                    "minLength": 6,
+                    "maxLength": 6,
+                    "description": "Code de vérification reçu par email",
+                    "example": "GHIJKL"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Email changé avec succès",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Email changé avec succès"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requête invalide",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "missing_code": {
+                    "value": {
+                      "success": false,
+                      "error": "Le code de vérification est requis"
+                    }
+                  },
+                  "invalid_code": {
+                    "value": {
+                      "success": false,
+                      "error": "Code de vérification invalide"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/UserNotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/delete-account": {
+      "delete": {
+        "tags": [
+          "User Management"
+        ],
+        "summary": "Supprimer définitivement le compte utilisateur",
+        "description": "Cette route permet à un utilisateur connecté de supprimer définitivement son compte.\nCela déconnectera immédiatement l'utilisateur et supprimera toutes ses données.\n",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Compte supprimé avec succès",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Votre compte a été supprimé."
+                }
+              }
+            },
+            "headers": {
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Supprime les cookies de session.\nExemple: \"jwtauth=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT\"\n"
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/webauthn/generate-registration": {
+      "get": {
+        "tags": [
+          "WebAuthn Authentication"
+        ],
+        "summary": "Générer les options d'enregistrement WebAuthn",
+        "description": "Génère les options nécessaires pour enregistrer une nouvelle clé d'accès.\nProtégée par rate limiting (5 requêtes/2 minutes) et authentification.\n",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Options d'enregistrement générées avec succès",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "options": {
+                          "type": "object",
+                          "properties": {
+                            "rp": {
+                              "type": "object",
+                              "properties": {
+                                "name": {
+                                  "type": "string"
+                                },
+                                "id": {
+                                  "type": "string"
+                                }
+                              }
+                            },
+                            "user": {
+                              "type": "object",
+                              "properties": {
+                                "id": {
+                                  "type": "string"
+                                },
+                                "name": {
+                                  "type": "string"
+                                },
+                                "displayName": {
+                                  "type": "string"
+                                }
+                              }
+                            },
+                            "challenge": {
+                              "type": "string"
+                            },
+                            "pubKeyCredParams": {
+                              "type": "array",
+                              "items": {
+                                "type": "object"
+                              }
+                            },
+                            "timeout": {
+                              "type": "number"
+                            },
+                            "attestation": {
+                              "type": "string"
+                            },
+                            "authenticatorSelection": {
+                              "type": "object"
+                            },
+                            "excludeCredentials": {
+                              "type": "array",
+                              "items": {
+                                "type": "object"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requête invalide",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "error": "WebAuthn déjà configuré"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/UserNotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/webauthn/verify-registration": {
+      "post": {
+        "tags": [
+          "WebAuthn Authentication"
+        ],
+        "summary": "Vérifier l'enregistrement WebAuthn",
+        "description": "Vérifie et enregistre une nouvelle clé d'accès après l'enregistrement côté client.\nProtégée par rate limiting (5 requêtes/2 minutes) et authentification.\n",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "attestationResponse"
+                ],
+                "properties": {
+                  "attestationResponse": {
+                    "type": "object",
+                    "description": "Réponse d'enregistrement du navigateur"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Clé d'accès enregistrée avec succès",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "credentialId": {
+                          "type": "string"
+                        },
+                        "credentials": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/WebAuthnCredential"
+                          }
+                        },
+                        "preferredMethod": {
+                          "type": "string",
+                          "enum": [
+                            "email",
+                            "app",
+                            "webauthn",
+                            "none"
+                          ]
+                        },
+                        "backupCodes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requête invalide",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "challenge_expired": {
+                    "value": {
+                      "success": false,
+                      "error": "Challenge expiré"
+                    }
+                  },
+                  "credential_exists": {
+                    "value": {
+                      "success": false,
+                      "error": "Cette clé d'accès est déjà enregistrée"
+                    }
+                  },
+                  "registration_failed": {
+                    "value": {
+                      "success": false,
+                      "error": "Échec de l'enregistrement"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/UserNotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/webauthn/generate-authentication": {
+      "get": {
+        "tags": [
+          "WebAuthn Authentication"
+        ],
+        "summary": "Générer les options d'authentification WebAuthn",
+        "description": "Génère les options nécessaires pour l'authentification avec une clé d'accès.\nProtégée par rate limiting (5 requêtes/2 minutes).\n",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "email",
+            "schema": {
+              "type": "string",
+              "format": "email"
+            },
+            "required": true,
+            "description": "Email de l'utilisateur"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Options d'authentification générées avec succès",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "options": {
+                          "type": "object",
+                          "properties": {
+                            "challenge": {
+                              "type": "string"
+                            },
+                            "timeout": {
+                              "type": "number"
+                            },
+                            "rpId": {
+                              "type": "string"
+                            },
+                            "allowCredentials": {
+                              "type": "array",
+                              "items": {
+                                "type": "object"
+                              }
+                            },
+                            "userVerification": {
+                              "type": "string"
+                            }
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requête invalide",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "example": {
+                  "success": false,
+                  "error": "WebAuthn non activé pour cet utilisateur"
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/UserNotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/webauthn/verify-authentication": {
+      "post": {
+        "tags": [
+          "WebAuthn Authentication"
+        ],
+        "summary": "Vérifier l'authentification WebAuthn",
+        "description": "Vérifie l'authentification avec une clé d'accès après la réponse du navigateur.\nProtégée par rate limiting (5 requêtes/2 minutes).\n",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "email",
+                  "assertionResponse"
+                ],
+                "properties": {
+                  "email": {
+                    "type": "string",
+                    "format": "email"
+                  },
+                  "rememberMe": {
+                    "type": "boolean",
+                    "description": "Maintenir la session active plus longtemps"
+                  },
+                  "assertionResponse": {
+                    "type": "object",
+                    "description": "Réponse d'authentification du navigateur"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Authentification réussie",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                },
+                "example": {
+                  "success": true,
+                  "message": "Authentification réussie"
+                }
+              }
+            },
+            "headers": {
+              "Set-Cookie": {
+                "schema": {
+                  "type": "string"
+                },
+                "description": "Définit les cookies de session\n"
+              }
+            }
+          },
+          "400": {
+            "description": "Requête invalide",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "authentication_error": {
+                    "value": {
+                      "success": false,
+                      "error": "Erreur d'authentification"
+                    }
+                  },
+                  "credential_not_found": {
+                    "value": {
+                      "success": false,
+                      "error": "Clé d'accès non trouvée"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "$ref": "#/components/responses/UserNotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/webauthn/set-name": {
+      "post": {
+        "tags": [
+          "WebAuthn Management"
+        ],
+        "summary": "Renommer une clé d'accès WebAuthn",
+        "description": "Permet de modifier le nom d'une clé d'accès WebAuthn.\nProtégée par rate limiting (5 requêtes/2 minutes) et authentification.\n",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "id",
+                  "deviceName"
+                ],
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "description": "ID de la clé d'accès"
+                  },
+                  "deviceName": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 50,
+                    "description": "Nouveau nom pour la clé"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Nom de la clé mis à jour avec succès",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SuccessResponse"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requête invalide",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "invalid_name": {
+                    "value": {
+                      "success": false,
+                      "error": "Nom invalide"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Ressource non trouvée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "credential_not_found": {
+                    "value": {
+                      "success": false,
+                      "error": "Clé d'accès non trouvée"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/webauthn/disable": {
+      "post": {
+        "tags": [
+          "WebAuthn Management"
+        ],
+        "summary": "Désactiver WebAuthn",
+        "description": "Désactive complètement WebAuthn pour l'utilisateur après vérification.\nProtégée par rate limiting (5 requêtes/2 minutes) et authentification.\n",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "method",
+                  "value"
+                ],
+                "properties": {
+                  "method": {
+                    "type": "string",
+                    "enum": [
+                      "password",
+                      "webauthn"
+                    ],
+                    "description": "Méthode de vérification"
+                  },
+                  "value": {
+                    "type": "string",
+                    "description": "Valeur de vérification (mot de passe ou réponse WebAuthn)\n"
+                  }
+                }
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "WebAuthn désactivé avec succès",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "preferredMethod": {
+                          "type": "string",
+                          "enum": [
+                            "email",
+                            "app",
+                            "webauthn",
+                            "none"
+                          ]
+                        },
+                        "backupCodes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requête invalide",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "missing_fields": {
+                    "value": {
+                      "success": false,
+                      "error": "Méthode et valeur requises"
+                    }
+                  },
+                  "invalid_method": {
+                    "value": {
+                      "success": false,
+                      "error": "Méthode de vérification invalide"
+                    }
+                  },
+                  "password_incorrect": {
+                    "value": {
+                      "success": false,
+                      "error": "Mot de passe incorrect"
+                    }
+                  },
+                  "authentication_error": {
+                    "value": {
+                      "success": false,
+                      "error": "Échec de l'authentification WebAuthn"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/UserNotFound"
+          },
+          "429": {
+            "$ref": "#/components/responses/RateLimitExceeded"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/webauthn/devices": {
+      "get": {
+        "tags": [
+          "WebAuthn Management"
+        ],
+        "summary": "Lister les clés d'accès WebAuthn",
+        "description": "Retourne la liste des clés d'accès WebAuthn enregistrées pour l'utilisateur.\nNécessite une authentification valide.\n",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Liste des clés d'accès",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "credentials": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/WebAuthnCredential"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "$ref": "#/components/responses/UserNotFound"
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    },
+    "/auth/webauthn/credential/{id}": {
+      "delete": {
+        "tags": [
+          "WebAuthn Management"
+        ],
+        "summary": "Supprimer une clé d'accès WebAuthn",
+        "description": "Supprime une clé d'accès WebAuthn spécifique.\nNécessite une authentification valide.\n",
+        "security": [
+          {
+            "cookieAuth": []
+          }
+        ],
+        "parameters": [
+          {
+            "in": "path",
+            "name": "id",
+            "schema": {
+              "type": "string"
+            },
+            "required": true,
+            "description": "ID de la clé d'accès à supprimer"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Clé d'accès supprimée avec succès",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/SuccessResponse"
+                    },
+                    {
+                      "type": "object",
+                      "properties": {
+                        "credentials": {
+                          "type": "array",
+                          "items": {
+                            "$ref": "#/components/schemas/WebAuthnCredential"
+                          }
+                        },
+                        "preferredMethod": {
+                          "type": "string",
+                          "enum": [
+                            "email",
+                            "app",
+                            "webauthn",
+                            "none"
+                          ]
+                        },
+                        "backupCodes": {
+                          "type": "array",
+                          "items": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Requête invalide",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "$ref": "#/components/responses/Unauthorized"
+          },
+          "404": {
+            "description": "Ressource non trouvée",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                },
+                "examples": {
+                  "credential_not_found": {
+                    "value": {
+                      "success": false,
+                      "error": "Clé d'accès non trouvée"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "500": {
+            "$ref": "#/components/responses/ServerError"
+          }
+        }
+      }
+    }
+  },
+  "tags": []
+}

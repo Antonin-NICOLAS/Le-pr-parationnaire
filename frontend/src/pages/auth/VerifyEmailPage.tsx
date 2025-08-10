@@ -1,14 +1,15 @@
-import type React from 'react'
-import { useState, useEffect, useRef } from 'react'
-import { useLocation, useNavigate } from 'react-router-dom'
-import { useAuth } from '../../context/Auth'
 import { Mail, RefreshCw } from 'lucide-react'
+import type React from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
-import AuthLayout from '../..//layouts/AuthLayout'
-import SixDigitCodeInput from '../../components/ui/SixDigitCodeInput'
-import PrimaryButton from '../../components/ui/PrimaryButton'
+
 import CountdownTimer from '../../components/ui/CountdownTimer'
 import ErrorMessage from '../../components/ui/ErrorMessage'
+import PrimaryButton from '../../components/ui/PrimaryButton'
+import SixDigitCodeInput from '../../components/ui/SixDigitCodeInput'
+import { useAuth } from '../../context/Auth'
+import AuthLayout from '../../layouts/AuthLayout'
 
 const EmailVerificationPage: React.FC = () => {
   const location = useLocation()

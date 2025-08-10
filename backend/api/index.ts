@@ -27,7 +27,7 @@ if (process.env.NODE_ENV !== 'production') {
     explorer: true,
     customSiteTitle: 'Le Préparationnaire API Docs',
     customCss: '.swagger-ui .topbar { display: none }',
-    customfavIcon: './public/favicon.png',
+    customfavIcon: '/public/favicon.png',
   }
 
   app.use(

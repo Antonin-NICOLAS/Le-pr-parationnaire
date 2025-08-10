@@ -1,22 +1,23 @@
-import React, { useState } from 'react'
-import { useAuth } from '../../context/Auth'
-import type { WebAuthnCredential } from '../../types/user'
 import {
-  Star,
+  AlertCircle,
+  Fingerprint,
   Key,
   Plus,
-  Trash2,
-  AlertCircle,
   Shield,
-  Fingerprint,
+  Star,
+  Trash2,
 } from 'lucide-react'
-import PrimaryButton from '../ui/PrimaryButton'
-import Modal from '../ui/Modal'
+import React, { useState } from 'react'
+
+import { useAuth } from '../../context/Auth'
+import useTwoFactorAuth from '../../hooks/TwoFactor/Main'
+import useWebAuthnTwoFactor from '../../hooks/TwoFactor/WebAuthn'
+import type { WebAuthnCredential } from '../../types/user'
 import CustomInput from '../ui/CustomInput'
+import Modal from '../ui/Modal'
+import PrimaryButton from '../ui/PrimaryButton'
 import BackupCodesDisplay from './BackupCodesDisplay'
 import SecurityQuestionsSetup from './SecurityQuestionsSetup'
-import useWebAuthnTwoFactor from '../../hooks/TwoFactor/WebAuthn'
-import useTwoFactorAuth from '../../hooks/TwoFactor/Main'
 
 interface WebAuthnTwoFactorProps {
   isEnabled: boolean
@@ -235,7 +236,8 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
                 </div>
                 <div className='text-sm text-gray-500 dark:text-gray-400'>
                   {credential.deviceType} • Dernière utilisation:{' '}
-                  {credential.lastUsed?.toLocaleDateString() || 'Jamais'}
+                  {new Date(credential.lastUsed || '').toLocaleDateString() ||
+                    'Jamais'}
                 </div>
               </div>
             </div>

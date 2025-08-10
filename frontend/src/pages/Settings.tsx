@@ -1,41 +1,39 @@
+import {
+  AlertTriangle,
+  Bell,
+  Calendar,
+  Download,
+  Globe,
+  Key,
+  LogOut,
+  Mail,
+  MapPin,
+  Monitor,
+  Shield,
+  Trash2,
+} from 'lucide-react'
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
-import { useUrlModal } from '../routes/UseUrlModal'
 import { toast } from 'sonner'
-// 2FA Components
-import EmailTwoFactor from '../components/TwoFactor/EmailTwoFactor'
+
 import AppTwoFactor from '../components/TwoFactor/AppTwoFactor'
-import WebAuthnTwoFactor from '../components/TwoFactor/WebAuthnTwoFactor'
-import useTwoFactorAuth from '../hooks/TwoFactor/Main'
 import BackupCodesDisplay from '../components/TwoFactor/BackupCodesDisplay'
-// Context & hooks
-import type { LoginHistory } from '../types/user'
-import type { PasswordStrength, ChangePassword } from '../types/auth'
-import { useAuth } from '../context/Auth'
-import useUserSettings from '../hooks/UserSettings'
-// UI components
-import TabNavigation from '../components/ui/TabNavigation'
-import SettingsCard from '../components/ui/SettingsCard'
-import ToggleSwitch from '../components/ui/ToggleSwitch'
+import EmailTwoFactor from '../components/TwoFactor/EmailTwoFactor'
+import WebAuthnTwoFactor from '../components/TwoFactor/WebAuthnTwoFactor'
 import CustomInput from '../components/ui/CustomInput'
-import PrimaryButton from '../components/ui/PrimaryButton'
-import PasswordStrengthMeter from '../components/ui/PasswordStrengthMeter'
-import SixDigitCodeInput from '../components/ui/SixDigitCodeInput'
 import Modal from '../components/ui/Modal'
-import {
-  Shield,
-  Mail,
-  Bell,
-  Trash2,
-  Key,
-  Globe,
-  Download,
-  LogOut,
-  AlertTriangle,
-  Monitor,
-  MapPin,
-  Calendar,
-} from 'lucide-react'
+import PasswordStrengthMeter from '../components/ui/PasswordStrengthMeter'
+import PrimaryButton from '../components/ui/PrimaryButton'
+import SettingsCard from '../components/ui/SettingsCard'
+import SixDigitCodeInput from '../components/ui/SixDigitCodeInput'
+import TabNavigation from '../components/ui/TabNavigation'
+import ToggleSwitch from '../components/ui/ToggleSwitch'
+import { useAuth } from '../context/Auth'
+import useTwoFactorAuth from '../hooks/TwoFactor/Main'
+import useUserSettings from '../hooks/UserSettings'
+import { useUrlModal } from '../routes/UseUrlModal'
+import type { ChangePassword, PasswordStrength } from '../types/auth'
+import type { LoginHistory } from '../types/user'
 
 const SettingsPage: React.FC = () => {
   const { tab = 'security' } = useParams()

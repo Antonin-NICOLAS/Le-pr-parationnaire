@@ -2,6 +2,7 @@ import swaggerJsdoc from 'swagger-jsdoc'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { version } from '../package.json'
+import fs from 'node:fs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -50,3 +51,11 @@ const options: swaggerJsdoc.Options = {
 }
 
 export default swaggerJsdoc(options)
+
+export function generateSwaggerFile(
+  outputPath: string = path.join(__dirname, 'swagger-output.json'),
+) {
+  const swaggerSpec = swaggerJsdoc(options)
+  fs.writeFileSync(outputPath, JSON.stringify(swaggerSpec, null, 2))
+  console.log(`Documentation Swagger générée dans ${outputPath}`)
+}

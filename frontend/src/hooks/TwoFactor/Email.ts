@@ -1,148 +1,54 @@
-// frontend/hooks/useEmailTwoFactor.ts
 import axios from 'axios'
-import { toast } from 'sonner'
+
 import { VITE_2FA_EMAIL } from '../../utils/env'
-import type {
-  TwoFactorEmailConfigResponse,
-  TwoFactorEmailEnableResponse,
-  TwoFactorEmailDisableResponse,
-} from '../../types/api'
+import { useApiCall } from '../useApiCall'
+
+// API functions
+const configureEmailApi = () =>
+  axios.post(`${VITE_2FA_EMAIL}/config`, {}, { withCredentials: true })
+
+const resendCodeApi = (email: string) =>
+  axios.post(`${VITE_2FA_EMAIL}/resend`, { email }, { withCredentials: true })
+
+const enableEmailApi = (code: string) =>
+  axios.post(`${VITE_2FA_EMAIL}/enable`, { code }, { withCredentials: true })
+
+const disableEmailApi = (method: 'otp' | 'password', value: string) =>
+  axios.post(
+    `${VITE_2FA_EMAIL}/disable`,
+    { method, value },
+    { withCredentials: true },
+  )
 
 const useEmailTwoFactor = () => {
-  const configureEmail = async (): Promise<TwoFactorEmailConfigResponse> => {
-    try {
-      const { data } = await axios.post<TwoFactorEmailConfigResponse>(
-        `${VITE_2FA_EMAIL}/config`,
-        {},
-        { withCredentials: true },
-      )
+  const configureEmail = useApiCall(configureEmailApi, {
+    successMessage: 'Code de vérification envoyé par email',
+    errorMessage: 'Erreur lors de la configuration',
+  })
 
-      if (data.success) {
-        toast.success(data.message || 'Code de vérification envoyé par email')
-        return {
-          success: true,
-          message: data.message,
-        }
-      }
-      return {
-        success: false,
-        error: data.error || 'Erreur lors de la configuration',
-      }
-    } catch (error: any) {
-      toast.error(
-        error.response?.data?.error || 'Erreur lors de la configuration',
-      )
-      return {
-        success: false,
-        error: error.response?.data?.error || 'Erreur réseau',
-      }
-    }
-  }
+  const resendCode = useApiCall(resendCodeApi, {
+    successMessage: 'Code de vérification renvoyé par email',
+    errorMessage: "Erreur lors de l'envoi du code",
+  })
 
-  const resendCode = async (
-    email: string,
-  ): Promise<TwoFactorEmailConfigResponse> => {
-    try {
-      const { data } = await axios.post<TwoFactorEmailConfigResponse>(
-        `${VITE_2FA_EMAIL}/resend`,
-        { email },
-        { withCredentials: true },
-      )
+  const enableEmail = useApiCall(enableEmailApi, {
+    successMessage: '2FA par email activée avec succès',
+    errorMessage: 'Code invalide',
+  })
 
-      if (data.success) {
-        toast.success(data.message || 'Code de vérification envoyé par email')
-        return {
-          success: true,
-          message: data.message,
-        }
-      }
-      return {
-        success: false,
-        error: data.error || "Échec de l'envoi du code",
-      }
-    } catch (error: any) {
-      toast.error(
-        error.response?.data?.error || 'Erreur lors de la configuration',
-      )
-      return {
-        success: false,
-        error: error.response?.data?.error || 'Erreur réseau',
-      }
-    }
-  }
-
-  const enableEmail = async (
-    code: string,
-  ): Promise<TwoFactorEmailEnableResponse> => {
-    try {
-      const { data } = await axios.post<TwoFactorEmailEnableResponse>(
-        `${VITE_2FA_EMAIL}/enable`,
-        { code },
-        { withCredentials: true },
-      )
-
-      if (data.success) {
-        toast.success(data.message || '2FA par email activée avec succès')
-        return {
-          success: true,
-          message: data.message,
-          backupCodes: data.backupCodes,
-          preferredMethod: data.preferredMethod,
-        }
-      }
-      return {
-        success: false,
-        error: data.error || "Échec de l'activation",
-      }
-    } catch (error: any) {
-      toast.error(error.response?.data?.error || 'Code invalide')
-      return {
-        success: false,
-        error: error.response?.data?.error || 'Erreur réseau',
-      }
-    }
-  }
-
-  const disableEmail = async (
-    method: 'otp' | 'password',
-    value: string,
-  ): Promise<TwoFactorEmailDisableResponse> => {
-    try {
-      const { data } = await axios.post<TwoFactorEmailDisableResponse>(
-        `${VITE_2FA_EMAIL}/disable`,
-        { method, value },
-        { withCredentials: true },
-      )
-
-      if (data.success) {
-        toast.success(data.message || '2FA par email désactivée')
-        return {
-          success: true,
-          message: data.message,
-          preferredMethod: data.preferredMethod,
-          backupCodes: data.backupCodes,
-        }
-      }
-      return {
-        success: false,
-        error: data.error || 'Échec de la désactivation',
-      }
-    } catch (error: any) {
-      toast.error(
-        error.response?.data?.error || 'Erreur lors de la désactivation',
-      )
-      return {
-        success: false,
-        error: error.response?.data?.error || 'Erreur réseau',
-      }
-    }
-  }
-
+  const disableEmail = useApiCall(disableEmailApi, {
+    successMessage: '2FA par email désactivée',
+    errorMessage: 'Une erreur est survenue. Veuillez réessayer plus tard.',
+  })
   return {
-    configureEmail,
-    resendCode,
-    enableEmail,
-    disableEmail,
+    configureEmail: configureEmail.execute,
+    configureEmailState: configureEmail,
+    resendCode: resendCode.execute,
+    resendCodeState: resendCode,
+    enableEmail: enableEmail.execute,
+    enableEmailState: enableEmail,
+    disableEmail: disableEmail.execute,
+    disableEmailState: disableEmail,
   }
 }
 

@@ -1,17 +1,18 @@
+import { ArrowRight, Fingerprint, Lock, Mail, User } from 'lucide-react'
 import React, { useState } from 'react'
-import { useParams, useNavigate, useLocation } from 'react-router-dom'
-import { Mail, Lock, User, ArrowRight, Fingerprint } from 'lucide-react'
+import { useLocation, useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
-import { useAuth } from '../../context/Auth'
+
 import CustomInput from '../../components/ui/CustomInput'
-import PrimaryButton from '../../components/ui/PrimaryButton'
 import PasswordStrengthMeter from '../../components/ui/PasswordStrengthMeter'
+import PrimaryButton from '../../components/ui/PrimaryButton'
+import { useAuth } from '../../context/Auth'
+import useWebAuthnTwoFactor from '../../hooks/TwoFactor/WebAuthn'
 import type {
   LoginData,
-  RegisterData,
   PasswordStrength,
+  RegisterData,
 } from '../../types/auth'
-import useWebAuthnTwoFactor from '../../hooks/TwoFactor/WebAuthn'
 import { validateRegistrationForm } from '../../utils/validation'
 
 const AuthPage: React.FC = () => {

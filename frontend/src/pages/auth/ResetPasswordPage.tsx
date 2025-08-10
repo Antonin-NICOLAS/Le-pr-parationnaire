@@ -1,14 +1,13 @@
-'use client'
-
+import { CheckCircle, Lock } from 'lucide-react'
 import type React from 'react'
-import { useState, useEffect } from 'react'
-import { Lock, CheckCircle } from 'lucide-react'
+import { useEffect, useState } from 'react'
 import { toast } from 'sonner'
-import AuthLayout from '../../layouts/AuthLayout'
+
 import CustomInput from '../../components/ui/CustomInput'
-import PrimaryButton from '../../components/ui/PrimaryButton'
-import PasswordStrengthMeter from '../../components/ui/PasswordStrengthMeter'
 import ErrorMessage from '../../components/ui/ErrorMessage'
+import PasswordStrengthMeter from '../../components/ui/PasswordStrengthMeter'
+import PrimaryButton from '../../components/ui/PrimaryButton'
+import AuthLayout from '../../layouts/AuthLayout'
 import type { PasswordStrength } from '../../types/auth'
 
 const ResetPasswordPage: React.FC = () => {

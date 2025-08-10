@@ -1,16 +1,17 @@
+import { Fingerprint, Key, Mail, Shield, Smartphone } from 'lucide-react'
 import type React from 'react'
-import { useState, useEffect } from 'react'
+import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { Shield, Smartphone, Mail, Key, Fingerprint } from 'lucide-react'
-import AuthLayout from '../../layouts/AuthLayout'
-import SixDigitCodeInput from '../../components/ui/SixDigitCodeInput'
-import PrimaryButton from '../../components/ui/PrimaryButton'
+
 import CountdownTimer from '../../components/ui/CountdownTimer'
 import ErrorMessage from '../../components/ui/ErrorMessage'
-import useEmailTwoFactor from '../../hooks/TwoFactor/Email'
-import useWebAuthnTwoFactor from '../../hooks/TwoFactor/WebAuthn'
+import PrimaryButton from '../../components/ui/PrimaryButton'
+import SixDigitCodeInput from '../../components/ui/SixDigitCodeInput'
 import { useAuth } from '../../context/Auth'
+import useEmailTwoFactor from '../../hooks/TwoFactor/Email'
 import useTwoFactorAuth from '../../hooks/TwoFactor/Main'
+import useWebAuthnTwoFactor from '../../hooks/TwoFactor/WebAuthn'
+import AuthLayout from '../../layouts/AuthLayout'
 
 const TwoFactorPage: React.FC = () => {
   const navigate = useNavigate()
