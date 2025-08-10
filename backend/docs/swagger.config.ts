@@ -1,11 +1,15 @@
 import swaggerJsdoc from 'swagger-jsdoc'
+import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { version } from '../package.json'
-import fs from 'node:fs'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
+
+const pkg = JSON.parse(
+  fs.readFileSync(path.join(__dirname, '../package.json'), 'utf-8')
+)
+const { version } = pkg
 
 const options: swaggerJsdoc.Options = {
   definition: {
