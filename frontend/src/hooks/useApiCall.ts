@@ -24,6 +24,7 @@ export interface ApiCallResult<T = any> {
 export interface ApiCallConfig {
   showSuccessToast?: boolean
   showErrorToast?: boolean
+  showInfoToast?: boolean
   successMessage?: string
   errorMessage?: string
   onSuccess?: (data: any) => void
@@ -44,6 +45,7 @@ export function useApiCall<T = any>(
   const {
     showSuccessToast = true,
     showErrorToast = true,
+    showInfoToast = true,
     successMessage,
     errorMessage,
     onSuccess,
@@ -80,11 +82,14 @@ export function useApiCall<T = any>(
           return result
         } else {
           // API returned success: false
-          const errorMsg = result.error || result.message || 'Operation failed'
+          const errorMsg = result.error || 'Operation failed'
           setError(errorMsg)
 
           if (showErrorToast) {
             toast.error(errorMsg || errorMessage)
+          }
+          if (showInfoToast && result.message) {
+            toast.info(result.message)
           }
 
           if (onError) {

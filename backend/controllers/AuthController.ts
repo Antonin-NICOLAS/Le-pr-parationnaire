@@ -145,16 +145,21 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
       user,
       user.emailVerification.token!,
     )
-    return ApiResponse.error(res, t('auth:errors.email_not_verified'), 403, {
-      requiresVerification: true,
-      email: user.email,
-      rememberMe: rememberMe,
-    })
+    return ApiResponse.info(
+      res,
+      {
+        requiresVerification: true,
+        email: user.email,
+        rememberMe: rememberMe,
+      },
+      t('auth:errors.email_not_verified'),
+      403,
+    )
   }
 
   //5 bis. Check if user has 2FA enabled
   if (user.twoFactor.isEnabled) {
-    return ApiResponse.success(
+    return ApiResponse.info(
       res,
       {
         requiresTwoFactor: true,
@@ -232,11 +237,16 @@ export const checkSession = asyncHandler(
     const { t } = req
     const user = req.user
     if (!user.emailVerification.isVerified) {
-      return ApiResponse.error(res, t('auth:errors.email_not_verified'), 403, {
-        requiresVerification: true,
-        email: user.email,
-        rememberMe: false,
-      })
+      return ApiResponse.info(
+        res,
+        {
+          requiresVerification: true,
+          email: user.email,
+          rememberMe: false,
+        },
+        t('auth:errors.email_not_verified'),
+        403,
+      )
     }
 
     return ApiResponse.success(res, {
@@ -276,11 +286,16 @@ export const forgotPassword = asyncHandler(
 
     // 3. Si l'email n'est pas vérifié, on ne peut pas envoyer de lien de réinitialisation
     if (!user.emailVerification.isVerified) {
-      return ApiResponse.error(res, t('auth:errors.email_not_verified'), 403, {
-        requiresVerification: true,
-        email: user.email,
-        rememberMe: false,
-      })
+      return ApiResponse.info(
+        res,
+        {
+          requiresVerification: true,
+          email: user.email,
+          rememberMe: false,
+        },
+        t('auth:errors.email_not_verified'),
+        403,
+      )
     }
 
     // 4. On génère un token de réinitialisation
@@ -314,11 +329,16 @@ export const resendForgotPassword = asyncHandler(
 
     // 3. Si l'email n'est pas vérifié, on ne peut pas envoyer de lien de réinitialisation
     if (!user.emailVerification.isVerified) {
-      return ApiResponse.error(res, t('auth:errors.email_not_verified'), 403, {
-        requiresVerification: true,
-        email: user.email,
-        rememberMe: false,
-      })
+      return ApiResponse.info(
+        res,
+        {
+          requiresVerification: true,
+          email: user.email,
+          rememberMe: false,
+        },
+        t('auth:errors.email_not_verified'),
+        403,
+      )
     }
 
     // 4. Nouveau token de réinitialisation si expiré ou inexistant sinon on garde l'ancien

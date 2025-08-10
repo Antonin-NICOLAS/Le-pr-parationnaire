@@ -283,7 +283,7 @@
  *       properties:
  *         success:
  *           type: boolean
- *           description: Indique si la requête a réussi
+ *           default: true
  *         message:
  *           type: string
  *           description: Message optionnel
@@ -303,4 +303,15 @@
  *           description: Détails supplémentaires sur l'erreur
  *           additionalProperties: true
  *           nullable: true
+ *
+ *     InfoResponse:
+ *       type: object
+ *       properties:
+ *         success:
+ *           type: boolean
+ *           default: false
+ *         message:
+ *           type: string
+ *           description: Message optionnel
+ *           nullable: false
  */

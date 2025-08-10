@@ -33,6 +33,8 @@ import {
 import {
   generateBackupCodes,
   rotateBackupCodes,
+  compareEmailCode,
+  verifyTwoFactorCode,
 } from '../helpers/2FAHelpers.js'
 import {
   setChallenge,
@@ -363,6 +365,93 @@ export const verifyAuthentication = asyncHandler(
   },
 )
 
+// Activer/désactiver l'authentification par clé d'accès
+export const switchLoginWithWebAuthn = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { t } = req
+    const { enabled, method, value } = req.body
+
+    if (enabled === undefined) {
+      return ApiResponse.error(res, t('auth:errors.missing_fields'), 400)
+    }
+
+    // 1. Vérifier si l'utilisateur existe
+    const user = await User.findById(req.user._id)
+    if (!user) {
+      return ApiResponse.error(res, t('auth:errors.user_not_found'), 404)
+    }
+
+    // Si on veut activer l'authentification par clé d'accès
+    if (enabled) {
+      // Vérifier qu'au moins une clé d'accès est configurée
+      if (
+        !user.twoFactor.webauthn.credentials ||
+        user.twoFactor.webauthn.credentials.length === 0
+      ) {
+        return ApiResponse.info(
+          res,
+          { RequiresConfiguration: true },
+          t('auth:errors.webauthn.no_credentials'),
+          100,
+        )
+      }
+
+      user.loginWithWebAuthn = true
+      await user.save()
+
+      return ApiResponse.success(
+        res,
+        { loginWithWebAuthn: user.loginWithWebAuthn },
+        t('auth:success.webauthn.login_enabled'),
+        200,
+      )
+    }
+    // Si on veut désactiver l'authentification par clé d'accès
+    else {
+      // Vérifier l'authentification
+      if (method && value) {
+        let isValid = false
+
+        if (method === 'password') {
+          isValid = await comparePassword(value, user.password)
+        } else if (method === 'app' && user.twoFactor.app.isEnabled) {
+          isValid = verifyTwoFactorCode(user.twoFactor.app.secret!, value)
+        } else if (method === 'email' && user.twoFactor.email.isEnabled) {
+          if (user.twoFactor.email.token) {
+            isValid = await compareEmailCode(user.twoFactor.email.token, value)
+          }
+        } else {
+          return ApiResponse.error(
+            res,
+            t('auth:errors.2fa.invalid_method'),
+            400,
+          )
+        }
+
+        if (!isValid) {
+          return ApiResponse.error(
+            res,
+            method === 'password'
+              ? t('auth:errors.password_incorrect')
+              : t('auth:errors.2fa.invalid_code'),
+            400,
+          )
+        }
+      }
+
+      user.loginWithWebAuthn = false
+      await user.save()
+
+      return ApiResponse.success(
+        res,
+        { loginWithWebAuthn: user.loginWithWebAuthn },
+        t('auth:success.webauthn.login_disabled'),
+        200,
+      )
+    }
+  },
+)
+
 // Nommer une clé WebAuthn
 export const nameWebAuthnCredential = asyncHandler(
   async (req: Request, res: Response) => {
@@ -394,7 +483,7 @@ export const nameWebAuthnCredential = asyncHandler(
       typeof deviceName !== 'string' ||
       deviceName.trim() === ''
     ) {
-      return ApiResponse.error(res, t('auth:errors.invalid_name'), 400)
+      return ApiResponse.error(res, t('auth:errors.missing_fields'), 400)
     }
     credential.deviceName = deviceName
     await user.save()

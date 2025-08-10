@@ -54,15 +54,6 @@
  *                           type: array
  *                           items:
  *                             type: object
- *       400:
- *         description: Requête invalide
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               success: false
- *               error: "WebAuthn déjà configuré"
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  *       404:
@@ -129,7 +120,7 @@
  *               challenge_expired:
  *                 value:
  *                   success: false
- *                   error: "Challenge expiré"
+ *                   error: "Votre clé d'accès n'est pas authentique. Veuillez réessayer."
  *               credential_exists:
  *                 value:
  *                   success: false
@@ -198,7 +189,7 @@
  *               $ref: '#/components/schemas/ErrorResponse'
  *             example:
  *               success: false
- *               error: "WebAuthn non activé pour cet utilisateur"
+ *               error: "L'authentification par clé d'accès n'est pas activée."
  *       404:
  *         $ref: '#/components/responses/UserNotFound'
  *       429:
@@ -257,19 +248,123 @@
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
- *             examples:
- *               authentication_error:
- *                 value:
- *                   success: false
- *                   error: "Erreur d'authentification"
- *               credential_not_found:
- *                 value:
- *                   success: false
- *                   error: "Clé d'accès non trouvée"
+ *             example:
+ *               success: false
+ *               error: "La vérification de votre clé d'accès a échouée. Veuillez réessayer plus tard."
  *       404:
- *         $ref: '#/components/responses/UserNotFound'
+ *         description: Éléments introuvables
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *              credential_not_found:
+ *                value:
+ *                  success: false
+ *                  error: "Votre clé d'accès ne correspond à aucune clé enregistrée."
+ *              user_not_found:
+ *                value:
+ *                  success: false
+ *                  error: "Utilisateur non trouvé"
  *       429:
  *         $ref: '#/components/responses/RateLimitExceeded'
+ *       500:
+ *         $ref: '#/components/responses/ServerError'
+ */
+
+/**
+ * @swagger
+ * /auth/webauthn/switch:
+ *   post:
+ *     tags: [WebAuthn Management]
+ *     summary: Activer/désactiver l'authentification par clé d'accès
+ *     description: |
+ *       Cette route permet d'activer ou désactiver l'authentification par clé d'accès WebAuthn.
+ *       Nécessite une authentification valide.
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - enabled
+ *             properties:
+ *               enabled:
+ *                 type: boolean
+ *                 description: |
+ *                   true pour activer, false pour désactiver
+ *               method:
+ *                 type: string
+ *                 enum: [password, app, email]
+ *                 description: |
+ *                   Méthode de vérification pour la désactivation
+ *                   Requis seulement si enabled = false
+ *               value:
+ *                 type: string
+ *                 description: |
+ *                   Valeur de vérification selon la méthode :
+ *                   - Mot de passe pour 'password'
+ *                   - Code OTP pour 'app' ou 'email'
+ *                   Requis seulement si enabled = false
+ *     responses:
+ *       100:
+ *         description: Aucune clé d'accès n'est configurée
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/InfoResponse'
+ *                 - type: object
+ *                   properties:
+ *                     RequiresConfiguration:
+ *                       type: boolean
+ *                       description: Nouveau statut de l'authentification par clé d'accès
+ *             example:
+ *               success: false
+ *               message: "Aucune clé d'accès n'est configurée."
+ *               RequiresConfiguration: true
+ *       200:
+ *         description: Statut d'authentification par clé d'accès modifié avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/SuccessResponse'
+ *                 - type: object
+ *                   properties:
+ *                     loginWithWebAuthn:
+ *                       type: boolean
+ *                       description: Nouveau statut de l'authentification par clé d'accès
+ *       400:
+ *         description: Requête invalide
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               missing_fields:
+ *                 value:
+ *                   success: false
+ *                   error: "Tous les champs sont requis."
+ *               invalid_method:
+ *                 value:
+ *                   success: false
+ *                   error: "La méthode fournie est invalide."
+ *               invalid_code:
+ *                 value:
+ *                   success: false
+ *                   error: "Le code est incorrect."
+ *               password_incorrect:
+ *                 value:
+ *                   success: false
+ *                   error: "Le mot de passe est incorrect."
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       404:
+ *         $ref: '#/components/responses/UserNotFound'
  *       500:
  *         $ref: '#/components/responses/ServerError'
  */
@@ -317,10 +412,10 @@
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *             examples:
- *               invalid_name:
+ *               missing_fields:
  *                 value:
  *                   success: false
- *                   error: "Nom invalide"
+ *                   error: "Tous les champs sont requis."
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  *       404:
@@ -333,9 +428,11 @@
  *               credential_not_found:
  *                 value:
  *                   success: false
- *                   error: "Clé d'accès non trouvée"
- *       429:
- *         $ref: '#/components/responses/RateLimitExceeded'
+ *                   error: "Votre clé d'accès ne correspond à aucune clé enregistrée."
+ *               user_not_found:
+ *                 value:
+ *                   success: false
+ *                   error: "Utilisateur introuvable."
  *       500:
  *         $ref: '#/components/responses/ServerError'
  */
@@ -396,19 +493,23 @@
  *               missing_fields:
  *                 value:
  *                   success: false
- *                   error: "Méthode et valeur requises"
+ *                   error: "Tous les champs sont requis."
+ *               not_enabled:
+ *                 value:
+ *                   success: false
+ *                   error: "L'authentification par clé d'accès n'est pas activée."
  *               invalid_method:
  *                 value:
  *                   success: false
- *                   error: "Méthode de vérification invalide"
+ *                   error: "La méthode fournie est invalide."
  *               password_incorrect:
  *                 value:
  *                   success: false
- *                   error: "Mot de passe incorrect"
+ *                   error: "Le mot de passe est incorrect."
  *               authentication_error:
  *                 value:
  *                   success: false
- *                   error: "Échec de l'authentification WebAuthn"
+ *                   error: "La vérification de votre clé d'accès a échoué. Veuillez réessayer plus tard."
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  *       404:
@@ -491,12 +592,6 @@
  *                       type: array
  *                       items:
  *                         type: string
- *       400:
- *         description: Requête invalide
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  *       404:
@@ -509,7 +604,11 @@
  *               credential_not_found:
  *                 value:
  *                   success: false
- *                   error: "Clé d'accès non trouvée"
+ *                   error: "Votre clé d'accès ne correspond à aucune clé enregistrée."
+ *               user_not_found:
+ *                 value:
+ *                   success: false
+ *                   error: "Utilisateur introuvable."
  *       500:
  *         $ref: '#/components/responses/ServerError'
  */

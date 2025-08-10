@@ -49,10 +49,10 @@
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/InfoResponse'
  *             example:
  *               success: false
- *               error: "Votre adresse email n'est pas vérifiée."
+ *               message: "Votre adresse email n'est pas vérifiée."
  *               requiresVerification: true
  *               email: "jean.dupont@example.com"
  *               rememberMe: false
@@ -481,10 +481,10 @@
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/InfoResponse'
  *             example:
  *               success: false
- *               error: "Votre adresse email n'est pas vérifiée."
+ *               message: "Votre adresse email n'est pas vérifiée."
  *               requiresVerification: true
  *               email: "jean.dupont@example.com"
  *               rememberMe: false
@@ -544,10 +544,10 @@
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/InfoResponse'
  *             example:
  *               success: false
- *               error: "Votre adresse email n'est pas vérifiée."
+ *               message: "Votre adresse email n'est pas vérifiée."
  *               requiresVerification: true
  *               email: "jean.dupont@example.com"
  *               rememberMe: false
@@ -557,18 +557,9 @@
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
- *             examples:
- *               invalid_email:
- *                 value:
- *                   success: false
- *                   error: "L'email n'est pas valide"
- *               email_not_verified:
- *                 value:
- *                   success: false
- *                   error: "L'email n'est pas vérifié"
- *                   requiresVerification: true
- *                   email: "jean.dupont@example.com"
- *                   rememberMe: false
+ *             example:
+ *               success: false
+ *               error: "L'email n'est pas valide"
  *       429:
  *         $ref: '#/components/responses/RateLimitExceeded'
  *       500:
@@ -622,10 +613,10 @@
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
+ *               $ref: '#/components/schemas/InfoResponse'
  *             example:
  *               success: false
- *               error: "Votre adresse email n'est pas vérifiée."
+ *               message: "Votre adresse email n'est pas vérifiée."
  *               requiresVerification: true
  *               email: "jean.dupont@example.com"
  *               rememberMe: false

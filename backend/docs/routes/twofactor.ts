@@ -57,8 +57,6 @@
  *                       description: Clés d'accès WebAuthn enregistrées
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
- *       404:
- *         $ref: '#/components/responses/UserNotFound'
  *       500:
  *         $ref: '#/components/responses/ServerError'
  */
@@ -113,7 +111,7 @@
  *               $ref: '#/components/schemas/SuccessResponse'
  *             example:
  *               success: true
- *               message: "Connexion réussie"
+ *               message: "Connexion réussie."
  *         headers:
  *           Set-Cookie:
  *             schema:
@@ -130,19 +128,27 @@
  *               missing_fields:
  *                 value:
  *                   success: false
- *                   error: "Email, méthode et valeur sont requis"
+ *                   error: "Tous les champs sont requis."
+ *               not_enabled:
+ *                 value:
+ *                   success: false
+ *                   error: "La double authentification n'est pas activée."
  *               invalid_method:
  *                 value:
  *                   success: false
- *                   error: "Méthode 2FA invalide"
+ *                   error: "La méthode fournie est invalide."
  *               invalid_code:
  *                 value:
  *                   success: false
- *                   error: "Code de vérification invalide"
+ *                   error: "Le code est incorrect."
  *               invalid_backup_code:
  *                 value:
  *                   success: false
- *                   error: "Code de secours invalide ou déjà utilisé"
+ *                   error: "Le code de sauvegarde est incorrect."
+ *               backup_code_used:
+ *                 value:
+ *                   success: false
+ *                   error: "Le code de sauvegarde a déjà été utilisé."
  *       401:
  *         description: Échec d'authentification
  *         content:
@@ -206,18 +212,14 @@
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *             examples:
- *               missing_method:
- *                 value:
- *                   success: false
- *                   error: "La méthode est requise"
  *               invalid_method:
  *                 value:
  *                   success: false
- *                   error: "Méthode 2FA invalide"
+ *                   error: "La méthode fournie est invalide."
  *               method_not_enabled:
  *                 value:
  *                   success: false
- *                   error: "Cette méthode 2FA n'est pas activée"
+ *                   error: "La double authentification par cette méthode n'est pas activée."
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  *       404:
@@ -254,15 +256,21 @@
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
- *             examples:
- *               email_not_verified:
- *                 value:
- *                   success: false
- *                   error: "L'email n'est pas vérifié"
- *               already_enabled:
- *                 value:
- *                   success: false
- *                   error: "La 2FA par email est déjà activée"
+ *             example:
+ *               success: false
+ *               error: "La 2FA par email est déjà activée"
+ *       403:
+ *         description: Email non vérifié
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/InfoResponse'
+ *             example:
+ *               success: false
+ *               message: "Votre adresse email n'est pas vérifiée."
+ *               requiresVerification: true
+ *               email: "jean.dupont@example.com"
+ *               rememberMe: false
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  *       404:
@@ -332,15 +340,15 @@
  *               invalid_code:
  *                 value:
  *                   success: false
- *                   error: "Code de vérification invalide"
+ *                   error: "Le code est incorrect."
  *               code_expired:
  *                 value:
  *                   success: false
- *                   error: "Le code a expiré"
+ *                   error: "Le code envoyé par email a expiré."
  *               setup_required:
  *                 value:
  *                   success: false
- *                   error: "Configuration 2FA requise"
+ *                   error: "Veuillez réessayer de configurer la méthode."
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  *       404:
@@ -357,9 +365,34 @@
  *     summary: Désactiver la 2FA par email
  *     description: |
  *       Désactive la double authentification par email.
+ *       Accepte soit un code OTP soit un mot de passe pour la vérification.
  *       Nécessite une authentification valide.
  *     security:
  *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - method
+ *               - value
+ *             properties:
+ *               method:
+ *                 type: string
+ *                 enum: [password, otp]
+ *                 description: |
+ *                   Méthode de vérification :
+ *                   - 'password' pour utiliser le mot de passe
+ *                   - 'otp' pour utiliser le code OTP de l'application
+ *               value:
+ *                 type: string
+ *                 description: |
+ *                   Valeur de vérification selon la méthode :
+ *                   - Mot de passe pour 'password'
+ *                   - Code à 6 chiffres pour 'otp'
+ *                 example: "654321"
  *     responses:
  *       200:
  *         description: 2FA par email désactivée avec succès
@@ -390,9 +423,31 @@
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               success: false
- *               error: "La 2FA par email n'est pas activée"
+ *             examples:
+ *               missing_fields:
+ *                value:
+ *                  success: false
+ *                  error: "Tous les champs sont requis."
+ *               not_enabled:
+ *                 value:
+ *                   success: false
+ *                   error: "La 2FA par email n'est pas activée."
+ *               invalid_method:
+ *                 value:
+ *                   success: false
+ *                   error: "La méthode fournie est invalide."
+ *               password_incorrect:
+ *                 value:
+ *                   success: false
+ *                   error: "Le mot de passe est incorrect."
+ *               code_expired:
+ *                 value:
+ *                   success: false
+ *                   error: "Le code a expiré."
+ *               invalid_code:
+ *                 value:
+ *                   success: false
+ *                   error: "Le code est incorrect."
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  *       404:
@@ -520,9 +575,9 @@
  *           schema:
  *             type: object
  *             required:
- *               - token
+ *               - code
  *             properties:
- *               token:
+ *               code:
  *                 type: string
  *                 pattern: '^\d{6}$'
  *                 description: Code à 6 chiffres généré par l'application
@@ -561,11 +616,11 @@
  *               invalid_code:
  *                 value:
  *                   success: false
- *                   error: "Code de vérification invalide"
+ *                   error: "Le code est incorrect."
  *               setup_required:
  *                 value:
  *                   success: false
- *                   error: "Configuration 2FA requise"
+ *                   error: "Veuillez réessayer de configurer la méthode."
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  *       404:
@@ -582,7 +637,8 @@
  *     summary: Désactiver la 2FA par application
  *     description: |
  *       Désactive la double authentification par application.
- *       Nécessite une vérification par code et une authentification valide.
+ *       Accepte soit un code OTP soit un mot de passe pour la vérification.
+ *       Nécessite une authentification valide.
  *     security:
  *       - cookieAuth: []
  *     requestBody:
@@ -592,12 +648,22 @@
  *           schema:
  *             type: object
  *             required:
- *               - token
+ *               - method
+ *               - value
  *             properties:
- *               token:
+ *               method:
  *                 type: string
- *                 pattern: '^\d{6}$'
- *                 description: Code à 6 chiffres généré par l'application
+ *                 enum: [password, otp]
+ *                 description: |
+ *                   Méthode de vérification :
+ *                   - 'password' pour utiliser le mot de passe
+ *                   - 'otp' pour utiliser le code OTP de l'application
+ *               value:
+ *                 type: string
+ *                 description: |
+ *                   Valeur de vérification selon la méthode :
+ *                   - Mot de passe pour 'password'
+ *                   - Code à 6 chiffres pour 'otp'
  *                 example: "654321"
  *     responses:
  *       200:
@@ -630,14 +696,129 @@
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *             examples:
- *               invalid_code:
+ *               missing_fields:
  *                 value:
  *                   success: false
- *                   error: "Code de vérification invalide"
+ *                   error: "Tous les champs sont requis."
  *               not_enabled:
  *                 value:
  *                   success: false
- *                   error: "La 2FA par application n'est pas activée"
+ *                   error: "La 2FA par application n'est pas activée."
+ *               invalid_method:
+ *                 value:
+ *                   success: false
+ *                   error: "La méthode fournie est invalide."
+ *               invalid_code:
+ *                 value:
+ *                   success: false
+ *                   error: "Le code est incorrect."
+ *               password_incorrect:
+ *                 value:
+ *                   success: false
+ *                   error: "Le mot de passe est incorrect."
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       404:
+ *         $ref: '#/components/responses/UserNotFound'
+ *       500:
+ *         $ref: '#/components/responses/ServerError'
+ */
+
+/**
+ * @swagger
+ * /auth/2fa/switch:
+ *   post:
+ *     tags: [Two-Factor Authentication]
+ *     summary: Activer/désactiver globalement la 2FA
+ *     description: |
+ *       Cette route permet d'activer ou désactiver globalement la double authentification.
+ *       Lors de la désactivation, toutes les méthodes 2FA sont désactivées.
+ *       Nécessite une authentification valide.
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - enabled
+ *             properties:
+ *               enabled:
+ *                 type: boolean
+ *                 description: |
+ *                   true pour activer, false pour désactiver
+ *               method:
+ *                 type: string
+ *                 enum: [password, app, email]
+ *                 description: |
+ *                   Méthode de vérification pour la désactivation
+ *                   Requis seulement si enabled = false
+ *               value:
+ *                 type: string
+ *                 description: |
+ *                   Valeur de vérification selon la méthode :
+ *                   - Mot de passe pour 'password'
+ *                   - Code OTP pour 'app' ou 'email'
+ *                   Requis seulement si enabled = false
+ *     responses:
+ *       100:
+ *         description: Une configuration 2FA est requise
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/InfoResponse'
+ *                 - type: object
+ *                   properties:
+ *                     RequiresConfiguration:
+ *                       type: boolean
+ *                       description: Indique si une configuration 2FA est requise
+ *       200:
+ *         description: Statut 2FA modifié avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/SuccessResponse'
+ *                 - type: object
+ *                   properties:
+ *                     isEnabled:
+ *                       type: boolean
+ *                       description: Nouveau statut de la 2FA
+ *                     preferredMethod:
+ *                       type: string
+ *                       enum: [email, app, webauthn, none]
+ *                       description: Méthode préférée mise à jour
+ *                     backupCodes:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       description: Codes de secours mis à jour
+ *       400:
+ *         description: Requête invalide
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               missing_fields:
+ *                 value:
+ *                   success: false
+ *                   error: "Tous les champs sont requis."
+ *               invalid_method:
+ *                 value:
+ *                   success: false
+ *                   error: "La méthode fournie est invalide."
+ *               invalid_code:
+ *                 value:
+ *                   success: false
+ *                   error: "Le code est incorrect."
+ *               password_incorrect:
+ *                 value:
+ *                   success: false
+ *                   error: "Le mot de passe est incorrect."
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  *       404:

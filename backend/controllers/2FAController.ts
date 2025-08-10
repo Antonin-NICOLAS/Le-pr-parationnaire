@@ -21,10 +21,7 @@ import {
   getDeviceInfo,
 } from '../helpers/AuthHelpers.js'
 // Emails
-import {
-  sendTwoFactorEmailActivation,
-  sendLoginEmail,
-} from '../emails/SendMail.js'
+import { sendTwoFactorEmail, sendLoginEmail } from '../emails/SendMail.js'
 // .env
 import dotenv from 'dotenv'
 dotenv.config()
@@ -43,6 +40,47 @@ export const getStatus = asyncHandler(async (req: Request, res: Response) => {
     credentials: user.twoFactor.webauthn.credentials || [],
   })
 })
+
+// Définir la méthode préférée
+export const setPreferredMethod = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { t } = req
+    const { method } = req.body
+
+    // 1. Vérifier si la méthode est fournie
+    if (!method) {
+      return ApiResponse.error(res, t('auth:errors.2fa.invalid_method'), 400)
+    }
+
+    // 2. Vérifier si l'utilisateur existe
+    const user = await User.findById(req.user._id)
+    if (!user) {
+      return ApiResponse.error(res, t('auth:errors.user_not_found'), 404)
+    }
+
+    if (!['app', 'email', 'webauthn'].includes(method)) {
+      return ApiResponse.error(res, t('auth:errors.2fa.invalid_method'), 400)
+    }
+
+    // Vérifier que la méthode est activée
+    if (method === 'email' && !user.twoFactor.email.isEnabled) {
+      return ApiResponse.error(res, t('auth:errors.email.not_enabled'), 400)
+    }
+    if (method === 'webauthn' && !user.twoFactor.webauthn.isEnabled) {
+      return ApiResponse.error(res, t('auth:errors.webauthn.not_enabled'), 400)
+    }
+    if (method === 'app' && !user.twoFactor.app.isEnabled) {
+      return ApiResponse.error(res, t('auth:errors.app.not_enabled'), 400)
+    }
+
+    user.twoFactor.preferredMethod = method
+    await user.save()
+
+    return ApiResponse.success(res, {
+      preferredMethod: user.twoFactor.preferredMethod,
+    })
+  },
+)
 
 // Activer la 2FA par application
 export const configTwoFactorApp = asyncHandler(
@@ -94,7 +132,16 @@ export const configTwoFactorEmail = asyncHandler(
 
     // 2. Vérifier si l'email est vérifié
     if (!user.emailVerification.isVerified) {
-      return ApiResponse.error(res, t('auth:errors.email_not_verified'), 400)
+      return ApiResponse.info(
+        res,
+        {
+          requiresVerification: true,
+          email: user.email,
+          rememberMe: false,
+        },
+        t('auth:errors.email_not_verified'),
+        403,
+      )
     }
 
     // 3. Si l'option est déjà activée, retourner une erreur
@@ -109,7 +156,7 @@ export const configTwoFactorEmail = asyncHandler(
 
     await user.save()
     // 5. Envoyer le code de vérification par email
-    await sendTwoFactorEmailActivation(
+    await sendTwoFactorEmail(
       t as TFunction,
       user,
       code,
@@ -120,6 +167,7 @@ export const configTwoFactorEmail = asyncHandler(
           minute: '2-digit',
         },
       ),
+      'config',
     )
 
     return ApiResponse.success(
@@ -131,21 +179,36 @@ export const configTwoFactorEmail = asyncHandler(
   },
 )
 
-// Renvoyer le code de vérification par email (pour configuration mais aussi pour authentification)
+// Renvoyer le code de vérification par email (pour configuration mais aussi pour authentification et désactivation)
 export const resendEmailCode = asyncHandler(
   async (req: Request, res: Response) => {
     const { t } = req
     const { email } = req.body
+    const { context } = req.query
 
-    // 1. Vérifier si l'utilisateur existe
-    const user = await User.findOne({ email })
-    if (!user) {
-      return ApiResponse.error(res, t('auth:errors.user_not_found'), 404)
+    const parsedContext = decodeURIComponent(context as string) as
+      | 'config'
+      | 'login'
+      | 'disable'
+
+    // 1. Vérifier le contexte
+    if (!context || !['config', 'login', 'disable'].includes(parsedContext)) {
+      return ApiResponse.error(res, t('common:errors.server_error'), 400)
     }
 
-    // 2. Vérifier si l'option est activée
-    if (!user.twoFactor.email.token || !user.twoFactor.email.expiration) {
-      return ApiResponse.error(res, t('auth:errors.2fa.setup_required'), 400)
+    // 2. Vérifier si l'utilisateur existe
+    let user = null
+    if (context !== 'login' && req.user) {
+      user = await User.findById(req.user._id)
+    } else if (context === 'login' && !email) {
+      return ApiResponse.error(res, t('auth:errors.missing_fields'), 400)
+    } else if (context === 'login' && email) {
+      user = await User.findOne({ email })
+    } else {
+      return ApiResponse.error(res, t('common:errors.server_error'), 400)
+    }
+    if (!user) {
+      return ApiResponse.error(res, t('auth:errors.user_not_found'), 404)
     }
 
     // 3. Générer un code de vérification par email
@@ -154,7 +217,7 @@ export const resendEmailCode = asyncHandler(
     user.twoFactor.email.expiration = new Date(Date.now() + 10 * 60 * 1000)
 
     // 4. Envoyer le code de vérification par email
-    await sendTwoFactorEmailActivation(
+    await sendTwoFactorEmail(
       t as TFunction,
       user,
       code,
@@ -165,6 +228,7 @@ export const resendEmailCode = asyncHandler(
           minute: '2-digit',
         },
       ),
+      parsedContext,
     )
 
     await user.save()
@@ -182,10 +246,10 @@ export const resendEmailCode = asyncHandler(
 export const enableTwoFactorApp = asyncHandler(
   async (req: Request, res: Response) => {
     const { t } = req
-    const { token } = req.body
+    const { code } = req.body
 
-    console.log('Secret!', token)
-    if (!token || token.length !== 6 || !/^\d+$/.test(token)) {
+    console.log('Secret!', code)
+    if (!code || code.length !== 6 || !/^\d+$/.test(code)) {
       return ApiResponse.error(res, t('auth:errors.2fa.invalid_code'), 400)
     }
     // 1. Vérifier si l'utilisateur existe
@@ -201,7 +265,7 @@ export const enableTwoFactorApp = asyncHandler(
 
     console.log('Secret:', user.twoFactor.app.secret)
     // 3. Vérifier si le code est correct
-    const isValid = verifyTwoFactorCode(user.twoFactor.app.secret, token)
+    const isValid = verifyTwoFactorCode(user.twoFactor.app.secret, code)
     if (!isValid) {
       return ApiResponse.error(res, t('auth:errors.2fa.invalid_code'), 400)
     }
@@ -263,6 +327,9 @@ export const enableTwoFactorEmail = asyncHandler(
     if (!isMatch) {
       return ApiResponse.error(res, t('auth:errors.2fa.invalid_code'), 400)
     }
+    if (user.twoFactor.email.expiration < new Date()) {
+      return ApiResponse.error(res, t('auth:errors.2fa.code_expired'), 400)
+    }
 
     // 5. Activer la 2FA par email
     user.twoFactor.isEnabled = true
@@ -291,73 +358,48 @@ export const enableTwoFactorEmail = asyncHandler(
   },
 )
 
-// Définir la méthode préférée
-export const setPreferredMethod = asyncHandler(
-  async (req: Request, res: Response) => {
-    const { t } = req
-    const { method } = req.body
-
-    // 1. Vérifier si la méthode est fournie
-    if (!method) {
-      return ApiResponse.error(res, t('auth:errors.2fa.invalid_method'), 400)
-    }
-
-    // 2. Vérifier si l'utilisateur existe
-    const user = await User.findById(req.user._id)
-    if (!user) {
-      return ApiResponse.error(res, t('auth:errors.user_not_found'), 404)
-    }
-
-    if (!['app', 'email', 'webauthn'].includes(method)) {
-      return ApiResponse.error(res, t('auth:errors.2fa.invalid_method'), 400)
-    }
-
-    // Vérifier que la méthode est activée
-    if (method === 'email' && !user.twoFactor.email.isEnabled) {
-      return ApiResponse.error(res, t('auth:errors.email.not_enabled'), 400)
-    }
-    if (method === 'webauthn' && !user.twoFactor.webauthn.isEnabled) {
-      return ApiResponse.error(res, t('auth:errors.webauthn.not_enabled'), 400)
-    }
-    if (method === 'app' && !user.twoFactor.app.isEnabled) {
-      return ApiResponse.error(res, t('auth:errors.app.not_enabled'), 400)
-    }
-
-    user.twoFactor.preferredMethod = method
-    await user.save()
-
-    return ApiResponse.success(res, {
-      preferredMethod: user.twoFactor.preferredMethod,
-    })
-  },
-)
-
-// Désactiver la 2FA
+// Désactiver la 2FA par application (avec code OTP ou mot de passe)
 export const disableTwoFactorApp = asyncHandler(
   async (req: Request, res: Response) => {
     const { t } = req
-    const { token } = req.body
-    if (!token || token.length !== 6 || !/^\d+$/.test(token)) {
-      return ApiResponse.error(res, t('auth:errors.2fa.invalid_code'), 400)
+    const { method, value } = req.body
+
+    if (!method || !value) {
+      return ApiResponse.error(res, t('auth:errors.missing_fields'), 400)
     }
+
     // 1. Vérifier si l'utilisateur existe
     const user = await User.findById(req.user._id)
     if (!user) {
       return ApiResponse.error(res, t('auth:errors.user_not_found'), 404)
     }
 
-    // 2. Vérifier si la 2FA est activée
+    // 2. Vérifier si la 2FA par app est activée
     if (!user.twoFactor.app.isEnabled) {
       return ApiResponse.error(res, t('auth:errors.app.not_enabled'), 400)
     }
 
-    // 3. Vérifier si le code est correct
-    const isValid = verifyTwoFactorCode(user.twoFactor.app.secret!, token)
-    if (!isValid) {
-      return ApiResponse.error(res, t('auth:errors.2fa.invalid_code'), 400)
+    // 3. Vérifier le mot de passe ou le code de vérification
+    let isValid = false
+    if (method === 'password') {
+      isValid = await comparePassword(value, user.password)
+    } else if (method === 'otp' && user.twoFactor.app.secret) {
+      isValid = verifyTwoFactorCode(user.twoFactor.app.secret, value)
+    } else {
+      return ApiResponse.error(res, t('auth:errors.2fa.invalid_method'), 400)
     }
 
-    // 4. Désactiver la 2FA
+    if (!isValid) {
+      return ApiResponse.error(
+        res,
+        method === 'password'
+          ? t('auth:errors.password_incorrect')
+          : t('auth:errors.2fa.invalid_code'),
+        400,
+      )
+    }
+
+    // 4. Désactiver la 2FA par app
     user.twoFactor.app.isEnabled = false
     user.twoFactor.isEnabled =
       user.twoFactor.webauthn.isEnabled || user.twoFactor.email.isEnabled
@@ -415,8 +457,15 @@ export const disableTwoFactorEmail = asyncHandler(
     let isValid = false
     if (method === 'password') {
       isValid = await comparePassword(value, user.password)
-    } else if (method === 'otp' && user.twoFactor.app.isEnabled) {
-      isValid = verifyTwoFactorCode(user.twoFactor.app.secret!, value)
+    } else if (
+      method === 'otp' &&
+      user.twoFactor.email.token &&
+      user.twoFactor.email.expiration
+    ) {
+      if (user.twoFactor.email.expiration < new Date()) {
+        return ApiResponse.error(res, t('auth:errors.2fa.code_expired'), 400)
+      }
+      isValid = await compareEmailCode(user.twoFactor.email.token, value)
     } else {
       return ApiResponse.error(res, t('auth:errors.2fa.invalid_method'), 400)
     }
@@ -471,7 +520,7 @@ export const disableTwoFactorEmail = asyncHandler(
 export const twoFactorLogin = asyncHandler(
   async (req: Request, res: Response) => {
     const { t } = req
-    const { email, rememberMe, method, value } = req.body
+    const { email, rememberMe = false, method, value } = req.body
 
     if (!email || !value || !method) {
       return ApiResponse.error(res, t('auth:errors.missing_fields'), 400)
@@ -507,6 +556,13 @@ export const twoFactorLogin = asyncHandler(
             400,
           )
         }
+        if (user.twoFactor.backupCodes[backupCodeIndex].used) {
+          return ApiResponse.error(
+            res,
+            t('auth:errors.2fa.backup_code_used'),
+            400,
+          )
+        }
         user.twoFactor.backupCodes[backupCodeIndex].used = true
         await user.save()
       }
@@ -516,7 +572,11 @@ export const twoFactorLogin = asyncHandler(
     if (!isValid) {
       return ApiResponse.error(
         res,
-        t('auth:errors.2fa.invalid_backup_code'),
+        method === 'app'
+          ? t('auth:errors.2fa.invalid_code')
+          : method === 'email'
+          ? t('auth:errors.2fa.invalid_code')
+          : t('auth:errors.2fa.invalid_backup_code'),
         400,
       )
     }
@@ -547,5 +607,121 @@ export const twoFactorLogin = asyncHandler(
     )
 
     return ApiResponse.success(res, {}, t('auth:success.logged_in'), 200)
+  },
+)
+
+// Activer/désactiver globalement la 2FA
+export const switchTwoFactor = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { t } = req
+    const { enabled, method, value } = req.body
+
+    if (enabled === undefined) {
+      return ApiResponse.error(res, t('auth:errors.missing_fields'), 400)
+    }
+
+    // 1. Vérifier si l'utilisateur existe
+    const user = await User.findById(req.user._id)
+    if (!user) {
+      return ApiResponse.error(res, t('auth:errors.user_not_found'), 404)
+    }
+
+    // Si on veut activer la 2FA
+    if (enabled) {
+      const RequiresConfiguration =
+        !user.twoFactor.app.isEnabled &&
+        !user.twoFactor.email.isEnabled &&
+        !user.twoFactor.webauthn.isEnabled
+
+      if (RequiresConfiguration) {
+        return ApiResponse.info(
+          res,
+          {
+            RequiresConfiguration: true,
+          },
+          t('auth:info.2fa.no_methods'),
+          100,
+        )
+      }
+      user.twoFactor.isEnabled = true
+
+      // Si aucune méthode préférée n'est définie, on en choisit une
+      if (user.twoFactor.preferredMethod === 'none') {
+        if (user.twoFactor.app.isEnabled) {
+          user.twoFactor.preferredMethod = 'app'
+        } else if (user.twoFactor.email.isEnabled) {
+          user.twoFactor.preferredMethod = 'email'
+        } else if (user.twoFactor.webauthn.isEnabled) {
+          user.twoFactor.preferredMethod = 'webauthn'
+        }
+      }
+
+      // Générer des codes de sauvegarde si nécessaire
+      rotateBackupCodes(user)
+
+      await user.save()
+
+      return ApiResponse.success(
+        res,
+        {
+          isEnabled: user.twoFactor.isEnabled,
+          preferredMethod: user.twoFactor.preferredMethod,
+          backupCodes: user.twoFactor.backupCodes,
+        },
+        t('auth:success.2fa.enabled'),
+        200,
+      )
+    }
+    // Si on veut désactiver la 2FA
+    else {
+      // Vérifier l'authentification si demandée
+      if (method && value) {
+        let isValid = false
+
+        if (method === 'password') {
+          isValid = await comparePassword(value, user.password)
+        } else if (method === 'app' && user.twoFactor.app.isEnabled) {
+          isValid = verifyTwoFactorCode(user.twoFactor.app.secret!, value)
+        } else if (method === 'email' && user.twoFactor.email.isEnabled) {
+          if (user.twoFactor.email.token) {
+            isValid = await compareEmailCode(user.twoFactor.email.token, value)
+          }
+        } else {
+          return ApiResponse.error(
+            res,
+            t('auth:errors.2fa.invalid_method'),
+            400,
+          )
+        }
+
+        if (!isValid) {
+          return ApiResponse.error(
+            res,
+            method === 'password'
+              ? t('auth:errors.password_incorrect')
+              : t('auth:errors.2fa.invalid_code'),
+            400,
+          )
+        }
+      }
+
+      // Désactiver toutes les méthodes 2FA
+      user.twoFactor.isEnabled = false
+      user.twoFactor.preferredMethod = 'none'
+      user.twoFactor.backupCodes = []
+
+      await user.save()
+
+      return ApiResponse.success(
+        res,
+        {
+          isEnabled: user.twoFactor.isEnabled,
+          preferredMethod: user.twoFactor.preferredMethod,
+          backupCodes: user.twoFactor.backupCodes,
+        },
+        t('auth:success.2fa.disabled'),
+        200,
+      )
+    }
   },
 )

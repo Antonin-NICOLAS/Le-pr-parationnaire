@@ -13,6 +13,7 @@ import {
   removeWebAuthnCredential,
   getWebAuthnDevices,
   disableWebAuthn,
+  switchLoginWithWebAuthn,
 } from '../controllers/WebAuthnController.js'
 
 // Middlewares
@@ -58,12 +59,8 @@ router.get(
   generateAuthenticationOpt,
 )
 // WebAuthn Credential Management
-router.post(
-  '/set-name',
-  rateLimiterMiddleware,
-  authenticate,
-  nameWebAuthnCredential,
-)
+router.post('/switch', authenticate, switchLoginWithWebAuthn)
+router.post('/set-name', authenticate, nameWebAuthnCredential)
 router.post('/disable', rateLimiterMiddleware, authenticate, disableWebAuthn)
 router.get('/devices', authenticate, getWebAuthnDevices)
 

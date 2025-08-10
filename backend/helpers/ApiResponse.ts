@@ -22,6 +22,14 @@ export class ApiResponse {
     })
   }
 
+  static info(res: Response, data: any = {}, message: string, statusCode = 400) {
+    return res.status(statusCode).json({
+      success: false,
+      message,
+      ...data
+    })
+  }
+
   static serverError(res: Response, t: any, error?: any) {
     console.error('Server error:', error)
     return res.status(500).json({

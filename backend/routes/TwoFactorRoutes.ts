@@ -15,6 +15,7 @@ import {
   disableTwoFactorEmail,
   setPreferredMethod,
   twoFactorLogin,
+  switchTwoFactor,
 } from '../controllers/2FAController.js'
 
 // Middlewares
@@ -37,6 +38,9 @@ router.get('/status', authenticate, getStatus)
 router.post('/set-preferred-method', authenticate, setPreferredMethod)
 router.post('/login', rateLimiterMiddleware, twoFactorLogin)
 
+// Global 2FA control
+router.post('/switch', authenticate, switchTwoFactor)
+
 // Email 2FA
 router.post(
   '/email/config',
@@ -46,7 +50,19 @@ router.post(
 )
 router.post('/email/enable', authenticate, enableTwoFactorEmail)
 router.post('/email/disable', authenticate, disableTwoFactorEmail)
-router.post('/email/resend', rateLimiterMiddleware, resendEmailCode)
+router.post('/email/resend/login', rateLimiterMiddleware, resendEmailCode)
+router.post(
+  '/email/resend/config',
+  rateLimiterMiddleware,
+  authenticate,
+  resendEmailCode,
+)
+router.post(
+  '/email/resend/disable',
+  rateLimiterMiddleware,
+  authenticate,
+  resendEmailCode,
+)
 
 // App 2FA
 router.post(

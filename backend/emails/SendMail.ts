@@ -4,7 +4,9 @@ import EmailVerification from './templates/EmailVerification.js'
 import ResetPassword from './templates/ResetPassword.js'
 import ChangeEmailStep1 from './templates/ChangeEmailStep1.js'
 import ChangeEmailStep2 from './templates/ChangeEmailStep2.js'
+import EmailTwoFactorLogin from './templates/EmailTwoFactorLogin.js'
 import EmailTwoFactorActivation from './templates/EmailTwoFactorActivation.js'
+import EmailTwoFactorDeactivation from './templates/EmailTwoFactorDeactivation.js'
 // Types
 import type { TFunction } from 'i18next'
 import type { IUser } from '../models/User.js'
@@ -159,17 +161,20 @@ export const sendTwoFactorBackupCodesEmail = async (
 }
 
 // Envoyer un code 2FA par email
-export const sendTwoFactorEmailActivation = async (
+export const sendTwoFactorEmail = async (
   t: TFunction,
   user: IUser,
   code: string,
   expiration: string,
+  context: 'config' | 'login' | 'disable' = 'config',
 ) => {
   const mailOptions = {
     from: process.env.NODEMAILER_USER,
     to: user.email,
     subject: t('emails:email2FAcode.subject'),
-    html: EmailTwoFactorActivation(t, user, code, expiration),
+    html: context === 'config' ? EmailTwoFactorActivation(t, user, code, expiration) :
+         context === 'login' ? EmailTwoFactorLogin(t, user, code, expiration) :
+         EmailTwoFactorDeactivation(t, user, code, expiration),
   }
   try {
     await transporter.sendMail(mailOptions)
@@ -179,6 +184,7 @@ export const sendTwoFactorEmailActivation = async (
   }
 }
 
+// Envoyer un code de changement d'email
 export const sendChangeEmailStep1 = async (
   t: TFunction,
   user: IUser,
