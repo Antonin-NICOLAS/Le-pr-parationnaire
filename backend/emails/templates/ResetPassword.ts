@@ -153,7 +153,7 @@ const ResetPassword = (t: TFunction, user: IUser, link: string) => {
   <body
     class="body"
     style="
-      background-color: #ffffff;
+      background-color: transparent;
       margin: 0;
       padding: 0;
       -webkit-text-size-adjust: none;
@@ -170,7 +170,7 @@ const ResetPassword = (t: TFunction, user: IUser, link: string) => {
       style="
         mso-table-lspace: 0pt;
         mso-table-rspace: 0pt;
-        background-color: #ffffff;
+        background-color: transparent;
       "
     >
       <tbody>

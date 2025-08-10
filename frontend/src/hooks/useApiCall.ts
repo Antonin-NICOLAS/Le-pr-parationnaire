@@ -3,7 +3,7 @@ import { useCallback, useState } from 'react'
 import { toast } from 'sonner'
 
 // Base types for API responses
-export interface ApiResponse<T = any> {
+export interface ApiResponse {
   success: boolean
   message?: string
   error?: string
@@ -15,7 +15,7 @@ export interface ApiCallResult<T = any> {
   data: T | null
   loading: boolean
   error: string | null
-  execute: (...args: any[]) => Promise<ApiResponse<T>>
+  execute: (...args: any[]) => Promise<ApiResponse>
   resetError: () => void
   resetData: () => void
 }
@@ -51,13 +51,13 @@ export function useApiCall<T = any>(
   } = config
 
   const execute = useCallback(
-    async (...args: any[]): Promise<ApiResponse<T>> => {
+    async (...args: any[]): Promise<ApiResponse> => {
       setLoading(true)
       setError(null)
 
       try {
         const response = await apiFunction(...args)
-        const result: ApiResponse<T> = response.data || response
+        const result: ApiResponse = response.data || response
 
         if (result.success) {
           const { success, message, error, ...rest } = result
