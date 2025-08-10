@@ -1,18 +1,21 @@
+import { AlertTriangle, Copy, Download, Eye, EyeOff } from 'lucide-react'
 import React, { useState } from 'react'
-import { Download, Copy, Eye, EyeOff, AlertTriangle } from 'lucide-react'
-import PrimaryButton from '../ui/PrimaryButton'
 import { toast } from 'sonner'
+
+import PrimaryButton from '../ui/PrimaryButton'
 
 interface BackupCodesDisplayProps {
   codes: string[]
   onContinue: () => void
   onSkip: () => void
+  isModal?: boolean
 }
 
 const BackupCodesDisplay: React.FC<BackupCodesDisplayProps> = ({
   codes,
   onContinue,
   onSkip,
+  isModal = true,
 }) => {
   const [showCodes, setShowCodes] = useState(true)
 
@@ -81,11 +84,15 @@ Ces codes vous permettront d'accéder à votre compte si vous perdez l'accès à
       </div>
 
       <div className='space-y-4'>
-        <div className='flex flex-col items-center justify-between gap-y-4 sm:flex-row'>
+        <div
+          className={`flex items-center justify-between gap-y-4 ${
+            isModal ? 'flex-col items-center' : 'flex-col sm:flex-row'
+          }`}
+        >
           <span className='text-sm font-medium text-gray-900 dark:text-gray-100'>
             Vos codes de secours
           </span>
-          <div className='flex space-x-2'>
+          <div className='flex flex-wrap gap-2 justify-center sm:justify-end"'>
             <PrimaryButton
               variant='outline'
               size='sm'
@@ -115,27 +122,22 @@ Ces codes vous permettront d'accéder à votre compte si vous perdez l'accès à
 
         {showCodes && (
           <div className='grid grid-cols-[repeat(auto-fit,_minmax(150px,_1fr))] gap-2'>
-            {codes.map(
-              (code, index) => (
-                console.log(codes),
-                (
-                  <div
-                    key={index}
-                    className='flex items-center justify-between rounded-lg border border-gray-200 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-800'
-                  >
-                    <span className='font-mono text-sm text-gray-900 dark:text-gray-400'>
-                      {code}
-                    </span>
-                    <button
-                      onClick={() => handleCopyCode(code)}
-                      className='p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
-                    >
-                      <Copy size={14} />
-                    </button>
-                  </div>
-                )
-              ),
-            )}
+            {codes.map((code, index) => (
+              <div
+                key={index}
+                className='flex items-center justify-between rounded-lg border border-gray-200 bg-white px-3 py-2 dark:border-gray-700 dark:bg-gray-800'
+              >
+                <span className='font-mono text-sm text-gray-900 dark:text-gray-400'>
+                  {code}
+                </span>
+                <button
+                  onClick={() => handleCopyCode(code)}
+                  className='p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+                >
+                  <Copy size={14} />
+                </button>
+              </div>
+            ))}
           </div>
         )}
       </div>

@@ -1,16 +1,18 @@
-import React, { useState, useEffect } from 'react'
-import { Star, Mail, Shield, AlertCircle, RefreshCw } from 'lucide-react'
-import CountdownTimer from '../ui/CountdownTimer'
-import ErrorMessage from '../ui/ErrorMessage'
-import PrimaryButton from '../ui/PrimaryButton'
-import SixDigitCodeInput from '../ui/SixDigitCodeInput'
-import Modal from '../ui/Modal'
-import CustomInput from '../ui/CustomInput'
-import BackupCodesDisplay from './BackupCodesDisplay'
-import SecurityQuestionsSetup from './SecurityQuestionsSetup'
+import { AlertCircle, Mail, RefreshCw, Shield, Star } from 'lucide-react'
+import React, { useEffect, useState } from 'react'
+
+import { useAuth } from '../../context/Auth'
 import useEmailTwoFactor from '../../hooks/TwoFactor/Email'
 import useTwoFactorAuth from '../../hooks/TwoFactor/Main'
-import { useAuth } from '../../context/Auth'
+import { useUrlModal } from '../../routes/UseUrlModal'
+import CountdownTimer from '../ui/CountdownTimer'
+import CustomInput from '../ui/CustomInput'
+import ErrorMessage from '../ui/ErrorMessage'
+import Modal from '../ui/Modal'
+import PrimaryButton from '../ui/PrimaryButton'
+import SixDigitCodeInput from '../ui/SixDigitCodeInput'
+import BackupCodesDisplay from './BackupCodesDisplay'
+import SecurityQuestionsSetup from './SecurityQuestionsSetup'
 
 interface EmailTwoFactorProps {
   isEnabled: boolean
@@ -24,56 +26,57 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
   onStatusChange,
 }) => {
   const { user } = useAuth()
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string | null>(null)
-  const [showEnableFlow, setShowEnableFlow] = useState(false)
-  const [showDisableFlow, setShowDisableFlow] = useState(false)
+
+  // States UI spécifiques
+  const { open: openEnableFlow, close: closeEnableFlow } =
+    useUrlModal('enable-email-2fa')
+  const { open: openDisableFlow, close: closeDisableFlow } =
+    useUrlModal('disable-email-2fa')
   const [currentStep, setCurrentStep] = useState<
     'config' | 'verify' | 'backup' | 'security'
   >('config')
-  // Enable Flow
   const [canResend, setCanResend] = useState(false)
-  // Step 2: Verification Code
   const [verificationCode, setVerificationCode] = useState<string[]>(
     Array(6).fill(''),
   )
-  // Step 3: Backup Codes
-  const [backupCodes, setBackupCodes] = useState<string[]>([])
-  // Disable flow
-  // Step 1: Choose Method
   const [disableMethod, setDisableMethod] = useState<'otp' | 'password'>('otp')
-  // Step 2: Enter Code or Password
   const [disableCode, setDisableCode] = useState<string[]>(Array(6).fill(''))
   const [disablePassword, setDisablePassword] = useState('')
 
-  const { configureEmail, resendCode, enableEmail, disableEmail } =
-    useEmailTwoFactor()
-  const { setPreferredMethod } = useTwoFactorAuth()
+  // Hooks API
+  const {
+    configureEmail,
+    configureEmailState,
+    resendCode,
+    resendCodeState,
+    enableEmail,
+    enableEmailState,
+    disableEmail,
+    disableEmailState,
+  } = useEmailTwoFactor()
+
+  const { setPreferredMethod, setPreferredMethodState } = useTwoFactorAuth()
 
   useEffect(() => {
     // Auto-submit when code is complete
     const codeValue = verificationCode.join('')
-    if (codeValue.length === 6 && !isLoading) {
+    if (codeValue.length === 6 && !enableEmailState.loading) {
       handleVerifyCode()
     }
   }, [verificationCode])
 
   // Step 1: Send Verification code
   const handleEnable = async () => {
-    setIsLoading(true)
-    const success = await configureEmail()
-    if (success) {
-      setShowEnableFlow(true)
+    const result = await configureEmail()
+    if (result.success) {
+      openEnableFlow()
       setCurrentStep('verify')
     }
-    setIsLoading(false)
   }
 
   const handleResendCode = async () => {
-    setIsLoading(true)
     await resendCode(user?.email || '')
     setCanResend(false)
-    setIsLoading(false)
   }
 
   // Step 2: Verify Code
@@ -81,43 +84,36 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
     const code = verificationCode.join('')
     if (code.length !== 6) return
 
-    setIsLoading(true)
     const result = await enableEmail(code)
-    if (result?.success) {
-      setBackupCodes(result.backupCodes || [])
+    if (result.success) {
       setCurrentStep('backup')
     }
-    setIsLoading(false)
   }
 
   // Disable flow
   const handleDisable = async () => {
-    setIsLoading(true)
     const value =
       disableMethod === 'otp' ? disableCode.join('') : disablePassword
-    const success = await disableEmail(disableMethod, value)
-    if (success) {
-      setShowDisableFlow(false)
+    const result = await disableEmail(disableMethod, value)
+    if (result.success) {
+      closeDisableFlow()
       onStatusChange()
     }
-    setIsLoading(false)
   }
 
   const handleSetPreferredMethod = async () => {
-    setIsLoading(true)
-    const success = await setPreferredMethod('email')
-    if (success) {
+    const result = await setPreferredMethod('email')
+    if (result.success) {
       onStatusChange()
     }
-    setIsLoading(false)
   }
 
   // Flow completion
   const handleFlowComplete = () => {
-    setShowEnableFlow(false)
+    closeEnableFlow()
     setCurrentStep('config')
     setVerificationCode(Array(6).fill(''))
-    setBackupCodes([])
+    enableEmailState.resetData()
     onStatusChange()
   }
 
@@ -138,19 +134,19 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
               </p>
             </div>
 
-            {error && (
+            {enableEmailState.error && (
               <ErrorMessage
-                message={error}
+                message={enableEmailState.error}
                 type='error'
-                onClose={() => setError(null)}
+                onClose={() => enableEmailState.resetError()}
               />
             )}
             <div className='space-y-4'>
               <SixDigitCodeInput
                 value={verificationCode}
                 onChange={setVerificationCode}
-                disabled={isLoading}
-                error={!!error}
+                disabled={enableEmailState.loading}
+                error={!!enableEmailState.error}
                 autoFocus
               />
             </div>
@@ -169,8 +165,8 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
               <PrimaryButton
                 variant='ghost'
                 onClick={handleResendCode}
-                loading={isLoading}
-                disabled={!canResend || isLoading}
+                loading={resendCodeState.loading}
+                disabled={!canResend || resendCodeState.loading}
                 icon={RefreshCw}
                 className='mt-2'
               >
@@ -181,7 +177,7 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
             <div className='flex space-x-3'>
               <PrimaryButton
                 onClick={handleVerifyCode}
-                loading={isLoading}
+                loading={enableEmailState.loading}
                 disabled={verificationCode.join('').length !== 6}
                 fullWidth
               >
@@ -189,7 +185,7 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
               </PrimaryButton>
               <PrimaryButton
                 variant='outline'
-                onClick={() => setShowEnableFlow(false)}
+                onClick={closeEnableFlow}
                 fullWidth
               >
                 Annuler
@@ -201,7 +197,9 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
       case 'backup':
         return (
           <BackupCodesDisplay
-            codes={backupCodes.map((code: any) => code.code)}
+            codes={enableEmailState.data.backupCodes.map(
+              (code: any) => code.code,
+            )}
             onContinue={() => setCurrentStep('security')}
             onSkip={handleFlowComplete}
           />
@@ -260,11 +258,18 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
           </button>
         </div>
 
+        {disableEmailState.error && (
+          <ErrorMessage
+            message={disableEmailState.error}
+            type='error'
+            onClose={() => disableEmailState.resetError()}
+          />
+        )}
         {disableMethod === 'otp' ? (
           <SixDigitCodeInput
             value={disableCode}
             onChange={setDisableCode}
-            disabled={isLoading}
+            disabled={disableEmailState.loading}
             autoFocus
           />
         ) : (
@@ -281,7 +286,7 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
       <div className='flex space-x-3'>
         <PrimaryButton
           onClick={handleDisable}
-          loading={isLoading}
+          loading={disableEmailState.loading}
           disabled={
             disableMethod === 'otp'
               ? disableCode.join('').length !== 6
@@ -292,11 +297,7 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
         >
           Désactiver
         </PrimaryButton>
-        <PrimaryButton
-          variant='outline'
-          onClick={() => setShowDisableFlow(false)}
-          fullWidth
-        >
+        <PrimaryButton variant='outline' onClick={closeDisableFlow} fullWidth>
           Annuler
         </PrimaryButton>
       </div>
@@ -320,7 +321,7 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
           </div>
         </div>
 
-        <div className='mb-4 flex items-center justify-between'>
+        <div className='mb-4 flex flex-col space-y-2 min-[320px]:flex-row items-center min-[320px]:justify-between'>
           <span
             className={`rounded-full px-2 py-1 text-xs ${
               isEnabled
@@ -337,7 +338,7 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
                   ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400'
                   : 'cursor-pointer bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
               }`}
-              disabled={isLoading}
+              disabled={setPreferredMethodState.loading}
               {...(!isPreferredMethod && { onClick: handleSetPreferredMethod })}
             >
               {<Star className='mr-1 h-4 w-4' />}
@@ -352,27 +353,29 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
           variant={isEnabled ? 'secondary' : 'primary'}
           size='sm'
           fullWidth
-          onClick={isEnabled ? () => setShowDisableFlow(true) : handleEnable}
-          loading={isLoading}
+          onClick={isEnabled ? openDisableFlow : handleEnable}
+          loading={
+            isEnabled ? disableEmailState.loading : configureEmailState.loading
+          }
         >
           {isEnabled ? 'Désactiver' : 'Activer'}
         </PrimaryButton>
       </div>
 
       <Modal
-        isOpen={showEnableFlow}
-        onClose={() => setShowEnableFlow(false)}
+        onClose={closeEnableFlow}
         title='Activer la 2FA par email'
         size='md'
+        urlName='enable-email-2fa'
       >
         {renderEnableFlow()}
       </Modal>
 
       <Modal
-        isOpen={showDisableFlow}
-        onClose={() => setShowDisableFlow(false)}
+        onClose={closeDisableFlow}
         title='Désactiver la 2FA par email'
         size='md'
+        urlName='disable-email-2fa'
       >
         {renderDisableFlow()}
       </Modal>

@@ -299,11 +299,11 @@ const SettingsPage: React.FC = () => {
               key={session.sessionId}
               className='flex items-center justify-between rounded-lg bg-gray-50 p-4 dark:bg-gray-700/50'
             >
-              <div className='flex items-center space-x-3'>
+              <div className='flex flex-1 items-center space-x-3'>
                 <div className='flex-shrink-0'>
                   <Monitor size={20} className='text-gray-500' />
                 </div>
-                <div>
+                <div className='flex-1'>
                   <div className='flex items-center space-x-2'>
                     <span className='font-medium text-gray-900 dark:text-gray-100'>
                       {session.deviceType}
@@ -314,19 +314,21 @@ const SettingsPage: React.FC = () => {
                       </span>
                     )}
                   </div>
-                  <div className='flex items-center space-x-4 text-sm text-gray-500 dark:text-gray-400'>
-                    <span className='flex items-center space-x-1'>
-                      <Globe size={14} />
+                  <div className='grid grid-cols-[repeat(auto-fit,_minmax(150px,_1fr))] space-x-4 text-sm text-gray-500 dark:text-gray-400'>
+                    <span className='flex justify-center space-x-1 max-[604px]:col-span-2 col-span-1'>
+                      <Globe size={14} className='mt-[3px]' />
                       <span>{session.ip}</span>
                     </span>
-                    <span className='flex items-center space-x-1'>
-                      <MapPin size={14} />
+                    <span className='flex justify-center space-x-1 col-span-2'>
+                      <MapPin size={14} className='mt-[3px]' />
                       <span>{session.location || 'Localisation inconnue'}</span>
                     </span>
-                    <span className='flex items-center space-x-1'>
-                      <Calendar size={14} />
+                    <span className='flex justify-center space-x-1 max-[604px]:col-span-2 col-span-1'>
+                      <Calendar size={14} className='mt-[3px]' />
                       <span>
-                        {session.lastActive?.toLocaleString() || 'Inconnu'}
+                        {new Date(
+                          session.lastActive || 0,
+                        ).toLocaleDateString() || 'Inconnu'}
                       </span>
                     </span>
                   </div>
@@ -427,7 +429,7 @@ const SettingsPage: React.FC = () => {
         icon={Mail}
       >
         {!emailChangeStep ? (
-          <div className='flex items-center justify-between'>
+          <div className='flex flex-col min-[540px]:flex-row space-y-3 min-[540px]:space-y-0 items-center justify-between'>
             <div>
               <p className='text-sm text-gray-600 dark:text-gray-400'>
                 Email actuel: <span className='font-medium'>{user?.email}</span>
@@ -603,7 +605,7 @@ const SettingsPage: React.FC = () => {
           La double authentification ajoute une couche de sécurité
           supplémentaire à votre compte.
         </p>
-        <div className='grid grid-cols-3 gap-4 text-center'>
+        <div className='grid grid-cols-[repeat(auto-fit,_minmax(130px,_1fr))] gap-4 text-center'>
           <div>
             <div className='text-primary-600 dark:text-primary-400 text-2xl font-bold'>
               {
@@ -635,7 +637,7 @@ const SettingsPage: React.FC = () => {
               méthode préférée
             </div>
           </div>
-          <div>
+          <div className='col-span-1 min-[364px]:col-span-2 min-[510px]:col-span-1'>
             <div className='text-primary-600 dark:text-primary-400 text-2xl font-bold'>
               {twoFactorSettings.backupCodes.length}
             </div>
@@ -647,7 +649,7 @@ const SettingsPage: React.FC = () => {
       </div>
 
       {/* Méthodes 2FA */}
-      <div className='grid grid-cols-[repeat(auto-fit,_minmax(280px,_1fr))] gap-6'>
+      <div className='grid min-[320px]:grid-cols-[repeat(auto-fit,_minmax(280px,_1fr))] grid-cols-[repeat(auto-fit,_minmax(220px,_1fr))] gap-6'>
         <EmailTwoFactor
           isEnabled={twoFactorSettings.email.enabled}
           isPreferredMethod={twoFactorSettings.preferredMethod === 'email'}
@@ -675,6 +677,7 @@ const SettingsPage: React.FC = () => {
             codes={twoFactorSettings.backupCodes.map((code: any) => code.code)}
             onContinue={() => {}}
             onSkip={() => {}}
+            isModal={false}
           />
         )}
     </div>

@@ -282,7 +282,6 @@ export const verifyAuthentication = asyncHandler(
     if (!user) {
       return ApiResponse.error(res, t('auth:errors.user_not_found'), 404)
     }
-    console.log(user.twoFactor.webauthn.credentials, credentialId)
 
     // 4. Récupération du credential
     const dbCredential = findCredentialById(user, credentialId)

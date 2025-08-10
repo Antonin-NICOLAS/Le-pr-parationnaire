@@ -1,6 +1,7 @@
 import { CheckCircle, Lock } from 'lucide-react'
 import type React from 'react'
 import { useEffect, useState } from 'react'
+import { useNavigate } from 'react-router-dom'
 import { toast } from 'sonner'
 
 import CustomInput from '../../components/ui/CustomInput'
@@ -11,6 +12,7 @@ import AuthLayout from '../../layouts/AuthLayout'
 import type { PasswordStrength } from '../../types/auth'
 
 const ResetPasswordPage: React.FC = () => {
+  const navigate = useNavigate()
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
   const [isLoading, setIsLoading] = useState(false)
@@ -102,7 +104,7 @@ const ResetPasswordPage: React.FC = () => {
           />
 
           <PrimaryButton
-            onClick={() => console.log('Navigate to forgot password')}
+            onClick={() => navigate('/forgot-password')}
             fullWidth
             size='lg'
           >
@@ -132,7 +134,7 @@ const ResetPasswordPage: React.FC = () => {
             </p>
 
             <PrimaryButton
-              onClick={() => console.log('Navigate to login')}
+              onClick={() => navigate('/auth/login')}
               fullWidth
               size='lg'
             >

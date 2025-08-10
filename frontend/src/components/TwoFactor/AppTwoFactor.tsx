@@ -1,14 +1,16 @@
+import { AlertCircle, Copy, QrCode, Smartphone, Star } from 'lucide-react'
 import React, { useState } from 'react'
-import { Star, Smartphone, Copy, QrCode, AlertCircle } from 'lucide-react'
-import PrimaryButton from '../ui/PrimaryButton'
-import SixDigitCodeInput from '../ui/SixDigitCodeInput'
-import Modal from '../ui/Modal'
-import CustomInput from '../ui/CustomInput'
-import BackupCodesDisplay from './BackupCodesDisplay'
-import SecurityQuestionsSetup from './SecurityQuestionsSetup'
+import { toast } from 'sonner'
+
 import useAppTwoFactor from '../../hooks/TwoFactor/App'
 import useTwoFactorAuth from '../../hooks/TwoFactor/Main'
-import { toast } from 'sonner'
+import { useUrlModal } from '../../routes/UseUrlModal'
+import CustomInput from '../ui/CustomInput'
+import Modal from '../ui/Modal'
+import PrimaryButton from '../ui/PrimaryButton'
+import SixDigitCodeInput from '../ui/SixDigitCodeInput'
+import BackupCodesDisplay from './BackupCodesDisplay'
+import SecurityQuestionsSetup from './SecurityQuestionsSetup'
 
 interface AppTwoFactorProps {
   isEnabled: boolean
@@ -20,51 +22,45 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
   isPreferredMethod,
   onStatusChange,
 }) => {
-  const [isLoading, setIsLoading] = useState(false)
-  const [showEnableFlow, setShowEnableFlow] = useState(false)
-  const [showDisableFlow, setShowDisableFlow] = useState(false)
+  const { open: openEnableFlow, close: closeEnableFlow } =
+    useUrlModal('enable-app-2fa')
+  const { open: openDisableFlow, close: closeDisableFlow } =
+    useUrlModal('disable-app-2fa')
   const [currentStep, setCurrentStep] = useState<
     'config' | 'qr' | 'verify' | 'backup' | 'security'
   >('config')
-  // Flow data
-  // Step 1: QR Code and Secret
-  const [qrData, setQrData] = useState<{
-    secret: string
-    qrCode: string
-  } | null>(null)
   // Step 2: Verification Code
   const [verificationCode, setVerificationCode] = useState<string[]>(
     Array(6).fill(''),
   )
-  // Step 3: Backup Codes
-  const [backupCodes, setBackupCodes] = useState<string[]>([])
   // Disable flow
   const [disableCode, setDisableCode] = useState<string[]>(Array(6).fill(''))
   const [disablePassword, setDisablePassword] = useState('')
   const [requirePassword, setRequirePassword] = useState(false)
 
-  const { configureApp, enableApp, disableApp } = useAppTwoFactor()
-  const { setPreferredMethod } = useTwoFactorAuth()
+  const {
+    configureApp,
+    configureAppState,
+    enableApp,
+    enableAppState,
+    disableApp,
+    disableAppState,
+  } = useAppTwoFactor()
+  const { setPreferredMethod, setPreferredMethodState } = useTwoFactorAuth()
 
   // Step 1 : Request QR Code and Secret
   const handleEnable = async () => {
-    setIsLoading(true)
     const result = await configureApp()
-    if (result?.secret && result?.qrCode) {
-      setQrData({
-        secret: result.secret,
-        qrCode: result.qrCode,
-      })
-      setShowEnableFlow(true)
+    if (result.success) {
+      openEnableFlow()
       setCurrentStep('qr')
     }
-    setIsLoading(false)
   }
 
   // Copy secret to clipboard
   const handleCopySecret = () => {
-    if (qrData?.secret) {
-      navigator.clipboard.writeText(qrData.secret)
+    if (configureAppState.data?.secret) {
+      navigator.clipboard.writeText(configureAppState.data.secret)
       toast.success('Clé copiée dans le presse-papiers')
     }
   }
@@ -74,13 +70,10 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
     const code = verificationCode.join('')
     if (code.length !== 6) return
 
-    setIsLoading(true)
     const result = await enableApp(code)
-    if (result?.success) {
-      setBackupCodes(result.backupCodes || [])
+    if (result.success) {
       setCurrentStep('backup')
     }
-    setIsLoading(false)
   }
 
   // Disable flow
@@ -88,34 +81,29 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
     const code = disableCode.join('')
     if (code.length !== 6) return
 
-    setIsLoading(true)
-    const success = await disableApp(
+    const result = await disableApp(
       code,
       requirePassword ? disablePassword : undefined,
     )
-    if (success) {
-      setShowDisableFlow(false)
+    if (result.success) {
+      closeDisableFlow()
       onStatusChange()
     }
-    setIsLoading(false)
   }
 
   const handleSetPreferredMethod = async () => {
-    setIsLoading(true)
-    const success = await setPreferredMethod('app')
-    if (success) {
+    const result = await setPreferredMethod('app')
+    if (result.success) {
       onStatusChange()
     }
-    setIsLoading(false)
   }
 
   // Handle flow completion
   const handleFlowComplete = () => {
-    setShowEnableFlow(false)
+    closeEnableFlow()
+    enableAppState.resetData()
     setCurrentStep('config')
     setVerificationCode(Array(6).fill(''))
-    setBackupCodes([])
-    setQrData(null)
     onStatusChange()
   }
 
@@ -137,11 +125,11 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
               </p>
             </div>
 
-            {qrData?.qrCode && (
+            {configureAppState.data.qrCode && (
               <div className='flex justify-center'>
                 <div className='rounded-lg border bg-white p-1'>
                   <img
-                    src={qrData.qrCode}
+                    src={configureAppState.data.qrCode}
                     alt='QR Code'
                     className='h-48 w-48'
                   />
@@ -155,7 +143,7 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
               </p>
               <div className='flex items-center space-x-2'>
                 <code className='flex-1 break-all rounded-lg bg-gray-100 p-3 font-mono text-sm dark:bg-gray-700'>
-                  {qrData?.secret}
+                  {configureAppState.data.secret}
                 </code>
                 <PrimaryButton
                   variant='outline'
@@ -204,14 +192,14 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
             <SixDigitCodeInput
               value={verificationCode}
               onChange={setVerificationCode}
-              disabled={isLoading}
+              disabled={enableAppState.loading}
               autoFocus
             />
 
             <div className='flex space-x-3'>
               <PrimaryButton
                 onClick={handleVerifyCode}
-                loading={isLoading}
+                loading={enableAppState.loading}
                 disabled={verificationCode.join('').length !== 6}
                 fullWidth
               >
@@ -231,7 +219,9 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
       case 'backup':
         return (
           <BackupCodesDisplay
-            codes={backupCodes.map((code: any) => code.code)}
+            codes={enableAppState.data.backupCodes.map(
+              (code: any) => code.code,
+            )}
             onContinue={() => setCurrentStep('security')}
             onSkip={handleFlowComplete}
           />
@@ -267,7 +257,7 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
       <SixDigitCodeInput
         value={disableCode}
         onChange={setDisableCode}
-        disabled={isLoading}
+        disabled={disableAppState.loading}
         autoFocus
       />
 
@@ -297,7 +287,7 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
       <div className='flex space-x-3'>
         <PrimaryButton
           onClick={handleDisable}
-          loading={isLoading}
+          loading={disableAppState.loading}
           disabled={
             disableCode.join('').length !== 6 ||
             (requirePassword && !disablePassword)
@@ -307,11 +297,7 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
         >
           Désactiver
         </PrimaryButton>
-        <PrimaryButton
-          variant='outline'
-          onClick={() => setShowDisableFlow(false)}
-          fullWidth
-        >
+        <PrimaryButton variant='outline' onClick={closeDisableFlow} fullWidth>
           Annuler
         </PrimaryButton>
       </div>
@@ -338,7 +324,7 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
           </div>
         </div>
 
-        <div className='mb-4 flex items-center justify-between'>
+        <div className='mb-4 flex flex-col space-y-2 min-[320px]:flex-row items-center min-[320px]:justify-between'>
           <span
             className={`rounded-full px-2 py-1 text-xs ${
               isEnabled
@@ -355,7 +341,7 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
                   ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
                   : 'cursor-pointer bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
               }`}
-              disabled={isLoading}
+              disabled={setPreferredMethodState.loading}
               {...(!isPreferredMethod && { onClick: handleSetPreferredMethod })}
             >
               {<Star className='mr-1 h-4 w-4' />}
@@ -370,27 +356,29 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
           variant={isEnabled ? 'secondary' : 'primary'}
           size='sm'
           fullWidth
-          onClick={isEnabled ? () => setShowDisableFlow(true) : handleEnable}
-          loading={isLoading}
+          onClick={isEnabled ? openDisableFlow : handleEnable}
+          loading={
+            isEnabled ? disableAppState.loading : configureAppState.loading
+          }
         >
           {isEnabled ? 'Désactiver' : 'Activer'}
         </PrimaryButton>
       </div>
 
       <Modal
-        isOpen={showEnableFlow}
-        onClose={() => setShowEnableFlow(false)}
+        onClose={closeEnableFlow}
         title='Activer la 2FA par application'
         size='lg'
+        urlName='enable-app-2fa'
       >
         {renderEnableFlow()}
       </Modal>
 
       <Modal
-        isOpen={showDisableFlow}
-        onClose={() => setShowDisableFlow(false)}
+        onClose={closeDisableFlow}
         title='Désactiver la 2FA par application'
         size='md'
+        urlName='disable-app-2fa'
       >
         {renderDisableFlow()}
       </Modal>

@@ -148,7 +148,7 @@ const TwoFactorPage: React.FC = () => {
       title='Two-Factor Authentication'
       subtitle='Please verify your identity to continue'
       showBackButton
-      onBack={() => console.log('Navigate back')}
+      onBack={() => navigate('/auth/login')}
     >
       <div className='space-y-6'>
         <div className='flex justify-center'>

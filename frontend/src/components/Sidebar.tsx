@@ -1,28 +1,29 @@
-import React, { useEffect, useRef } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
-// Contexts
-import { useTheme } from '../context/Theme'
-import { useAuth } from '../context/Auth'
-// Image
-import Logo from '../assets/icon.png'
 // Icons
 import {
-  LayoutDashboard,
-  Award,
-  Footprints,
-  ChevronsLeft,
   AlignStartVertical,
-  Menu,
+  Award,
+  ChevronsLeft,
   Dumbbell,
-  Moon,
-  Sun,
-  Settings,
+  Footprints,
   Info,
+  LayoutDashboard,
   LogIn,
   LogOut,
-  Users,
+  Menu,
+  Moon,
+  Settings,
+  Sun,
   User,
+  Users,
 } from 'lucide-react'
+import React, { useEffect, useRef } from 'react'
+import { NavLink, useNavigate } from 'react-router-dom'
+
+// Image
+import Logo from '../assets/icon.png'
+import { useAuth } from '../context/Auth'
+// Contexts
+import { useTheme } from '../context/Theme'
 
 type SidebarProps = {
   sidebarOpen: boolean
@@ -84,7 +85,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   return (
     <>
       <header
-        className={`z-9000 fixed left-0 right-0 top-0 m-3 pl-[0] [transition:padding_0.4s,_background-color_0.4s,_width_0.4s] ${sidebarOpen && '640:pl-[calc(290px+0.75rem)] pl-[0]'} ${!sidebarOpen && '1150:pl-[calc(90px+0.75rem)] pl-[0]'}`}
+        className={`z-9000 fixed left-0 right-0 top-0 m-3 pl-[0] [transition:padding_0.4s,_background-color_0.4s,_width_0.4s] ${sidebarOpen && 'min-[640px]:pl-[calc(290px+0.75rem)] pl-[0]'} ${!sidebarOpen && 'min-[1150px]:pl-[calc(90px+0.75rem)] pl-[0]'}`}
         id='header'
       >
         <div className='bg-deg-gray-100 flex h-[3.5rem] w-full items-center justify-between rounded-2xl px-6 shadow-xl'>
@@ -173,7 +174,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               </div>
             )}
           </div>
-          <div className='640:hidden block'>
+          <div className='min-[640px]:hidden block'>
             <button
               className='text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[1.9rem] transition-[color] duration-[0.1s]'
               onClick={toggleSidebar}

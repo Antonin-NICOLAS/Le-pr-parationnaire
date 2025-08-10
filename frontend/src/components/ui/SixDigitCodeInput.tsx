@@ -1,11 +1,12 @@
 import type React from 'react'
 import {
-  useState,
-  useRef,
-  useEffect,
-  type KeyboardEvent,
   type ClipboardEvent,
+  type KeyboardEvent,
+  useEffect,
+  useRef,
+  useState,
 } from 'react'
+
 import PrimaryButton from './PrimaryButton'
 
 interface SixDigitCodeInputProps {

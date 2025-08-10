@@ -12,6 +12,7 @@ import React, { useState } from 'react'
 import { useAuth } from '../../context/Auth'
 import useTwoFactorAuth from '../../hooks/TwoFactor/Main'
 import useWebAuthnTwoFactor from '../../hooks/TwoFactor/WebAuthn'
+import { useUrlModal } from '../../routes/UseUrlModal'
 import type { WebAuthnCredential } from '../../types/user'
 import CustomInput from '../ui/CustomInput'
 import Modal from '../ui/Modal'
@@ -33,9 +34,12 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
   onStatusChange,
 }) => {
   const [isLoading, setIsLoading] = useState(false)
-  const [showEnableFlow, setShowEnableFlow] = useState(false)
-  const [showDisableFlow, setShowDisableFlow] = useState(false)
-  const [showCredentialsList, setShowCredentialsList] = useState(false)
+  const { open: openEnableFlow, close: closeEnableFlow } =
+    useUrlModal('enable-webauthn')
+  const { open: openDisableFlow, close: closeDisableFlow } =
+    useUrlModal('disable-webauthn')
+  const { open: openCredentialsList, close: closeCredentialsList } =
+    useUrlModal('webauthn-credentials')
   const [currentStep, setCurrentStep] = useState<
     'register' | 'name' | 'backup' | 'security'
   >('register')
@@ -65,8 +69,8 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
       setBackupCodes(result.backupCodes || [])
       if (result.credentialId) {
         setCurrentCredentialId(result.credentialId)
-        setShowCredentialsList(false)
-        setShowEnableFlow(true)
+        closeCredentialsList()
+        openEnableFlow()
         setCurrentStep('name')
       }
     }
@@ -83,8 +87,8 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
       if (credentials.length === 1) {
         setCurrentStep('backup')
       } else {
-        setShowEnableFlow(false)
-        setShowCredentialsList(true)
+        closeEnableFlow()
+        openCredentialsList()
       }
     }
     setIsLoading(false)
@@ -101,7 +105,7 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
       if (success) {
         onStatusChange()
         if (credentials.length === 0) {
-          setShowCredentialsList(false)
+          closeCredentialsList()
         }
       }
       setIsLoading(false)
@@ -116,7 +120,7 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
       disablePassword,
     )
     if (success) {
-      setShowDisableFlow(false)
+      closeDisableFlow()
       onStatusChange()
     }
     setIsLoading(false)
@@ -132,7 +136,7 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
   }
 
   const handleFlowComplete = () => {
-    setShowEnableFlow(false)
+    closeEnableFlow()
     setCurrentStep('register')
     setDeviceName('')
     setCurrentCredentialId('')
@@ -176,7 +180,7 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
               </PrimaryButton>
               <PrimaryButton
                 variant='outline'
-                onClick={() => setShowEnableFlow(false)}
+                onClick={closeEnableFlow}
                 fullWidth
               >
                 Annuler
@@ -326,11 +330,7 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
         >
           Désactiver
         </PrimaryButton>
-        <PrimaryButton
-          variant='outline'
-          onClick={() => setShowDisableFlow(false)}
-          fullWidth
-        >
+        <PrimaryButton variant='outline' onClick={closeDisableFlow} fullWidth>
           Annuler
         </PrimaryButton>
       </div>
@@ -344,17 +344,24 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
           <div className='rounded-lg bg-purple-100 p-2 dark:bg-purple-900/20'>
             <Key className='text-purple-600 dark:text-purple-400' size={20} />
           </div>
-          <div>
-            <h4 className='font-semibold text-gray-900 dark:text-gray-100'>
-              Clé de sécurité
-            </h4>
+          <div className='flex-1'>
+            <div className='flex items-center justify-between gap-2'>
+              <h4 className='font-semibold text-gray-900 dark:text-gray-100'>
+                Clé de sécurité
+              </h4>
+              {isEnabled && (
+                <span className='text-xs text-gray-500 dark:text-gray-400'>
+                  {credentials.length} clé{credentials.length > 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
             <p className='text-sm text-gray-500 dark:text-gray-400'>
               WebAuthn, FaceID, TouchID
             </p>
           </div>
         </div>
 
-        <div className='mb-4 flex items-center justify-between'>
+        <div className='mb-4 flex flex-col space-y-2 min-[320px]:flex-row items-center min-[320px]:justify-between'>
           <span
             className={`rounded-full px-2 py-1 text-xs ${
               isEnabled
@@ -380,11 +387,6 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
                 : 'Choisir comme préférée'}
             </button>
           )}
-          {isEnabled && (
-            <span className='text-xs text-gray-500 dark:text-gray-400'>
-              {credentials.length} clé{credentials.length > 1 ? 's' : ''}
-            </span>
-          )}
         </div>
 
         <div className='space-y-2'>
@@ -392,7 +394,7 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
             variant={isEnabled ? 'secondary' : 'primary'}
             size='sm'
             fullWidth
-            onClick={isEnabled ? () => setShowDisableFlow(true) : handleEnable}
+            onClick={isEnabled ? openDisableFlow : handleEnable}
             loading={isLoading}
           >
             {isEnabled ? 'Désactiver' : 'Activer'}
@@ -403,7 +405,7 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
               variant='outline'
               size='sm'
               fullWidth
-              onClick={() => setShowCredentialsList(true)}
+              onClick={openCredentialsList}
             >
               Gérer les clés ({credentials.length})
             </PrimaryButton>
@@ -412,28 +414,28 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
       </div>
 
       <Modal
-        isOpen={showEnableFlow}
-        onClose={() => setShowEnableFlow(false)}
+        onClose={closeEnableFlow}
         title='Activer WebAuthn'
         size='md'
+        urlName='enable-webauthn'
       >
         {renderEnableFlow()}
       </Modal>
 
       <Modal
-        isOpen={showCredentialsList}
-        onClose={() => setShowCredentialsList(false)}
+        onClose={closeCredentialsList}
         title='Clés de sécurité'
         size='lg'
+        urlName='webauthn-credentials'
       >
         {renderCredentialsList()}
       </Modal>
 
       <Modal
-        isOpen={showDisableFlow}
-        onClose={() => setShowDisableFlow(false)}
+        onClose={closeDisableFlow}
         title='Désactiver WebAuthn'
         size='md'
+        urlName='disable-webauthn'
       >
         {renderDisableFlow()}
       </Modal>

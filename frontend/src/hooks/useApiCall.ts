@@ -1,11 +1,10 @@
-import axios, { AxiosError } from 'axios'
+import { AxiosError } from 'axios'
 import { useCallback, useState } from 'react'
 import { toast } from 'sonner'
 
 // Base types for API responses
 export interface ApiResponse<T = any> {
   success: boolean
-  data?: T
   message?: string
   error?: string
   [key: string]: any
@@ -17,7 +16,8 @@ export interface ApiCallResult<T = any> {
   loading: boolean
   error: string | null
   execute: (...args: any[]) => Promise<ApiResponse<T>>
-  reset: () => void
+  resetError: () => void
+  resetData: () => void
 }
 
 // Configuration for API calls
@@ -60,7 +60,8 @@ export function useApiCall<T = any>(
         const result: ApiResponse<T> = response.data || response
 
         if (result.success) {
-          setData(result.data ?? null)
+          const { success, message, error, ...rest } = result
+          setData(rest as T)
 
           // Success toast
           if (showSuccessToast) {
@@ -83,7 +84,7 @@ export function useApiCall<T = any>(
           setError(errorMsg)
 
           if (showErrorToast) {
-            toast.error(errorMessage || errorMsg)
+            toast.error(errorMsg || errorMessage)
           }
 
           if (onError) {
@@ -134,10 +135,11 @@ export function useApiCall<T = any>(
     ],
   )
 
-  const reset = useCallback(() => {
-    setData(null)
+  const resetError = useCallback(() => {
     setError(null)
-    setLoading(false)
+  }, [])
+  const resetData = useCallback(() => {
+    setData(null)
   }, [])
 
   return {
@@ -145,6 +147,7 @@ export function useApiCall<T = any>(
     loading,
     error,
     execute,
-    reset,
+    resetError,
+    resetData,
   }
 }

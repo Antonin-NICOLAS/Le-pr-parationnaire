@@ -44,7 +44,7 @@ const SettingsCard: React.FC<SettingsCardProps> = ({
       <div className='flex items-start justify-between'>
         <div className='flex items-start space-x-3'>
           {Icon && (
-            <div className='flex-shrink-0'>
+            <div className='flex-shrink-0 mt-3'>
               <Icon size={24} className={iconVariantClasses[variant]} />
             </div>
           )}

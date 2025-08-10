@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { Outlet } from 'react-router-dom'
+
 import Sidebar from '../components/Sidebar'
 
 const SidebarLayout: React.FC = () => {
@@ -28,8 +29,8 @@ const SidebarLayout: React.FC = () => {
       />
       <main
         className={`mb-3 ml-3 mr-3 mt-[5rem] pl-[0] [transition:padding_0.4s] ${
-          sidebarOpen && '1150:pl-[calc(290px+0.75rem)]'
-        } ${!sidebarOpen && '1150:pl-[calc(90px+0.75rem)]'}`}
+          sidebarOpen && 'min-[1150px]:pl-[calc(290px+0.75rem)]'
+        } ${!sidebarOpen && 'min-[1150px]:pl-[calc(90px+0.75rem)]'}`}
         id='main'
       >
         <Outlet />

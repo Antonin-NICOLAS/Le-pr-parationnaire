@@ -39,7 +39,7 @@ const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
 
   return (
     <div className={`flex items-center ${className}`}>
-      <div className='flex flex-1 flex-col'>
+      <div className='flex flex-1 flex-col pr-4'>
         {label && (
           <span className='text-sm font-medium text-gray-900 dark:text-gray-100'>
             {label}

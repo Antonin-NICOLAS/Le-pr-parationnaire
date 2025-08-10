@@ -1,92 +1,55 @@
 import axios from 'axios'
-import { toast } from 'sonner'
+
 import { VITE_2FA } from '../../utils/env'
+import { useApiCall } from '../useApiCall'
+
+// API functions
+const getTwoFactorStatusApi = () =>
+  axios.get(`${VITE_2FA}/status`, { withCredentials: true })
+
+const setPreferredMethodApi = (method: 'email' | 'app' | 'webauthn') =>
+  axios.post(
+    `${VITE_2FA}/set-preferred-method`,
+    { method },
+    { withCredentials: true },
+  )
+
+const twoFactorLoginApi = (
+  email: string,
+  rememberMe: boolean,
+  method: string,
+  value: string,
+) =>
+  axios.post(
+    `${VITE_2FA}/login`,
+    { email, rememberMe, method, value },
+    { withCredentials: true },
+  )
 
 const useTwoFactorAuth = () => {
-  const getTwoFactorStatus = async () => {
-    try {
-      const { data } = await axios.get(`${VITE_2FA}/status`, {
-        withCredentials: true,
-      })
-      if (data.success) {
-        return {
-          success: true,
-          email: data.email,
-          webauthn: data.webauthn,
-          app: data.app,
-          preferredMethod: data.preferredMethod,
-          backupCodes: data.backupCodes,
-          credentials: data.credentials,
-        }
-      } else {
-        return { success: false }
-      }
-    } catch (error) {
-      toast.error(
-        'Erreur lors de la récupération du statut de la double authentification',
-      )
-      return { success: false }
-    }
-  }
+  const getTwoFactorStatus = useApiCall(getTwoFactorStatusApi, {
+    showSuccessToast: false,
+    errorMessage:
+      'Erreur lors de la récupération du statut de la double authentification',
+  })
 
-  const setPreferredMethod = async (method: 'email' | 'app' | 'webauthn') => {
-    try {
-      const { data } = await axios.post(
-        `${VITE_2FA}/set-preferred-method`,
-        {
-          method,
-        },
-        {
-          withCredentials: true,
-        },
-      )
-      if (data.success) {
-        toast.success('Méthode préférée mise à jour avec succès')
-        return true
-      } else {
-        toast.error('Échec de la mise à jour de la méthode préférée')
-        return false
-      }
-    } catch (error) {
-      toast.error('Erreur lors de la mise à jour de la méthode préférée')
-      return false
-    }
-  }
+  const setPreferredMethod = useApiCall(setPreferredMethodApi, {
+    successMessage: 'Méthode préférée mise à jour avec succès',
+    errorMessage: 'Erreur lors de la mise à jour de la méthode préférée',
+  })
 
-  const twoFactorLogin = async (
-    email: string,
-    rememberMe: boolean,
-    method: 'email' | 'app' | 'webauthn' | 'backup_code' | 'securityquestions',
-    value: string,
-  ) => {
-    try {
-      const { data } = await axios.post(
-        `${VITE_2FA}/login`,
-        {
-          email,
-          rememberMe,
-          method,
-          value,
-        },
-        { withCredentials: true },
-      )
-      if (data.success) {
-        toast.success(data.message || 'Connexion réussie')
-        return true
-      } else {
-        toast.error(data.error || 'Échec de la connexion')
-        return false
-      }
-    } catch (error) {
-      toast.error('Erreur lors de la connexion')
-      return false
-    }
-  }
+  const twoFactorLogin = useApiCall(twoFactorLoginApi, {
+    successMessage: 'Connexion réussie',
+    errorMessage: 'Échec de la connexion',
+  })
 
   return {
-    getTwoFactorStatus,
-    setPreferredMethod,
-    twoFactorLogin,
+    getTwoFactorStatus: getTwoFactorStatus.execute,
+    getTwoFactorStatusState: getTwoFactorStatus,
+    setPreferredMethod: setPreferredMethod.execute,
+    setPreferredMethodState: setPreferredMethod,
+    twoFactorLogin: twoFactorLogin.execute,
+    twoFactorLoginState: twoFactorLogin,
   }
 }
 
