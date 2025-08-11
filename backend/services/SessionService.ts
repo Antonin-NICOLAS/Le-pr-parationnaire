@@ -46,7 +46,7 @@ export class SessionService {
         sessionId,
         ip,
         userAgent,
-        deviceType: uaResult.device.type || 'desktop',
+        deviceType: uaResult.device.type || 'Desktop',
         browser: uaResult.browser.name || 'inconnu',
         os: uaResult.os.name || 'inconnu',
         lastActive: new Date(),

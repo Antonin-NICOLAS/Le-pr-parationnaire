@@ -287,6 +287,13 @@ export const logout = asyncHandler(async (req: Request, res: Response) => {
         ? process.env.FRONTEND_SERVER
         : undefined,
   })
+  res.clearCookie('refreshToken', {
+    path: '/',
+    domain:
+      process.env.NODE_ENV === 'production'
+        ? process.env.FRONTEND_SERVER
+        : undefined,
+  })
   res.clearCookie('sessionId', {
     path: '/',
     domain:

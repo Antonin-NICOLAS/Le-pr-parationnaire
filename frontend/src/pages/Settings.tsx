@@ -107,11 +107,11 @@ const SettingsPage: React.FC = () => {
   const fetch2FAStatus = async () => {
     await getTwoFactorStatus()
   }
-  const fetchActiveSessions = async () => {
-    await checkActiveSessions()
-  }
 
   useEffect(() => {
+    const fetchActiveSessions = async () => {
+      await checkActiveSessions()
+    }
     fetchActiveSessions()
     fetch2FAStatus()
   }, [])
@@ -221,77 +221,90 @@ const SettingsPage: React.FC = () => {
         icon={Monitor}
       >
         <div className='space-y-4'>
-          {checkActiveSessionsState.data.sessions.map(
-            (session: LoginHistory) => (
-              <div
-                key={session.sessionId}
-                className='flex items-center justify-between rounded-lg bg-gray-50 p-4 dark:bg-gray-700/50'
-              >
-                <div className='flex flex-1 items-center space-x-3'>
-                  <div className='flex-shrink-0'>
-                    <Monitor size={20} className='text-gray-500' />
-                  </div>
-                  <div className='flex-1'>
-                    <div className='flex items-center space-x-2'>
-                      <span className='font-medium text-gray-900 dark:text-gray-100'>
-                        {session.deviceType}
-                      </span>
-                      {session.isCurrent && (
-                        <span className='rounded-full bg-green-100 px-2 py-1 text-xs text-green-800 dark:bg-green-900/20 dark:text-green-400'>
-                          Session actuelle
-                        </span>
-                      )}
+          {!checkActiveSessionsState.loading &&
+          checkActiveSessionsState.data?.sessions?.length ? (
+            checkActiveSessionsState.data.sessions.map(
+              (session: LoginHistory) => (
+                <div
+                  key={session.sessionId}
+                  className='flex items-center justify-between rounded-lg bg-gray-50 p-4 dark:bg-gray-700/50'
+                >
+                  <div className='flex flex-1 items-center space-x-3'>
+                    <div className='flex-shrink-0'>
+                      <Monitor size={20} className='text-gray-500' />
                     </div>
-                    <div className='grid grid-cols-[repeat(auto-fit,_minmax(150px,_1fr))] space-x-4 text-sm text-gray-500 dark:text-gray-400'>
-                      <span className='flex justify-center space-x-1 max-[604px]:col-span-2 col-span-1'>
-                        <Globe size={14} className='mt-[3px]' />
-                        <span>{session.ip}</span>
-                      </span>
-                      <span className='flex justify-center space-x-1 col-span-2'>
-                        <MapPin size={14} className='mt-[3px]' />
-                        <span>
-                          {session.location || 'Localisation inconnue'}
+                    <div className='flex-1'>
+                      <div className='flex items-center space-x-2'>
+                        <span className='font-medium text-gray-900 dark:text-gray-100'>
+                          {session.deviceType}
                         </span>
-                      </span>
-                      <span className='flex justify-center space-x-1 max-[604px]:col-span-2 col-span-1'>
-                        <Calendar size={14} className='mt-[3px]' />
-                        <span>
-                          {new Date(
-                            session.lastActive || 0,
-                          ).toLocaleDateString() || 'Inconnu'}
+                        {session.isCurrent && (
+                          <span className='rounded-full bg-green-100 px-2 py-1 text-xs text-green-800 dark:bg-green-900/20 dark:text-green-400'>
+                            Session actuelle
+                          </span>
+                        )}
+                      </div>
+                      <div className='grid grid-cols-[repeat(auto-fit,_minmax(150px,_1fr))] space-x-4 text-sm text-gray-500 dark:text-gray-400'>
+                        <span className='flex justify-center space-x-1 max-[604px]:col-span-2 col-span-1'>
+                          <Globe size={14} className='mt-[3px]' />
+                          <span>{session.ip}</span>
                         </span>
-                      </span>
+                        <span className='flex justify-center space-x-1 col-span-2'>
+                          <MapPin size={14} className='mt-[3px]' />
+                          <span>
+                            {session.location || 'Localisation inconnue'}
+                          </span>
+                        </span>
+                        <span className='flex justify-center space-x-1 max-[604px]:col-span-2 col-span-1'>
+                          <Calendar size={14} className='mt-[3px]' />
+                          <span>
+                            {new Date(
+                              session.lastActive || 0,
+                            ).toLocaleDateString() || 'Inconnu'}
+                          </span>
+                        </span>
+                      </div>
                     </div>
                   </div>
+                  {!session.isCurrent && (
+                    <PrimaryButton
+                      variant='outline'
+                      size='sm'
+                      onClick={() => handleRevokeSession(session.sessionId)}
+                      loading={
+                        revokeSessionState.loading ||
+                        revokeAllSessionsState.loading
+                      }
+                    >
+                      Révoquer
+                    </PrimaryButton>
+                  )}
                 </div>
-                {!session.isCurrent && (
-                  <PrimaryButton
-                    variant='outline'
-                    size='sm'
-                    onClick={() => handleRevokeSession(session.sessionId)}
-                    loading={
-                      revokeSessionState.loading ||
-                      revokeAllSessionsState.loading
-                    }
-                  >
-                    Révoquer
-                  </PrimaryButton>
-                )}
-              </div>
-            ),
+              ),
+            )
+          ) : (
+            <div className='rounded-lg bg-gray-50 p-4 dark:bg-gray-700/50'>
+              <p className='text-gray-500 dark:text-gray-400'>
+                {checkActiveSessionsState.loading
+                  ? 'Chargement des sessions...'
+                  : 'Aucune session active trouvée'}
+              </p>
+            </div>
           )}
-          {checkActiveSessionsState.data.sessions.length !== 1 && (
-            <PrimaryButton
-              variant='secondary'
-              onClick={handleRevokeAllSessions}
-              loading={
-                revokeSessionState.loading || revokeAllSessionsState.loading
-              }
-              icon={LogOut}
-            >
-              Déconnecter toutes les sessions
-            </PrimaryButton>
-          )}
+          {!checkActiveSessionsState.loading &&
+            checkActiveSessionsState.data?.sessions?.length &&
+            checkActiveSessionsState.data.sessions.length !== 1 && (
+              <PrimaryButton
+                variant='secondary'
+                onClick={handleRevokeAllSessions}
+                loading={
+                  revokeSessionState.loading || revokeAllSessionsState.loading
+                }
+                icon={LogOut}
+              >
+                Déconnecter toutes les sessions
+              </PrimaryButton>
+            )}
         </div>
       </SettingsCard>
 

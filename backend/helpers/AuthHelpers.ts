@@ -86,11 +86,11 @@ export async function generateTokensAndCookies(
   sessionId: string,
 ) {
   const accessTokenDuration = stayLoggedIn
-    ? (process.env.ACCESS_TOKEN_DURATION as StringValue)
+    ? (process.env.ACCESS_TOKEN_DURATION_LONG as StringValue)
     : (process.env.ACCESS_TOKEN_DURATION_SHORT as StringValue)
 
   const refreshTokenDuration = stayLoggedIn
-    ? (process.env.REFRESH_TOKEN_DURATION as StringValue)
+    ? (process.env.REFRESH_TOKEN_DURATION_LONG as StringValue)
     : (process.env.REFRESH_TOKEN_DURATION_SHORT as StringValue)
 
   const accessToken = TokenService.generateAccessToken(
@@ -126,7 +126,11 @@ export async function generateTokensAndCookies(
     ...options,
     maxAge: ms(refreshTokenDuration),
   })
-  res.cookie('sessionId', sessionId, { ...options, httpOnly: false })
+  res.cookie('sessionId', sessionId, {
+    ...options,
+    httpOnly: false,
+    maxAge: ms(refreshTokenDuration),
+  })
 
   return { accessToken, refreshToken, sessionId }
 }
