@@ -46,13 +46,6 @@ const Sidebar: React.FC<SidebarProps> = ({
     setSidebarOpen((prev) => !prev)
   }
 
-  const handleLogout = () => {
-    logout(() => {
-      navigate('/auth/login')
-      setSidebarOpen(false)
-    })
-  }
-
   const handleNavClick = () => {
     if (isMobileView) {
       setSidebarOpen(false)
@@ -399,7 +392,9 @@ const Sidebar: React.FC<SidebarProps> = ({
             {isAuthenticated ? (
               <button
                 className='text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[1.9rem] transition-[color] duration-[0.1s]'
-                onClick={handleLogout}
+                onClick={() => {
+                  logout()
+                }}
               >
                 <LogOut className='text-xl' />
                 <span

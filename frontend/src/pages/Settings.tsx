@@ -39,7 +39,7 @@ import useSessions from '../hooks/Auth/useSessions'
 const SettingsPage: React.FC = () => {
   const { tab = 'security' } = useParams()
   const navigate = useNavigate()
-  const { user, logout, checkAuth } = useAuth()
+  const { user } = useAuth()
   const {
     checkActiveSessions,
     checkActiveSessionsState,
@@ -371,7 +371,10 @@ const SettingsPage: React.FC = () => {
                 Email actuel: <span className='font-medium'>{user?.email}</span>
               </p>
             </div>
-            <PrimaryButton onClick={handleEmailChangeStart}>
+            <PrimaryButton
+              onClick={handleEmailChangeStart}
+              disabled={changeEmailStep1State.loading}
+            >
               Modifier l'email
             </PrimaryButton>
           </div>
@@ -396,7 +399,10 @@ const SettingsPage: React.FC = () => {
                   <PrimaryButton
                     onClick={handleCurrentEmailVerification}
                     loading={changeEmailStep2State.loading}
-                    disabled={emailForm.currentEmailCode.join('').length !== 6}
+                    disabled={
+                      emailForm.currentEmailCode.join('').length !== 6 ||
+                      changeEmailStep2State.loading
+                    }
                   >
                     Vérifier
                   </PrimaryButton>
