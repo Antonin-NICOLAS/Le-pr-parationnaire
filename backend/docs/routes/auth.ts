@@ -1,5 +1,75 @@
 /**
  * @swagger
+ * /auth/refresh:
+ *   post:
+ *     tags: [Authentication]
+ *     summary: Rafraîchir le token d'accès
+ *     description: |
+ *       Cette route permet de rafraîchir le token d'accès expiré en utilisant
+ *       le refresh token stocké dans les cookies.
+ *       Nécessite un cookie de session valide et un refresh token.
+ *     security:
+ *       - bearerAuth: []
+ *     responses:
+ *       200:
+ *         description: Token rafraîchi avec succès
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/SuccessResponse'
+ *                 - type: object
+ *                   properties:
+ *                     accessToken:
+ *                       type: string
+ *                       description: Nouveau token d'accès généré
+ *             example:
+ *               success: true
+ *               message: "Token rafraîchi avec succès"
+ *               accessToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+ *         headers:
+ *           Set-Cookie:
+ *             schema:
+ *               type: string
+ *             description: |
+ *               Met à jour les cookies 'accessToken' et 'refreshToken'.
+ *       401:
+ *         description: Erreur d'authentification
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               no_refresh_token:
+ *                 value:
+ *                   success: false
+ *                   error: "Non autorisé - Refresh token manquant"
+ *               invalid_session:
+ *                 value:
+ *                   success: false
+ *                   error: "Session introuvable"
+ *               session_expired:
+ *                 value:
+ *                   success: false
+ *                   error: "Session expirée"
+ *               invalid_refresh_token:
+ *                 value:
+ *                   success: false
+ *                   error: "Refresh token invalide"
+ *       404:
+ *         description: Session introuvable
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               error: "Session introuvable"
+ *       500:
+ *         $ref: '#/components/responses/ServerError'
+ */
+/**
+ * @swagger
  * /auth/profile:
  *   get:
  *     tags: [Authentication]

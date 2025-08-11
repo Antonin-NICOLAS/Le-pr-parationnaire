@@ -7,7 +7,6 @@ import CountdownTimer from '../../components/ui/CountdownTimer'
 import ErrorMessage from '../../components/ui/ErrorMessage'
 import PrimaryButton from '../../components/ui/PrimaryButton'
 import SixDigitCodeInput from '../../components/ui/SixDigitCodeInput'
-import { useAuth } from '../../context/Auth'
 import useEmailTwoFactor from '../../hooks/TwoFactor/Email'
 import useTwoFactorAuth from '../../hooks/TwoFactor/Main'
 import useWebAuthnTwoFactor from '../../hooks/TwoFactor/WebAuthn'
@@ -19,28 +18,26 @@ const TwoFactorPage: React.FC = () => {
   const {
     email,
     rememberMe = false,
-    email2FA = false,
-    app2FA = false,
-    webauthn2FA = false,
+    email2FA = true,
+    app2FA = true,
+    webauthn2FA = true,
   } = location.state || {}
   const [code, setCode] = useState<string[]>(Array(6).fill(''))
-  const [isLoading, setIsLoading] = useState(false)
   const { method } = useParams<{ method: string }>()
   const [currentMethod, setCurrentMethod] = useState<
-    'email' | 'app' | 'webauthn' | 'backup_code' | 'securityquestions'
+    'email' | 'app' | 'webauthn' | 'backup_code' | 'security_question'
   >(method as any)
   const [canResend, setCanResend] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [backupCodes, setBackupCodes] = useState<string[]>(Array(8).fill(''))
-  const { resendCode } = useEmailTwoFactor()
-  const { authenticate } = useWebAuthnTwoFactor()
-  const { twoFactorLogin } = useTwoFactorAuth()
-  const { checkAuth } = useAuth()
+  const { resendCode, resendCodeState } = useEmailTwoFactor()
+  const { authenticate, authenticateState } = useWebAuthnTwoFactor()
+  const { twoFactorLogin, twoFactorLoginState } = useTwoFactorAuth()
 
   useEffect(() => {
     // Auto-submit when code is complete
     const codeValue = code.join('')
-    if (codeValue.length === 6 && !isLoading) {
+    if (codeValue.length === 6 && !twoFactorLoginState.loading) {
       handleVerification(codeValue)
     }
   }, [code])
@@ -54,42 +51,38 @@ const TwoFactorPage: React.FC = () => {
   }
 
   const handleVerification = async (verificationCode: string) => {
-    setIsLoading(true)
-    setError(null)
+    twoFactorLoginState.resetError()
     const result = await twoFactorLogin(
       email,
       rememberMe,
       currentMethod,
       verificationCode,
     )
-    if (result) {
+    if (result.success) {
       setCode(Array(6).fill(''))
       setBackupCodes(Array(8).fill(''))
       navigate('/home')
-      await checkAuth()
     }
-    setError('Invalid verification code. Please try again later.')
-    setIsLoading(false)
   }
 
   const handleResendCode = async () => {
+    resendCodeState.resetError()
     if (currentMethod !== 'email') return
-
-    setIsLoading(true)
-    await resendCode(email)
-    setCanResend(false)
-    setIsLoading(false)
+    const result = await resendCode(email, 'login')
+    if (result.success) {
+      setCanResend(false)
+    }
   }
 
   const handleWebAuthn = async () => {
-    setIsLoading(true)
+    authenticateState.resetError()
+    if (!email) return
+    console.log(email)
     const result = await authenticate(email, rememberMe)
 
-    if (result?.success) {
+    if (result.success) {
       navigate('/home')
-      await checkAuth()
     }
-    setIsLoading(false)
   }
 
   const handleBackupCodeSubmit = () => {
@@ -129,7 +122,7 @@ const TwoFactorPage: React.FC = () => {
         color: 'text-orange-600 dark:text-orange-400',
         bgColor: 'bg-orange-100 dark:bg-orange-900/20',
       },
-      securityquestions: {
+      security_question: {
         title: 'Security Questions',
         subtitle: 'Answer your security questions',
         icon: Shield,
@@ -171,7 +164,9 @@ const TwoFactorPage: React.FC = () => {
               }`}
             >
               <Mail className='mx-auto mb-1 h-5 w-5 text-blue-600 dark:text-blue-400' />
-              <div className='text-xs font-medium'>Email</div>
+              <div className='text-xs font-medium text-blue-600 dark:text-blue-200'>
+                Email
+              </div>
             </button>
           )}
 
@@ -185,7 +180,9 @@ const TwoFactorPage: React.FC = () => {
               }`}
             >
               <Smartphone className='mx-auto mb-1 h-5 w-5 text-yellow-600 dark:text-yellow-400' />
-              <div className='text-xs font-medium'>App</div>
+              <div className='text-xs font-medium text-yellow-600 dark:text-yellow-200'>
+                App
+              </div>
             </button>
           )}
 
@@ -199,13 +196,17 @@ const TwoFactorPage: React.FC = () => {
               }`}
             >
               <Fingerprint className='mx-auto mb-1 h-5 w-5 text-purple-600 dark:text-purple-400' />
-              <div className='text-xs font-medium'>WebAuthn</div>
+              <div className='text-xs font-medium text-purple-600 dark:text-purple-200'>
+                WebAuthn
+              </div>
             </button>
           )}
         </div>
 
         <div className='text-center'>
-          <h3 className='mb-1 text-lg font-semibold'>{config.title}</h3>
+          <h3 className='mb-1 text-lg font-semibold text-gray-900 dark:text-gray-200'>
+            {config.title}
+          </h3>
           <p className='text-sm text-gray-600 dark:text-gray-400'>
             {config.subtitle}
           </p>
@@ -223,10 +224,11 @@ const TwoFactorPage: React.FC = () => {
           <div className='space-y-4 text-center'>
             <PrimaryButton
               onClick={handleWebAuthn}
-              loading={isLoading}
+              loading={authenticateState.loading}
               fullWidth
               size='lg'
               icon={Key}
+              disabled={authenticateState.loading}
             >
               Use Security Key
             </PrimaryButton>
@@ -252,9 +254,11 @@ const TwoFactorPage: React.FC = () => {
             </div>
             <PrimaryButton
               onClick={handleBackupCodeSubmit}
-              loading={isLoading}
+              loading={twoFactorLoginState.loading}
               fullWidth
-              disabled={backupCodes.join('').length !== 8}
+              disabled={
+                backupCodes.join('').length !== 8 || twoFactorLoginState.loading
+              }
             >
               Verify Backup Code
             </PrimaryButton>
@@ -264,7 +268,7 @@ const TwoFactorPage: React.FC = () => {
             <SixDigitCodeInput
               value={code}
               onChange={setCode}
-              disabled={isLoading}
+              disabled={twoFactorLoginState.loading}
               error={!!error}
               autoFocus
             />
@@ -281,7 +285,8 @@ const TwoFactorPage: React.FC = () => {
                   <PrimaryButton
                     variant='ghost'
                     onClick={handleResendCode}
-                    loading={isLoading}
+                    loading={resendCodeState.loading}
+                    disabled={resendCodeState.loading}
                   >
                     Resend Code
                   </PrimaryButton>
@@ -298,12 +303,12 @@ const TwoFactorPage: React.FC = () => {
           </div>
 
           <div className='flex flex-col gap-2'>
-            {webauthn2FA && currentMethod !== 'webauthn' && (
+            {currentMethod !== 'security_question' && (
               <button
-                onClick={() => changeMethod('webauthn')}
+                onClick={() => changeMethod('security_question')}
                 className='text-primary-600 hover:text-primary-700 dark:text-primary-400 py-1 text-sm'
               >
-                Use Security Key / Biometric
+                Use Security Questions
               </button>
             )}
 

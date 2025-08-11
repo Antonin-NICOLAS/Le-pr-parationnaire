@@ -7,8 +7,15 @@ import { useApiCall } from '../useApiCall'
 const configureEmailApi = () =>
   axios.post(`${VITE_2FA_EMAIL}/config`, {}, { withCredentials: true })
 
-const resendCodeApi = (email: string) =>
-  axios.post(`${VITE_2FA_EMAIL}/resend`, { email }, { withCredentials: true })
+const resendCodeApi = (
+  email: string,
+  context: 'config' | 'disable' | 'login',
+) =>
+  axios.post(
+    `${VITE_2FA_EMAIL}/resend/${context}`,
+    { email },
+    { withCredentials: true },
+  )
 
 const enableEmailApi = (code: string) =>
   axios.post(`${VITE_2FA_EMAIL}/enable`, { code }, { withCredentials: true })

@@ -67,6 +67,7 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
 
   // Step 1: Send Verification code
   const handleEnable = async () => {
+    configureEmailState.resetError()
     const result = await configureEmail()
     if (result.success) {
       openEnableFlow()
@@ -75,12 +76,14 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
   }
 
   const handleResendCode = async () => {
-    await resendCode(user?.email || '')
+    resendCodeState.resetError()
+    await resendCode(user?.email, 'config')
     setCanResend(false)
   }
 
   // Step 2: Verify Code
   const handleVerifyCode = async () => {
+    enableEmailState.resetError()
     const code = verificationCode.join('')
     if (code.length !== 6) return
 
@@ -92,6 +95,7 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
 
   // Disable flow
   const handleDisable = async () => {
+    disableEmailState.resetError()
     const value =
       disableMethod === 'otp' ? disableCode.join('') : disablePassword
     const result = await disableEmail(disableMethod, value)
@@ -242,8 +246,10 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
                 : 'border-gray-200 hover:border-gray-300 dark:border-gray-600'
             }`}
           >
-            <Mail className='mx-auto mb-2 h-6 w-6' />
-            <div className='text-sm font-medium'>Code par email</div>
+            <Mail className='mx-auto mb-2 h-6 w-6 text-gray-900 dark:text-gray-400' />
+            <div className='text-sm font-medium text-gray-900 dark:text-gray-400'>
+              Code par email
+            </div>
           </button>
           <button
             onClick={() => setDisableMethod('password')}
@@ -253,8 +259,10 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
                 : 'border-gray-200 hover:border-gray-300 dark:border-gray-600'
             }`}
           >
-            <Shield className='mx-auto mb-2 h-6 w-6' />
-            <div className='text-sm font-medium'>Mot de passe</div>
+            <Shield className='mx-auto mb-2 h-6 w-6 text-gray-900 dark:text-gray-400' />
+            <div className='text-sm font-medium text-gray-900 dark:text-gray-400'>
+              Mot de passe
+            </div>
           </button>
         </div>
 

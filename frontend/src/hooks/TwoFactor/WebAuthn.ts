@@ -6,6 +6,7 @@ import {
   type AuthenticationResponseJSON,
 } from '@simplewebauthn/browser'
 import { VITE_WEB_AUTHN } from '../../utils/env'
+import { useAuth } from '../../context/Auth'
 
 import { useApiCall, type ApiCallConfig } from '../useApiCall'
 
@@ -82,6 +83,7 @@ const disableWebAuthnApi = (method: 'password' | 'webauthn', value?: any) =>
 // Hook principal
 // ---------------------------
 const useWebAuthnTwoFactor = () => {
+  const { checkAuth } = useAuth()
   // API simples
   const setCredentialName = useApiCall(setCredentialNameApi, {
     successMessage: 'Nom de la clé mis à jour',
@@ -119,7 +121,7 @@ const useWebAuthnTwoFactor = () => {
   )
 
   const authenticate = useWebAuthnApiCall(
-    async ({ email, rememberMe }: { email: string; rememberMe: boolean }) => {
+    async (email: string, rememberMe: boolean) => {
       // 1. Récupérer options
       const optionsRes = await getAuthenticationOptionsApi(email)
       if (!optionsRes.data?.success || !optionsRes.data?.options) {
@@ -143,6 +145,9 @@ const useWebAuthnTwoFactor = () => {
     {
       successMessage: 'Authentification réussie',
       errorMessage: "Erreur lors de l'authentification",
+      onSuccess: async () => {
+        await checkAuth()
+      },
     },
   )
 

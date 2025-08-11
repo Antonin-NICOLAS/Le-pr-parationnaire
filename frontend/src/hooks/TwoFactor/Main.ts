@@ -2,6 +2,7 @@ import axios from 'axios'
 
 import { VITE_2FA } from '../../utils/env'
 import { useApiCall } from '../useApiCall'
+import { useAuth } from '../../context/Auth'
 
 // API functions
 const getTwoFactorStatusApi = () =>
@@ -41,6 +42,9 @@ const useTwoFactorAuth = () => {
   const twoFactorLogin = useApiCall(twoFactorLoginApi, {
     successMessage: 'Connexion réussie',
     errorMessage: 'Échec de la connexion',
+    onSuccess: async () => {
+      await useAuth().checkAuth()
+    },
   })
 
   return {

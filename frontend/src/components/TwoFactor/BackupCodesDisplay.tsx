@@ -132,7 +132,7 @@ Ces codes vous permettront d'accéder à votre compte si vous perdez l'accès à
                 </span>
                 <button
                   onClick={() => handleCopyCode(code)}
-                  className='p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300'
+                  className='p-1 text-gray-400 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer'
                 >
                   <Copy size={14} />
                 </button>

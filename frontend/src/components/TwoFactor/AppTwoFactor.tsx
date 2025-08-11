@@ -1,10 +1,18 @@
-import { AlertCircle, Copy, QrCode, Smartphone, Star } from 'lucide-react'
+import {
+  AlertCircle,
+  Copy,
+  QrCode,
+  Smartphone,
+  Star,
+  Shield,
+} from 'lucide-react'
 import React, { useState } from 'react'
 import { toast } from 'sonner'
 
 import useAppTwoFactor from '../../hooks/TwoFactor/App'
 import useTwoFactorAuth from '../../hooks/TwoFactor/Main'
 import { useUrlModal } from '../../routes/UseUrlModal'
+import ErrorMessage from '../ui/ErrorMessage'
 import CustomInput from '../ui/CustomInput'
 import Modal from '../ui/Modal'
 import PrimaryButton from '../ui/PrimaryButton'
@@ -34,9 +42,9 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
     Array(6).fill(''),
   )
   // Disable flow
+  const [disableMethod, setDisableMethod] = useState<'otp' | 'password'>('otp')
   const [disableCode, setDisableCode] = useState<string[]>(Array(6).fill(''))
   const [disablePassword, setDisablePassword] = useState('')
-  const [requirePassword, setRequirePassword] = useState(false)
 
   const {
     configureApp,
@@ -50,6 +58,7 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
 
   // Step 1 : Request QR Code and Secret
   const handleEnable = async () => {
+    configureAppState.resetError()
     const result = await configureApp()
     if (result.success) {
       openEnableFlow()
@@ -67,6 +76,7 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
 
   // Step 2: Verify Code
   const handleVerifyCode = async () => {
+    enableAppState.resetError()
     const code = verificationCode.join('')
     if (code.length !== 6) return
 
@@ -78,13 +88,10 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
 
   // Disable flow
   const handleDisable = async () => {
-    const code = disableCode.join('')
-    if (code.length !== 6) return
-
-    const result = await disableApp(
-      code,
-      requirePassword ? disablePassword : undefined,
-    )
+    disableAppState.resetError()
+    const value =
+      disableMethod === 'otp' ? disableCode.join('') : disablePassword
+    const result = await disableApp(disableMethod, value)
     if (result.success) {
       closeDisableFlow()
       onStatusChange()
@@ -101,9 +108,9 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
   // Handle flow completion
   const handleFlowComplete = () => {
     closeEnableFlow()
-    enableAppState.resetData()
     setCurrentStep('config')
     setVerificationCode(Array(6).fill(''))
+    enableAppState.resetData()
     onStatusChange()
   }
 
@@ -250,36 +257,61 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
           Désactiver la 2FA par application
         </h3>
         <p className='text-sm text-gray-600 dark:text-gray-400'>
-          Entrez le code généré par votre application d'authentification
+          Choisissez votre méthode de vérification
         </p>
       </div>
 
-      <SixDigitCodeInput
-        value={disableCode}
-        onChange={setDisableCode}
-        disabled={disableAppState.loading}
-        autoFocus
-      />
-
-      <div className='space-y-3'>
-        <label className='flex items-center space-x-2'>
-          <input
-            type='checkbox'
-            checked={requirePassword}
-            onChange={(e) => setRequirePassword(e.target.checked)}
-            className='text-primary-600 focus:ring-primary-500 rounded border-gray-300'
+      <div className='space-y-4'>
+        <div className='flex space-x-4'>
+          <button
+            onClick={() => setDisableMethod('otp')}
+            className={`flex-1 rounded-lg border-2 p-4 transition-all ${
+              disableMethod === 'otp'
+                ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                : 'border-gray-200 hover:border-gray-300 dark:border-gray-600'
+            }`}
+          >
+            <Smartphone className='mx-auto mb-2 h-6 w-6 text-gray-900 dark:text-gray-400' />
+            <div className='text-sm font-medium text-gray-900 dark:text-gray-400'>
+              Application
+            </div>
+          </button>
+          <button
+            onClick={() => setDisableMethod('password')}
+            className={`flex-1 rounded-lg border-2 p-4 transition-all ${
+              disableMethod === 'password'
+                ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
+                : 'border-gray-200 hover:border-gray-300 dark:border-gray-600'
+            }`}
+          >
+            <Shield className='mx-auto mb-2 h-6 w-6 text-gray-900 dark:text-gray-400' />
+            <div className='text-sm font-medium text-gray-900 dark:text-gray-400'>
+              Mot de passe
+            </div>
+          </button>
+        </div>
+        {disableAppState.error && (
+          <ErrorMessage
+            message={disableAppState.error}
+            type='error'
+            onClose={() => disableAppState.resetError()}
           />
-          <span className='text-sm text-gray-700 dark:text-gray-300'>
-            Confirmer avec le mot de passe (sécurité renforcée)
-          </span>
-        </label>
+        )}
 
-        {requirePassword && (
+        {disableMethod === 'otp' ? (
+          <SixDigitCodeInput
+            value={disableCode}
+            onChange={setDisableCode}
+            disabled={disableAppState.loading}
+            autoFocus
+          />
+        ) : (
           <CustomInput
             type='password'
             label='Mot de passe'
             value={disablePassword}
             onChange={(e) => setDisablePassword(e.target.value)}
+            autoFocus
           />
         )}
       </div>
@@ -289,8 +321,9 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
           onClick={handleDisable}
           loading={disableAppState.loading}
           disabled={
-            disableCode.join('').length !== 6 ||
-            (requirePassword && !disablePassword)
+            disableMethod === 'otp'
+              ? disableCode.join('').length !== 6
+              : !disablePassword
           }
           className='bg-red-600 text-white hover:bg-red-700'
           fullWidth

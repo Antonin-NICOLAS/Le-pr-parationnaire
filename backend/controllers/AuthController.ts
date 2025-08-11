@@ -244,19 +244,8 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     req,
     rememberMe,
   )
+  await generateTokensAndCookies(res, user, rememberMe, session.sessionId)
   user.lastLogin = new Date()
-  const { refreshToken } = await generateTokensAndCookies(
-    res,
-    user,
-    rememberMe,
-    session.sessionId,
-  )
-  await SessionService.createOrUpdateSession(
-    user,
-    req,
-    rememberMe,
-    refreshToken,
-  )
   await user.save()
 
   const deviceInfo = getDeviceInfo(session.userAgent)
@@ -305,8 +294,8 @@ export const logout = asyncHandler(async (req: Request, res: Response) => {
   // Remove current session from user's login history if exists
   if (user && sessionId) {
     SessionService.revokeSession(user, sessionId)
+    await user.save()
   }
-  await user?.save()
 
   return ApiResponse.success(res, {}, t('auth:success.logged_out'), 200)
 })
@@ -532,19 +521,8 @@ export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
     req,
     rememberMe,
   )
+  await generateTokensAndCookies(res, user, rememberMe, session.sessionId)
   user.lastLogin = new Date()
-  const { refreshToken } = await generateTokensAndCookies(
-    res,
-    user,
-    rememberMe,
-    session.sessionId,
-  )
-  await SessionService.createOrUpdateSession(
-    user,
-    req,
-    rememberMe,
-    refreshToken,
-  )
   await user.save()
 
   // 7. Envoyer un email de bienvenue

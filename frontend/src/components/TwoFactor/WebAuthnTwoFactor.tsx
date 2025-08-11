@@ -285,8 +285,10 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
                 : 'border-gray-200 hover:border-gray-300 dark:border-gray-600'
             }`}
           >
-            <Shield className='mx-auto mb-2 h-6 w-6' />
-            <div className='text-sm font-medium'>Mot de passe</div>
+            <Shield className='mx-auto mb-2 h-6 w-6 text-gray-900 dark:text-gray-400' />
+            <div className='text-sm font-medium text-gray-900 dark:text-gray-400'>
+              Mot de passe
+            </div>
           </button>
           <button
             onClick={() => setDisableMethod('webauthn')}
@@ -296,8 +298,10 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
                 : 'border-gray-200 hover:border-gray-300 dark:border-gray-600'
             }`}
           >
-            <Fingerprint className='mx-auto mb-2 h-6 w-6' />
-            <div className='text-sm font-medium'>Clé de sécurité</div>
+            <Fingerprint className='mx-auto mb-2 h-6 w-6 text-gray-900 dark:text-gray-400' />
+            <div className='text-sm font-medium text-gray-900 dark:text-gray-400'>
+              Clé de sécurité
+            </div>
           </button>
         </div>
 

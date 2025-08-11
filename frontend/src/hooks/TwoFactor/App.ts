@@ -10,10 +10,10 @@ const configureAppApi = () =>
 const enableAppApi = (token: string) =>
   axios.post(`${VITE_2FA_APP}/enable`, { token }, { withCredentials: true })
 
-const disableAppApi = (code: string, password?: string) =>
+const disableAppApi = (method: 'otp' | 'password', value: string) =>
   axios.post(
     `${VITE_2FA_APP}/disable`,
-    { code, password },
+    { method, value },
     { withCredentials: true },
   )
 

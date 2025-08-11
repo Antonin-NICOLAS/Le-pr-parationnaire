@@ -336,19 +336,8 @@ export const verifyAuthentication = asyncHandler(
         req,
         rememberMe,
       )
+      await generateTokensAndCookies(res, user, rememberMe, session.sessionId)
       user.lastLogin = new Date()
-      const { refreshToken } = await generateTokensAndCookies(
-        res,
-        user,
-        rememberMe,
-        session.sessionId,
-      )
-      await SessionService.createOrUpdateSession(
-        user,
-        req,
-        rememberMe,
-        refreshToken,
-      )
       await user.save()
 
       const deviceInfo = getDeviceInfo(session.userAgent)

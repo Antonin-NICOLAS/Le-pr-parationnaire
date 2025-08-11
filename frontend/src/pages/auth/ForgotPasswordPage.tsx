@@ -119,7 +119,7 @@ const ForgotPasswordPage: React.FC = () => {
           {/* Back to login */}
           <div className='border-deg-gray-200 border-t pt-4'>
             <Link
-              to='/auth'
+              to='/auth/login'
               className='text-primary-600 hover:text-primary-700 inline-flex items-center gap-2 text-sm transition-colors'
             >
               <ArrowLeft size={16} />

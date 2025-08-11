@@ -67,8 +67,8 @@ export class SessionService {
         Date.now() +
           ms(
             rememberMe
-              ? (process.env.REFRESH_TOKEN_DURATION_LONG! as StringValue)
-              : (process.env.REFRESH_TOKEN_DURATION_SHORT! as StringValue),
+              ? (process.env.REFRESH_TOKEN_DURATION_LONG as StringValue)
+              : (process.env.REFRESH_TOKEN_DURATION_SHORT as StringValue),
           ),
       )
     }

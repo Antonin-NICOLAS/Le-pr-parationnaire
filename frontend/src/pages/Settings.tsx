@@ -563,15 +563,15 @@ const SettingsPage: React.FC = () => {
         <div className='grid grid-cols-[repeat(auto-fit,_minmax(130px,_1fr))] gap-4 text-center'>
           <div>
             <div className='text-primary-600 dark:text-primary-400 text-2xl font-bold'>
-              {
+              {!getTwoFactorStatusState.loading &&
+                getTwoFactorStatusState.data !== null &&
                 Object.entries(getTwoFactorStatusState.data).filter(
                   ([key, value]) =>
                     key !== 'preferredMethod' &&
                     key !== 'backupCodes' &&
                     key !== 'credentials' &&
-                    (value as { enabled?: boolean }).enabled,
-                ).length
-              }
+                    (value as { isEnabled?: boolean }).isEnabled,
+                ).length}
               /3
             </div>
             <div className='text-primary-700 dark:text-primary-300 text-sm'>
@@ -580,13 +580,15 @@ const SettingsPage: React.FC = () => {
           </div>
           <div>
             <div className='text-primary-600 dark:text-primary-400 text-2xl font-bold'>
-              {getTwoFactorStatusState.data.preferredMethod === 'none'
-                ? 'Aucune'
-                : getTwoFactorStatusState.data.preferredMethod === 'webauthn'
+              {!getTwoFactorStatusState.loading
+                ? getTwoFactorStatusState.data?.preferredMethod === 'webauthn'
                   ? 'Clé de sécurité'
-                  : getTwoFactorStatusState.data.preferredMethod === 'app'
+                  : getTwoFactorStatusState.data?.preferredMethod === 'app'
                     ? 'Application'
-                    : 'Email'}
+                    : getTwoFactorStatusState.data?.preferredMethod === 'email'
+                      ? 'Email'
+                      : 'Aucune'
+                : '...'}
             </div>
             <div className='text-primary-700 dark:text-primary-300 text-sm'>
               méthode préférée
@@ -594,7 +596,10 @@ const SettingsPage: React.FC = () => {
           </div>
           <div className='col-span-1 min-[364px]:col-span-2 min-[510px]:col-span-1'>
             <div className='text-primary-600 dark:text-primary-400 text-2xl font-bold'>
-              {getTwoFactorStatusState.data.backupCodes.length}
+              {!getTwoFactorStatusState.loading &&
+              getTwoFactorStatusState.data?.backupCodes?.length
+                ? getTwoFactorStatusState.data.backupCodes.length
+                : '...'}
             </div>
             <div className='text-primary-700 dark:text-primary-300 text-sm'>
               codes de secours
@@ -606,33 +611,34 @@ const SettingsPage: React.FC = () => {
       {/* Méthodes 2FA */}
       <div className='grid min-[320px]:grid-cols-[repeat(auto-fit,_minmax(280px,_1fr))] grid-cols-[repeat(auto-fit,_minmax(220px,_1fr))] gap-6'>
         <EmailTwoFactor
-          isEnabled={getTwoFactorStatusState.data.email.enabled}
+          isEnabled={getTwoFactorStatusState.data?.email?.isEnabled}
           isPreferredMethod={
-            getTwoFactorStatusState.data.preferredMethod === 'email'
+            getTwoFactorStatusState.data?.preferredMethod === 'email'
           }
           onStatusChange={() => fetch2FAStatus()}
         />
 
         <AppTwoFactor
-          isEnabled={getTwoFactorStatusState.data.app.enabled}
+          isEnabled={getTwoFactorStatusState.data?.app?.isEnabled}
           isPreferredMethod={
-            getTwoFactorStatusState.data.preferredMethod === 'app'
+            getTwoFactorStatusState.data?.preferredMethod === 'app'
           }
           onStatusChange={() => fetch2FAStatus()}
         />
 
         <WebAuthnTwoFactor
-          isEnabled={getTwoFactorStatusState.data.webauthn.enabled}
+          isEnabled={getTwoFactorStatusState.data?.webauthn?.isEnabled}
           isPreferredMethod={
-            getTwoFactorStatusState.data.preferredMethod === 'webauthn'
+            getTwoFactorStatusState.data?.preferredMethod === 'webauthn'
           }
-          credentials={getTwoFactorStatusState.data.credentials || []}
+          credentials={getTwoFactorStatusState.data?.credentials || []}
           onStatusChange={() => fetch2FAStatus()}
         />
       </div>
 
       {/* Codes de secours */}
-      {getTwoFactorStatusState.data.backupCodes &&
+      {!getTwoFactorStatusState.loading &&
+        getTwoFactorStatusState.data?.backupCodes?.length &&
         getTwoFactorStatusState.data.backupCodes.length > 0 && (
           <BackupCodesDisplay
             codes={getTwoFactorStatusState.data.backupCodes.map(
