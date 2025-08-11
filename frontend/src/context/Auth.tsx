@@ -83,6 +83,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       )
     },
     {
+      showSuccessToast: false,
       onSuccess: (res) => {
         setUser(res.user)
         setIsAuthenticated(true)

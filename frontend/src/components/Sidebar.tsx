@@ -17,7 +17,7 @@ import {
   Users,
 } from 'lucide-react'
 import React, { useEffect, useRef } from 'react'
-import { NavLink, useNavigate } from 'react-router-dom'
+import { NavLink } from 'react-router-dom'
 
 // Image
 import Logo from '../assets/icon.png'
@@ -36,7 +36,6 @@ const Sidebar: React.FC<SidebarProps> = ({
   setSidebarOpen,
   isMobileView,
 }) => {
-  const navigate = useNavigate()
   const { user, isAuthenticated, logout } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const closeMenuRef = useRef<HTMLDivElement>(null)
