@@ -316,7 +316,7 @@
  *               type: string
  *             description: |
  *               Supprime les cookies de session.
- *               Exemple: "jwtauth=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT"
+ *               Exemple: "accessToken=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT"
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  *       500:

@@ -82,14 +82,17 @@ export function useApiCall<T = any>(
           return result
         } else {
           // API returned success: false
-          const errorMsg = result.error || 'Operation failed'
+          const { success, message, error, ...rest } = result
+          const errorMsg = error || errorMessage || 'An error occurred'
+
+          setData(rest as T)
           setError(errorMsg)
 
-          if (showErrorToast) {
-            toast.error(errorMsg || errorMessage)
+          if (showErrorToast && !showInfoToast) {
+            toast.error(errorMsg)
           }
-          if (showInfoToast && result.message) {
-            toast.info(result.message)
+          if (showInfoToast && message) {
+            toast.info(message)
           }
 
           if (onError) {

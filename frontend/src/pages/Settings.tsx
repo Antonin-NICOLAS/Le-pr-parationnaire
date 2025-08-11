@@ -30,22 +30,37 @@ import TabNavigation from '../components/ui/TabNavigation'
 import ToggleSwitch from '../components/ui/ToggleSwitch'
 import { useAuth } from '../context/Auth'
 import useTwoFactorAuth from '../hooks/TwoFactor/Main'
-import useUserSettings from '../hooks/UserSettings'
+import useUserSettings from '../hooks/useUserSettings'
 import { useUrlModal } from '../routes/UseUrlModal'
 import type { ChangePassword, PasswordStrength } from '../types/auth'
 import type { LoginHistory } from '../types/user'
+import useSessions from '../hooks/Auth/useSessions'
 
 const SettingsPage: React.FC = () => {
   const { tab = 'security' } = useParams()
   const navigate = useNavigate()
-  const { user, logout, checkActiveSessions, revokeSession } = useAuth()
+  const { user, logout, checkAuth } = useAuth()
+  const {
+    checkActiveSessions,
+    checkActiveSessionsState,
+    revokeSession,
+    revokeSessionState,
+    revokeAllSessions,
+    revokeAllSessionsState,
+  } = useSessions()
   const {
     changePassword,
+    changePasswordState,
     changeEmailStep1,
+    changeEmailStep1State,
     changeEmailStep2,
+    changeEmailStep2State,
     changeEmailStep3,
+    changeEmailStep3State,
     changeEmailStep4,
+    changeEmailStep4State,
     deleteAccount,
+    deleteAccountState,
   } = useUserSettings()
 
   const tabs = [
@@ -54,13 +69,9 @@ const SettingsPage: React.FC = () => {
     { id: '2fa', label: 'Double authentification', icon: Key },
     { id: 'account', label: 'Compte', icon: Trash2 },
   ]
-  const [isLoading, setIsLoading] = useState(false)
-
-  // Active sessions state
-  const [activeSessions, setActiveSessions] = useState<LoginHistory[]>([])
 
   // 2FA state
-  const { getTwoFactorStatus } = useTwoFactorAuth()
+  const { getTwoFactorStatus, getTwoFactorStatusState } = useTwoFactorAuth()
 
   // Password change state
   const [passwordForm, setPasswordForm] = useState<ChangePassword>({
@@ -80,17 +91,6 @@ const SettingsPage: React.FC = () => {
     newEmail: '',
     newEmailCode: Array(6).fill(''),
   })
-
-  // 2FA state
-  const [twoFactorSettings, setTwoFactorSettings] = useState({
-    email: { enabled: user?.twoFactor?.email?.isEnabled || false },
-    app: { enabled: user?.twoFactor?.app?.isEnabled || false },
-    webauthn: { enabled: user?.twoFactor?.webauthn?.isEnabled || false },
-    preferredMethod: user?.twoFactor?.preferredMethod || null,
-    backupCodes: user?.twoFactor?.backupCodes || [],
-    credentials: user?.twoFactor?.webauthn?.credentials || [],
-  })
-
   // Notification preferences
   const [notifications, setNotifications] = useState({
     accountActivity: true,
@@ -105,25 +105,13 @@ const SettingsPage: React.FC = () => {
   const [deletePassword, setDeletePassword] = useState('')
 
   const fetch2FAStatus = async () => {
-    const result = await getTwoFactorStatus()
-    if (result.success) {
-      setTwoFactorSettings({
-        email: { enabled: result.email.isEnabled || false },
-        app: { enabled: result.app.isEnabled || false },
-        webauthn: { enabled: result.webauthn.isEnabled || false },
-        preferredMethod: result.preferredMethod || null,
-        backupCodes: result.backupCodes || [],
-        credentials: result.credentials || [],
-      })
-    }
+    await getTwoFactorStatus()
+  }
+  const fetchActiveSessions = async () => {
+    await checkActiveSessions()
   }
 
   useEffect(() => {
-    const fetchActiveSessions = async () => {
-      const activeSessions = await checkActiveSessions()
-      setActiveSessions(activeSessions)
-    }
-
     fetchActiveSessions()
     fetch2FAStatus()
   }, [])
@@ -131,7 +119,7 @@ const SettingsPage: React.FC = () => {
   useEffect(() => {
     // Auto-submit when code is complete
     const codeValue = emailForm.currentEmailCode.join('')
-    if (codeValue.length === 6 && !isLoading) {
+    if (codeValue.length === 6 && !changeEmailStep2State.loading) {
       handleCurrentEmailVerification()
     }
   }, [emailForm.currentEmailCode])
@@ -139,7 +127,7 @@ const SettingsPage: React.FC = () => {
   useEffect(() => {
     // Auto-submit when code is complete
     const codeValue = emailForm.newEmailCode.join('')
-    if (codeValue.length === 6 && !isLoading) {
+    if (codeValue.length === 6 && !changeEmailStep4State.loading) {
       handleNewEmailVerification()
     }
   }, [emailForm.newEmailCode])
@@ -163,20 +151,7 @@ const SettingsPage: React.FC = () => {
       return
     }
 
-    setIsLoading(true)
-    try {
-      await changePassword(passwordForm, () => {
-        setPasswordForm({
-          currentPassword: '',
-          newPassword: '',
-          confirmPassword: '',
-        })
-      })
-    } catch (error) {
-      toast.error('Erreur lors de la modification du mot de passe')
-    } finally {
-      setIsLoading(false)
-    }
+    await changePassword(passwordForm)
   }
 
   const handleEmailChangeStart = async () => {
@@ -186,77 +161,40 @@ const SettingsPage: React.FC = () => {
   }
 
   const handleCurrentEmailVerification = async () => {
-    setIsLoading(true)
-    try {
-      if (emailForm.currentEmailCode.join('').length !== 6) {
-        return
-      }
-      await changeEmailStep2(emailForm.currentEmailCode.join(''), () =>
-        setEmailChangeStep('new-email'),
-      )
-    } catch (error) {
-      toast.error('Code de vérification incorrect')
-    } finally {
-      setIsLoading(false)
+    if (emailForm.currentEmailCode.join('').length !== 6) {
+      return
+    }
+    const result = await changeEmailStep2(emailForm.currentEmailCode.join(''))
+    if (result.success) {
+      setEmailChangeStep('new-email')
     }
   }
 
   const handleNewEmailSubmit = async () => {
-    setIsLoading(true)
-    try {
-      await changeEmailStep3(emailForm.newEmail, () =>
-        setEmailChangeStep('verify-new'),
-      )
-    } catch (error) {
-      toast.error("Erreur lors de l'envoi du code")
-    } finally {
-      setIsLoading(false)
+    const result = await changeEmailStep3(emailForm.newEmail)
+    if (result.success) {
+      setEmailChangeStep('verify-new')
     }
   }
 
   const handleNewEmailVerification = async () => {
-    setIsLoading(true)
-    try {
-      await changeEmailStep4(emailForm.newEmailCode.join(''), () => {
-        ;(setEmailChangeStep(null),
-          user && (user.email = emailForm.newEmail),
-          setEmailForm({
-            currentEmailCode: Array(6).fill(''),
-            newEmail: '',
-            newEmailCode: Array(6).fill(''),
-          }))
+    const result = await changeEmailStep4(emailForm.newEmailCode.join(''))
+    if (result.success) {
+      setEmailForm({
+        currentEmailCode: Array(6).fill(''),
+        newEmail: '',
+        newEmailCode: Array(6).fill(''),
       })
-    } catch (error) {
-      toast.error('Code de vérification incorrect')
-    } finally {
-      setIsLoading(false)
+      setEmailChangeStep(null)
     }
   }
 
   const handleRevokeSession = async (sessionId: string) => {
-    setIsLoading(true)
-    try {
-      await revokeSession(sessionId)
-      const activeSessions = await checkActiveSessions()
-      setActiveSessions(activeSessions)
-    } catch (error) {
-      toast.error('Erreur lors de la révocation')
-    } finally {
-      setIsLoading(false)
-    }
+    await revokeSession(sessionId)
   }
 
   const handleRevokeAllSessions = async () => {
-    setIsLoading(true)
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-      const activeSessions = await checkActiveSessions()
-      setActiveSessions(activeSessions)
-    } catch (error) {
-      toast.error('Erreur lors de la révocation')
-    } finally {
-      setIsLoading(false)
-    }
+    await revokeAllSessions()
   }
 
   const handleDeleteAccount = async () => {
@@ -267,21 +205,10 @@ const SettingsPage: React.FC = () => {
       toast.error('Confirmation incorrecte')
       return
     }
-
-    setIsLoading(true)
-    try {
-      await deleteAccount(() => {
-        setDeleteConfirmation('')
-        logout(() => {
-          ;() => {
-            navigate('/auth/login')
-          }
-        })
-      })
-    } catch (error) {
-      toast.error('Erreur lors de la suppression')
-    } finally {
-      setIsLoading(false)
+    const result = await deleteAccount()
+    if (result.success) {
+      close()
+      navigate('auth/register', { replace: true })
     }
   }
 
@@ -294,63 +221,72 @@ const SettingsPage: React.FC = () => {
         icon={Monitor}
       >
         <div className='space-y-4'>
-          {activeSessions.map((session) => (
-            <div
-              key={session.sessionId}
-              className='flex items-center justify-between rounded-lg bg-gray-50 p-4 dark:bg-gray-700/50'
-            >
-              <div className='flex flex-1 items-center space-x-3'>
-                <div className='flex-shrink-0'>
-                  <Monitor size={20} className='text-gray-500' />
-                </div>
-                <div className='flex-1'>
-                  <div className='flex items-center space-x-2'>
-                    <span className='font-medium text-gray-900 dark:text-gray-100'>
-                      {session.deviceType}
-                    </span>
-                    {session.isCurrent && (
-                      <span className='rounded-full bg-green-100 px-2 py-1 text-xs text-green-800 dark:bg-green-900/20 dark:text-green-400'>
-                        Session actuelle
-                      </span>
-                    )}
+          {checkActiveSessionsState.data.sessions.map(
+            (session: LoginHistory) => (
+              <div
+                key={session.sessionId}
+                className='flex items-center justify-between rounded-lg bg-gray-50 p-4 dark:bg-gray-700/50'
+              >
+                <div className='flex flex-1 items-center space-x-3'>
+                  <div className='flex-shrink-0'>
+                    <Monitor size={20} className='text-gray-500' />
                   </div>
-                  <div className='grid grid-cols-[repeat(auto-fit,_minmax(150px,_1fr))] space-x-4 text-sm text-gray-500 dark:text-gray-400'>
-                    <span className='flex justify-center space-x-1 max-[604px]:col-span-2 col-span-1'>
-                      <Globe size={14} className='mt-[3px]' />
-                      <span>{session.ip}</span>
-                    </span>
-                    <span className='flex justify-center space-x-1 col-span-2'>
-                      <MapPin size={14} className='mt-[3px]' />
-                      <span>{session.location || 'Localisation inconnue'}</span>
-                    </span>
-                    <span className='flex justify-center space-x-1 max-[604px]:col-span-2 col-span-1'>
-                      <Calendar size={14} className='mt-[3px]' />
-                      <span>
-                        {new Date(
-                          session.lastActive || 0,
-                        ).toLocaleDateString() || 'Inconnu'}
+                  <div className='flex-1'>
+                    <div className='flex items-center space-x-2'>
+                      <span className='font-medium text-gray-900 dark:text-gray-100'>
+                        {session.deviceType}
                       </span>
-                    </span>
+                      {session.isCurrent && (
+                        <span className='rounded-full bg-green-100 px-2 py-1 text-xs text-green-800 dark:bg-green-900/20 dark:text-green-400'>
+                          Session actuelle
+                        </span>
+                      )}
+                    </div>
+                    <div className='grid grid-cols-[repeat(auto-fit,_minmax(150px,_1fr))] space-x-4 text-sm text-gray-500 dark:text-gray-400'>
+                      <span className='flex justify-center space-x-1 max-[604px]:col-span-2 col-span-1'>
+                        <Globe size={14} className='mt-[3px]' />
+                        <span>{session.ip}</span>
+                      </span>
+                      <span className='flex justify-center space-x-1 col-span-2'>
+                        <MapPin size={14} className='mt-[3px]' />
+                        <span>
+                          {session.location || 'Localisation inconnue'}
+                        </span>
+                      </span>
+                      <span className='flex justify-center space-x-1 max-[604px]:col-span-2 col-span-1'>
+                        <Calendar size={14} className='mt-[3px]' />
+                        <span>
+                          {new Date(
+                            session.lastActive || 0,
+                          ).toLocaleDateString() || 'Inconnu'}
+                        </span>
+                      </span>
+                    </div>
                   </div>
                 </div>
+                {!session.isCurrent && (
+                  <PrimaryButton
+                    variant='outline'
+                    size='sm'
+                    onClick={() => handleRevokeSession(session.sessionId)}
+                    loading={
+                      revokeSessionState.loading ||
+                      revokeAllSessionsState.loading
+                    }
+                  >
+                    Révoquer
+                  </PrimaryButton>
+                )}
               </div>
-              {!session.isCurrent && (
-                <PrimaryButton
-                  variant='outline'
-                  size='sm'
-                  onClick={() => handleRevokeSession(session.sessionId)}
-                  loading={isLoading}
-                >
-                  Révoquer
-                </PrimaryButton>
-              )}
-            </div>
-          ))}
-          {activeSessions.length !== 1 && (
+            ),
+          )}
+          {checkActiveSessionsState.data.sessions.length !== 1 && (
             <PrimaryButton
               variant='secondary'
               onClick={handleRevokeAllSessions}
-              loading={isLoading}
+              loading={
+                revokeSessionState.loading || revokeAllSessionsState.loading
+              }
               icon={LogOut}
             >
               Déconnecter toutes les sessions
@@ -410,7 +346,7 @@ const SettingsPage: React.FC = () => {
           />
           <PrimaryButton
             type='submit'
-            loading={isLoading}
+            loading={changePasswordState.loading}
             disabled={
               !passwordForm.currentPassword ||
               !passwordForm.newPassword ||
@@ -459,7 +395,7 @@ const SettingsPage: React.FC = () => {
                 <div className='flex space-x-3'>
                   <PrimaryButton
                     onClick={handleCurrentEmailVerification}
-                    loading={isLoading}
+                    loading={changeEmailStep2State.loading}
                     disabled={emailForm.currentEmailCode.join('').length !== 6}
                   >
                     Vérifier
@@ -491,7 +427,7 @@ const SettingsPage: React.FC = () => {
                 <div className='flex space-x-3'>
                   <PrimaryButton
                     onClick={handleNewEmailSubmit}
-                    loading={isLoading}
+                    loading={changeEmailStep3State.loading}
                     disabled={!emailForm.newEmail}
                   >
                     Envoyer le code
@@ -520,7 +456,7 @@ const SettingsPage: React.FC = () => {
                 <div className='flex space-x-3'>
                   <PrimaryButton
                     onClick={handleNewEmailVerification}
-                    loading={isLoading}
+                    loading={changeEmailStep4State.loading}
                     disabled={emailForm.newEmailCode.join('').length !== 6}
                   >
                     Confirmer
@@ -609,7 +545,7 @@ const SettingsPage: React.FC = () => {
           <div>
             <div className='text-primary-600 dark:text-primary-400 text-2xl font-bold'>
               {
-                Object.entries(twoFactorSettings).filter(
+                Object.entries(getTwoFactorStatusState.data).filter(
                   ([key, value]) =>
                     key !== 'preferredMethod' &&
                     key !== 'backupCodes' &&
@@ -625,11 +561,11 @@ const SettingsPage: React.FC = () => {
           </div>
           <div>
             <div className='text-primary-600 dark:text-primary-400 text-2xl font-bold'>
-              {twoFactorSettings.preferredMethod === 'none'
+              {getTwoFactorStatusState.data.preferredMethod === 'none'
                 ? 'Aucune'
-                : twoFactorSettings.preferredMethod === 'webauthn'
+                : getTwoFactorStatusState.data.preferredMethod === 'webauthn'
                   ? 'Clé de sécurité'
-                  : twoFactorSettings.preferredMethod === 'app'
+                  : getTwoFactorStatusState.data.preferredMethod === 'app'
                     ? 'Application'
                     : 'Email'}
             </div>
@@ -639,7 +575,7 @@ const SettingsPage: React.FC = () => {
           </div>
           <div className='col-span-1 min-[364px]:col-span-2 min-[510px]:col-span-1'>
             <div className='text-primary-600 dark:text-primary-400 text-2xl font-bold'>
-              {twoFactorSettings.backupCodes.length}
+              {getTwoFactorStatusState.data.backupCodes.length}
             </div>
             <div className='text-primary-700 dark:text-primary-300 text-sm'>
               codes de secours
@@ -651,30 +587,38 @@ const SettingsPage: React.FC = () => {
       {/* Méthodes 2FA */}
       <div className='grid min-[320px]:grid-cols-[repeat(auto-fit,_minmax(280px,_1fr))] grid-cols-[repeat(auto-fit,_minmax(220px,_1fr))] gap-6'>
         <EmailTwoFactor
-          isEnabled={twoFactorSettings.email.enabled}
-          isPreferredMethod={twoFactorSettings.preferredMethod === 'email'}
+          isEnabled={getTwoFactorStatusState.data.email.enabled}
+          isPreferredMethod={
+            getTwoFactorStatusState.data.preferredMethod === 'email'
+          }
           onStatusChange={() => fetch2FAStatus()}
         />
 
         <AppTwoFactor
-          isEnabled={twoFactorSettings.app.enabled}
-          isPreferredMethod={twoFactorSettings.preferredMethod === 'app'}
+          isEnabled={getTwoFactorStatusState.data.app.enabled}
+          isPreferredMethod={
+            getTwoFactorStatusState.data.preferredMethod === 'app'
+          }
           onStatusChange={() => fetch2FAStatus()}
         />
 
         <WebAuthnTwoFactor
-          isEnabled={twoFactorSettings.webauthn.enabled}
-          isPreferredMethod={twoFactorSettings.preferredMethod === 'webauthn'}
-          credentials={twoFactorSettings.credentials || []}
+          isEnabled={getTwoFactorStatusState.data.webauthn.enabled}
+          isPreferredMethod={
+            getTwoFactorStatusState.data.preferredMethod === 'webauthn'
+          }
+          credentials={getTwoFactorStatusState.data.credentials || []}
           onStatusChange={() => fetch2FAStatus()}
         />
       </div>
 
       {/* Codes de secours */}
-      {twoFactorSettings.backupCodes &&
-        twoFactorSettings.backupCodes.length > 0 && (
+      {getTwoFactorStatusState.data.backupCodes &&
+        getTwoFactorStatusState.data.backupCodes.length > 0 && (
           <BackupCodesDisplay
-            codes={twoFactorSettings.backupCodes.map((code: any) => code.code)}
+            codes={getTwoFactorStatusState.data.backupCodes.map(
+              (code: any) => code.code,
+            )}
             onContinue={() => {}}
             onSkip={() => {}}
             isModal={false}
@@ -799,7 +743,7 @@ const SettingsPage: React.FC = () => {
           <div className='flex space-x-3'>
             <PrimaryButton
               onClick={handleDeleteAccount}
-              loading={isLoading}
+              loading={deleteAccountState.loading}
               disabled={
                 (deleteConfirmation.toLocaleUpperCase() !== 'SUPPRIMER' &&
                   deleteConfirmation.toLocaleLowerCase() !== user?.email) ||

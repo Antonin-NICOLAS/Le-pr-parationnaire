@@ -9,13 +9,11 @@ export class SessionService {
     user: any,
     req: Request,
     rememberMe: boolean,
+    refreshToken?: string,
   ) {
     const ip =
       req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress
     const userAgent = req.headers['user-agent'] || ''
-    const sessionDuration = rememberMe
-      ? ms(process.env.SESSION_DURATION_LONG as StringValue)
-      : ms(process.env.SESSION_DURATION_SHORT as StringValue)
 
     const parser = new UAParser(userAgent)
     const uaResult = parser.getResult()
@@ -38,7 +36,9 @@ export class SessionService {
     let sessionId: string
     if (existingSession) {
       existingSession.lastActive = new Date()
-      existingSession.expiresAt = new Date(Date.now() + sessionDuration)
+      existingSession.expiresAt = new Date(
+        Date.now() + ms(process.env.ACCESS_TOKEN_DURATION_SHORT as StringValue),
+      )
       sessionId = existingSession.sessionId
     } else {
       sessionId = uuidv4()
@@ -50,18 +50,33 @@ export class SessionService {
         browser: uaResult.browser.name || 'inconnu',
         os: uaResult.os.name || 'inconnu',
         lastActive: new Date(),
-        expiresAt: new Date(Date.now() + sessionDuration),
+        expiresAt: new Date(
+          Date.now() +
+            ms(process.env.ACCESS_TOKEN_DURATION_SHORT as StringValue),
+        ),
       })
+    }
+
+    const session = user.loginHistory.find(
+      (s: LoginHistory) => s.sessionId === sessionId,
+    )
+
+    if (refreshToken && session) {
+      session.refreshToken = refreshToken
+      session.expiresAt = new Date(
+        Date.now() +
+          ms(
+            rememberMe
+              ? (process.env.REFRESH_TOKEN_DURATION_LONG! as StringValue)
+              : (process.env.REFRESH_TOKEN_DURATION_SHORT! as StringValue),
+          ),
+      )
     }
 
     // Clean expired sessions
     user.loginHistory = user.loginHistory.filter(
       (session: LoginHistory) =>
         session.expiresAt && session.expiresAt > new Date(),
-    )
-
-    const session = user.loginHistory.find(
-      (s: LoginHistory) => s.sessionId === sessionId,
     )
 
     return session

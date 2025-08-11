@@ -1,283 +1,232 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, {
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  useCallback,
+} from 'react'
 import { VITE_AUTH } from '../utils/env'
-import type { User, LoginHistory } from '../types/user'
+import type { User } from '../types/user'
 import type { LoginData, RegisterData } from '../types/auth'
 import axios from 'axios'
-import { toast } from 'sonner'
+import { useApiCall, type ApiResponse } from '../hooks/useApiCall'
+
+type CheckAuthResponse = {
+  user?: {
+    id: string
+    email: string
+    lastName: string
+    firstName: string
+    language: string
+    theme: string
+    role: 'admin' | 'user'
+  }
+}
+
+type CheckAuthStatusResponse = {
+  webauthn: boolean
+}
+
+type LoginResponse = {
+  requiresTwoFactor?: boolean
+  twoFactor?: {
+    email: boolean
+    app: boolean
+    webauthn: boolean
+    preferredMethod: 'email' | 'app' | 'webauthn' | 'none'
+  }
+}
+
+type RegisterResponse = {
+  requiresVerification: boolean
+  email: string
+  rememberMe: boolean
+}
 
 type AuthContextType = {
   user: User | null
   isAuthenticated: boolean
-  error: string | null
-  checkAuth: () => Promise<void>
-  checkAuthStatus: (email: string) => Promise<boolean>
-  login: (LoginData: LoginData) => Promise<{
-    success: boolean
-    email?: string
-    requiresTwoFactor?: boolean
-    email2FA?: boolean
-    app2FA?: boolean
-    webauthn2FA?: boolean
-    preferredMethod?: 'email' | 'app' | 'webauthn'
-  }>
-  logout: (onSuccess?: () => void) => Promise<void>
-  register: (data: RegisterData, onSuccess?: () => void) => Promise<void>
+  loading: boolean
+  refreshToken: () => Promise<ApiResponse>
+  checkAuth: () => Promise<ApiResponse>
+  checkAuthStatus: (email: string) => Promise<ApiResponse>
+  login: (loginData: LoginData) => Promise<ApiResponse>
+  logout: () => Promise<ApiResponse>
+  register: (data: RegisterData) => Promise<ApiResponse>
   emailVerification: (
     token: string,
     email: string,
     rememberMe: boolean,
-    onSuccess?: () => void,
-  ) => Promise<void>
-  resendVerificationEmail: (email: string) => Promise<void>
-  checkActiveSessions: () => Promise<LoginHistory[]>
-  revokeSession: (sessionId: string) => Promise<void>
+  ) => Promise<ApiResponse>
+  resendVerificationEmail: (email: string) => Promise<ApiResponse>
+  checkAuthState: ReturnType<typeof useApiCall<CheckAuthResponse>>
+  checkAuthStatusState: ReturnType<typeof useApiCall<CheckAuthStatusResponse>>
+  loginState: ReturnType<typeof useApiCall<LoginResponse>>
+  logoutState: ReturnType<typeof useApiCall>
+  registerState: ReturnType<typeof useApiCall<RegisterResponse>>
+  emailVerificationState: ReturnType<typeof useApiCall>
+  resendVerificationEmailState: ReturnType<typeof useApiCall>
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined)
 
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
-  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false)
-  const [error, setError] = useState<string | null>(null)
+  const [isAuthenticated, setIsAuthenticated] = useState(false)
 
-  const checkAuth = async () => {
-    try {
-      const { data } = await axios.get(`${VITE_AUTH}/profile`, {
-        withCredentials: true,
-      })
-      if (data.success) {
-        setIsAuthenticated(true)
-        setUser(data.user)
-      }
-    } catch (err) {
-      setUser(null)
-    }
-  }
-
-  const checkAuthStatus = async (email: string) => {
-    try {
-      setError(null)
-      const res = await axios.get(`${VITE_AUTH}/status`, {
-        params: { email },
-        withCredentials: true,
-      })
-      return res.data.webauthn
-    } catch (err: any) {
-      toast.error(
-        err.response?.data?.error ||
-          'Erreur inconnue. Veuillez réessayer plus tard.',
-      )
-      setError(
-        err.response?.data?.message ||
-          'Erreur inconnue. Veuillez réessayer plus tard.',
-      )
-      setUser(null)
-    }
-  }
-
-  const login = async (LoginData: LoginData) => {
-    try {
-      setError(null)
-      const { data } = await axios.post(`${VITE_AUTH}/login`, LoginData, {
-        withCredentials: true,
-      })
-      if (data.success) {
-        if (data.requiresTwoFactor) {
-          toast.error(
-            data.message ||
-              'Two-factor authentication required. Please verify.',
-          )
-          return {
-            requiresTwoFactor: true,
-            success: true,
-            email2FA: data.twoFactor.email,
-            app2FA: data.twoFactor.app,
-            webauthn2FA: data.twoFactor.webauthn,
-            preferredMethod: data.twoFactor.preferredMethod,
-          }
-        } else {
-          toast.success(data.message || 'Login successful!')
-          await checkAuth()
-          return { success: true }
-        }
-      } else {
-        toast.error(data.error || 'Login failed. Please try again.')
-        setError(data.error || 'Login failed. Please try again.')
-        setUser(null)
-        return { success: false }
-      }
-    } catch (err: any) {
-      toast.error(
-        err.response?.data?.error ||
-          'Erreur inconnue. Veuillez réessayer plus tard.',
-      )
-      setError(
-        err.response?.data?.message ||
-          'Erreur inconnue. Veuillez réessayer plus tard.',
-      )
-      setUser(null)
-      return { success: false }
-    }
-  }
-
-  const logout = async (onSuccess?: () => void) => {
-    try {
-      const { data } = await axios.post(
-        `${VITE_AUTH}/logout`,
+  const refreshTokenCall = useApiCall(
+    async () => {
+      return axios.post(
+        `${VITE_AUTH}/refresh-token`,
         {},
         { withCredentials: true },
       )
-      if (data.success) {
-        toast.success(data.message || 'Logout successful!')
+    },
+    {
+      onSuccess: (res) => {
+        setUser(res.user)
+        setIsAuthenticated(true)
+      },
+      onError: () => {
+        setIsAuthenticated(false)
         setUser(null)
-        onSuccess?.()
-      }
-    } catch (err: any) {
-      toast.error(
-        err.response?.data?.error ||
-          'Erreur inconnue. Veuillez réessayer plus tard.',
-      )
-      setError(
-        err.response?.data?.message ||
-          'Erreur inconnue. Veuillez réessayer plus tard.',
-      )
-    }
-  }
+      },
+    },
+  )
 
-  const register = async (
-    registerData: RegisterData,
-    onSuccess?: () => void,
-  ) => {
-    try {
-      setError(null)
-      const { data } = await axios.post(`${VITE_AUTH}/register`, registerData, {
+  const checkAuthCall = useApiCall<CheckAuthResponse>(
+    async () => {
+      return axios.get(`${VITE_AUTH}/profile`, { withCredentials: true })
+    },
+    {
+      showSuccessToast: false,
+      showErrorToast: false,
+      onSuccess: (res) => {
+        setIsAuthenticated(true)
+        setUser(res.user)
+      },
+      onError: () => {
+        setIsAuthenticated(false)
+        setUser(null)
+      },
+    },
+  )
+
+  const checkAuthStatusCall = useApiCall<CheckAuthStatusResponse>(
+    async (email: string) => {
+      return axios.get(`${VITE_AUTH}/status`, {
+        params: { email },
         withCredentials: true,
       })
-      if (data.success) {
-        toast.success(data.message || 'Registration successful!')
-        onSuccess?.()
-      }
-    } catch (err: any) {
-      toast.error(
-        err.response?.data?.error ||
-          'Erreur inconnue. Veuillez réessayer plus tard.',
-      )
-      setError(
-        err.response?.data?.message ||
-          'Erreur inconnue. Veuillez réessayer plus tard.',
-      )
-    }
-  }
+    },
+    { showErrorToast: true, showSuccessToast: false },
+  )
 
-  const emailVerification = async (
-    token: string,
-    email: string,
-    rememberMe: boolean,
-    onSuccess?: () => void,
-  ) => {
-    try {
-      setError(null)
-      const { data } = await axios.post(
+  const loginCall = useApiCall<LoginResponse>(
+    async (data: LoginData) => {
+      return axios.post(`${VITE_AUTH}/login`, data, { withCredentials: true })
+    },
+    {
+      onSuccess: async (res) => {
+        if (!res.requiresTwoFactor) {
+          await checkAuth()
+        }
+      },
+    },
+  )
+
+  const logoutCall = useApiCall(
+    async () => {
+      return axios.post(`${VITE_AUTH}/logout`, {}, { withCredentials: true })
+    },
+    {
+      onSuccess: () => {
+        setUser(null)
+        setIsAuthenticated(false)
+      },
+    },
+  )
+
+  const registerCall = useApiCall<RegisterResponse>(
+    async (data: RegisterData) => {
+      return axios.post(`${VITE_AUTH}/register`, data, {
+        withCredentials: true,
+      })
+    },
+  )
+
+  const emailVerificationCall = useApiCall(
+    async (token: string, email: string, rememberMe: boolean) => {
+      return axios.post(
         `${VITE_AUTH}/verify-email`,
         { token, email, rememberMe },
         { withCredentials: true },
       )
-      if (data.success) {
-        toast.success(data.message || 'Email verified successfully!')
-        onSuccess?.()
+    },
+    {
+      onSuccess: async () => {
         await checkAuth()
-      }
-    } catch (err: any) {
-      toast.error(
-        err.response?.data?.error ||
-          'Erreur inconnue. Veuillez réessayer plus tard.',
-      )
-      setError(
-        err.response?.data?.message ||
-          'Erreur inconnue. Veuillez réessayer plus tard.',
-      )
-    }
-  }
+      },
+    },
+  )
 
-  const resendVerificationEmail = async (email: string) => {
-    try {
-      setError(null)
-      const { data } = await axios.post(
-        `${VITE_AUTH}/resend-verification-email`,
-        { email },
-        { withCredentials: true },
-      )
-      if (data.success) {
-        toast.success(data.message || 'Verification email resent successfully!')
-      }
-    } catch (err: any) {
-      toast.error(
-        err.response?.data?.error ||
-          'Erreur inconnue. Veuillez réessayer plus tard.',
-      )
-      setError(
-        err.response?.data?.message ||
-          'Erreur inconnue. Veuillez réessayer plus tard.',
-      )
-    }
-  }
+  const resendVerificationEmailCall = useApiCall(async (email: string) => {
+    return axios.post(
+      `${VITE_AUTH}/resend-verification-email`,
+      { email },
+      { withCredentials: true },
+    )
+  })
 
-  const checkActiveSessions = async () => {
-    try {
-      setError(null)
-      const { data } = await axios.get(`${VITE_AUTH}/active-sessions`, {
-        withCredentials: true,
-      })
-      if (data.success) {
-        return data.sessions
-      }
-    } catch (err: any) {
-      toast.error(
-        err.response?.data?.error ||
-          'Erreur inconnue. Veuillez réessayer plus tard.',
-      )
-      setError(
-        err.response?.data?.message ||
-          'Erreur inconnue. Veuillez réessayer plus tard.',
-      )
-      return []
-    }
-  }
+  /** ---------------------------
+   * --------------------------- */
 
-  const revokeSession = async (sessionId: string) => {
-    try {
-      setError(null)
-      const { data } = await axios.delete(
-        `${VITE_AUTH}/revoke-session/${sessionId}`,
-        {
-          withCredentials: true,
-        },
-      )
-      if (data.success) {
-        toast.success(data.message || 'Session revoked successfully!')
-      }
-    } catch (err: any) {
-      toast.error(
-        err.response?.data?.error ||
-          'Erreur inconnue. Veuillez réessayer plus tard.',
-      )
-      setError(
-        err.response?.data?.message ||
-          'Erreur inconnue. Veuillez réessayer plus tard.',
-      )
-    }
-  }
+  const refreshToken = useCallback(
+    () => refreshTokenCall.execute(),
+    [refreshTokenCall],
+  )
 
+  const checkAuth = useCallback(() => checkAuthCall.execute(), [checkAuthCall])
+  const checkAuthStatus = useCallback(
+    (email: string) => checkAuthStatusCall.execute(email),
+    [checkAuthStatusCall],
+  )
+  const login = useCallback(
+    (data: LoginData) => loginCall.execute(data),
+    [loginCall],
+  )
+  const logout = useCallback(() => logoutCall.execute(), [logoutCall])
+  const register = useCallback(
+    (data: RegisterData) => registerCall.execute(data),
+    [registerCall],
+  )
+  const emailVerification = useCallback(
+    (token: string, email: string, rememberMe: boolean) =>
+      emailVerificationCall.execute(token, email, rememberMe),
+    [emailVerificationCall],
+  )
+  const resendVerificationEmail = useCallback(
+    (email: string) => resendVerificationEmailCall.execute(email),
+    [resendVerificationEmailCall],
+  )
+
+  /** ---------------------------
+   *  Initialisation
+   * --------------------------- */
   useEffect(() => {
     checkAuth()
   }, [])
+
+  const globalLoading =
+    checkAuthCall.loading || loginCall.loading || logoutCall.loading
 
   return (
     <AuthContext.Provider
       value={{
         user,
         isAuthenticated,
-        error,
+        loading: globalLoading,
+        refreshToken,
         checkAuth,
         checkAuthStatus,
         login,
@@ -285,8 +234,14 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         register,
         emailVerification,
         resendVerificationEmail,
-        checkActiveSessions,
-        revokeSession,
+
+        checkAuthState: checkAuthCall,
+        checkAuthStatusState: checkAuthStatusCall,
+        loginState: loginCall,
+        logoutState: logoutCall,
+        registerState: registerCall,
+        emailVerificationState: emailVerificationCall,
+        resendVerificationEmailState: resendVerificationEmailCall,
       }}
     >
       {children}
@@ -294,11 +249,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   )
 }
 
-// Hook personnalisé pour accéder facilement au contexte
 export const useAuth = () => {
   const context = useContext(AuthContext)
-  if (!context) {
+  if (!context)
     throw new Error('useAuth doit être utilisé dans un AuthProvider')
-  }
   return context
 }

@@ -19,14 +19,15 @@ export type WebAuthnCredential = {
 
 export type LoginHistory = {
   sessionId: string
-  ip?: string
-  userAgent?: string
+  ip: string
+  userAgent: string
   location?: string
   deviceType?: string
   browser?: string
   os?: string
-  lastActive?: Date
-  expiresAt?: Date
+  lastActive: Date
+  expiresAt: Date
+  refreshToken?: string
 }
 
 export interface IUser extends Document {
@@ -100,6 +101,7 @@ const UserSchema = new Schema<IUser>({
   loginHistory: [
     {
       sessionId: { type: String, unique: true },
+      refreshToken: { type: String, unique: true },
       ip: String,
       userAgent: String,
       location: String,

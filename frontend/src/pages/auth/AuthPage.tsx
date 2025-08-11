@@ -14,6 +14,7 @@ import type {
   RegisterData,
 } from '../../types/auth'
 import { validateRegistrationForm } from '../../utils/validation'
+import ErrorMessage from '../../components/ui/ErrorMessage'
 
 const AuthPage: React.FC = () => {
   // Login state
@@ -21,9 +22,16 @@ const AuthPage: React.FC = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const isLogin = tab === 'login'
-  const { login, register, checkAuthStatus, checkAuth } = useAuth()
-  const { authenticate } = useWebAuthnTwoFactor()
-  const [isLoading, setIsLoading] = useState(false)
+  const {
+    login,
+    loginState,
+    register,
+    registerState,
+    checkAuthStatus,
+    checkAuthStatusState,
+    checkAuth,
+  } = useAuth()
+  const { authenticate, authenticateState } = useWebAuthnTwoFactor()
   const [loginStep, setLoginStep] = useState<
     'email' | 'password' | 'webauthn-choice'
   >('email')
@@ -33,7 +41,6 @@ const AuthPage: React.FC = () => {
     password: '',
     rememberMe: false,
   })
-  const [hasWebAuthn, setHasWebAuthn] = useState(false)
 
   // Register state
   const [registerData, setRegisterData] = useState<RegisterData>({
@@ -58,68 +65,42 @@ const AuthPage: React.FC = () => {
 
   const handleEmailSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
-
-    try {
-      const webauthnEnabled = await checkAuthStatus(loginData.email)
-      setHasWebAuthn(webauthnEnabled)
-
-      if (webauthnEnabled) {
-        setLoginStep('webauthn-choice')
-      } else {
-        setLoginStep('password')
-      }
-    } catch (error) {
-      toast.error('Failed to check email. Please try again later.')
-    } finally {
-      setIsLoading(false)
+    const result = await checkAuthStatus(loginData.email)
+    if (result.webauthn) {
+      setLoginStep('webauthn-choice')
+    } else {
+      setLoginStep('password')
     }
   }
 
   const handlePasswordLogin = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
 
-    try {
-      const result = await login(loginData)
-      if (result?.success) {
-        if (result.requiresTwoFactor) {
-          navigate(`/2fa-verify/${result.preferredMethod}`, {
-            state: {
-              email: loginData.email,
-              rememberMe: loginData.rememberMe,
-              email2FA: result.email2FA,
-              app2FA: result.app2FA,
-              webauthn2FA: result.webauthn2FA,
-            },
-          })
-        } else {
-          navigate('/home')
-        }
-      }
-    } catch (error) {
-      toast.error('Login failed. Please try again later.')
-    } finally {
-      setIsLoading(false)
+    const result = await login(loginData)
+    if (result.success) {
+      navigate('/home')
+    } else if (result.requiresTwoFactor || loginState.data?.requiresTwoFactor) {
+      navigate(`/2fa-verify/${result.twoFactor.preferredMethod}`, {
+        state: {
+          email: loginData.email,
+          rememberMe: loginData.rememberMe,
+          email2FA: result.twoFactor.email || loginState.data?.twoFactor?.email,
+          app2FA: result.twoFactor.app || loginState.data?.twoFactor?.app,
+          webauthn2FA:
+            result.twoFactor.webauthn || loginState.data?.twoFactor?.webauthn,
+        },
+      })
     }
   }
 
   const handleWebAuthnLogin = async () => {
-    setIsLoading(true)
-    try {
-      const result = await authenticate(loginData.email, loginData.rememberMe)
+    const result = await authenticate(loginData.email, loginData.rememberMe)
 
-      if (result?.success) {
-        navigate('/home')
-        await checkAuth()
-      }
-    } catch (error) {
-      toast.error(
-        'WebAuthn authentication failed. Please try password instead.',
-      )
+    if (result?.success) {
+      navigate('/home')
+      await checkAuth()
+    } else {
       setLoginStep('password')
-    } finally {
-      setIsLoading(false)
     }
   }
 
@@ -147,21 +128,14 @@ const AuthPage: React.FC = () => {
       return
     }
 
-    setIsLoading(true)
-
-    try {
-      await register(registerData, () => {
-        navigate('/verify-email', {
-          state: {
-            email: registerData.email,
-            rememberMe: registerData.rememberMe,
-          },
-        })
+    const result = await register(registerData)
+    if (result.success) {
+      navigate('/verify-email', {
+        state: {
+          email: registerData.email || registerState.data?.email,
+          rememberMe: registerData.rememberMe || registerState.data?.rememberMe,
+        },
       })
-    } catch (error) {
-      toast.error('Registration failed. Please try again later.')
-    } finally {
-      setIsLoading(false)
     }
   }
 
@@ -186,7 +160,7 @@ const AuthPage: React.FC = () => {
 
             <PrimaryButton
               type='submit'
-              loading={isLoading}
+              loading={checkAuthStatusState.loading}
               fullWidth
               size='lg'
               icon={ArrowRight}
@@ -209,9 +183,6 @@ const AuthPage: React.FC = () => {
               label='Email Address'
               placeholder='Enter your email'
               value={loginData.email}
-              onChange={(e) =>
-                setLoginData((prev) => ({ ...prev, email: e.target.value }))
-              }
               icon={Mail}
               required
               disabled
@@ -256,7 +227,7 @@ const AuthPage: React.FC = () => {
 
             <PrimaryButton
               type='submit'
-              loading={isLoading}
+              loading={loginState.loading}
               fullWidth
               size='lg'
               icon={ArrowRight}
@@ -264,7 +235,7 @@ const AuthPage: React.FC = () => {
               Sign In
             </PrimaryButton>
 
-            {hasWebAuthn && (
+            {checkAuthStatusState.data?.webauthn && (
               <div className='text-center'>
                 <PrimaryButton
                   type='button'
@@ -301,11 +272,17 @@ const AuthPage: React.FC = () => {
                 We found a passkey for <strong>{loginData.email}</strong>
               </p>
             </div>
-
+            {authenticateState.error && (
+              <ErrorMessage
+                message={authenticateState.error}
+                type='error'
+                onClose={() => authenticateState.resetError()}
+              />
+            )}
             <div className='space-y-4'>
               <PrimaryButton
                 onClick={handleWebAuthnLogin}
-                loading={isLoading}
+                loading={loginState.loading || authenticateState.loading}
                 fullWidth
                 size='lg'
                 icon={Fingerprint}
@@ -316,7 +293,7 @@ const AuthPage: React.FC = () => {
               <PrimaryButton
                 variant='secondary'
                 onClick={handleUsePassword}
-                disabled={isLoading}
+                disabled={loginState.loading || authenticateState.loading}
                 fullWidth
                 size='lg'
                 icon={Lock}
@@ -408,6 +385,13 @@ const AuthPage: React.FC = () => {
                 onSubmit={handleRegister}
                 className='animate-fade-in space-y-6'
               >
+                {registerState.error && (
+                  <ErrorMessage
+                    message={registerState.error}
+                    type='error'
+                    onClose={() => registerState.resetError()}
+                  />
+                )}
                 <div className='grid grid-cols-2 gap-4'>
                   <CustomInput
                     type='text'
@@ -547,7 +531,7 @@ const AuthPage: React.FC = () => {
 
                 <PrimaryButton
                   type='submit'
-                  loading={isLoading}
+                  loading={registerState.loading}
                   fullWidth
                   size='lg'
                   icon={ArrowRight}

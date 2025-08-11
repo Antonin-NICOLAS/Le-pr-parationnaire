@@ -68,6 +68,27 @@ export function verifyBackupCode(user: IUser, code: string) {
   return false
 }
 
+export function validatePreferredMethod(
+  method: string,
+): method is 'app' | 'email' | 'webauthn' {
+  return ['app', 'email', 'webauthn'].includes(method)
+}
+
+export function validateSixDigitCode(code: string): boolean {
+  return Boolean(code && code.length === 6 && /^\d+$/.test(code))
+}
+
+export function isCodeExpired(expiration: Date): boolean {
+  return expiration < new Date()
+}
+
+export function generateSecureCode(): string {
+  // Utiliser Math.random pour une meilleure compatibilité
+  const min = 100000
+  const max = 999999
+  return String(Math.floor(Math.random() * (max - min + 1)) + min)
+}
+
 export default {
   generateTwoFactorSecret,
   hashEmailCode,
@@ -77,4 +98,8 @@ export default {
   generateBackupCodes,
   rotateBackupCodes,
   verifyBackupCode,
+  validatePreferredMethod,
+  validateSixDigitCode,
+  isCodeExpired,
+  generateSecureCode,
 }

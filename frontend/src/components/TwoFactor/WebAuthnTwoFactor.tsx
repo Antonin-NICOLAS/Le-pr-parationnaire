@@ -33,7 +33,6 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
   credentials,
   onStatusChange,
 }) => {
-  const [isLoading, setIsLoading] = useState(false)
   const { open: openEnableFlow, close: closeEnableFlow } =
     useUrlModal('enable-webauthn')
   const { open: openDisableFlow, close: closeDisableFlow } =
@@ -44,8 +43,6 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
     'register' | 'name' | 'backup' | 'security'
   >('register')
   const [deviceName, setDeviceName] = useState('')
-  const [currentCredentialId, setCurrentCredentialId] = useState('')
-  const [backupCodes, setBackupCodes] = useState<string[]>([])
   const [disableMethod, setDisableMethod] = useState<'password' | 'webauthn'>(
     'password',
   )
@@ -53,36 +50,36 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
 
   const {
     registerDevice,
+    registerDeviceState,
     setCredentialName,
+    setCredentialNameState,
     deleteCredential,
+    deleteCredentialState,
     disableWebAuthn,
+    disableWebAuthnState,
   } = useWebAuthnTwoFactor()
-  const { setPreferredMethod } = useTwoFactorAuth()
+  const { setPreferredMethod, setPreferredMethodState } = useTwoFactorAuth()
   const { user } = useAuth()
 
   const handleEnable = async () => {
-    setIsLoading(true)
     const result = await registerDevice()
 
     if (result.success) {
       onStatusChange()
-      setBackupCodes(result.backupCodes || [])
-      if (result.credentialId) {
-        setCurrentCredentialId(result.credentialId)
-        closeCredentialsList()
-        openEnableFlow()
-        setCurrentStep('name')
-      }
+      closeCredentialsList()
+      openEnableFlow()
+      setCurrentStep('name')
     }
-    setIsLoading(false)
   }
 
   const handleSetName = async () => {
     if (!deviceName.trim()) return
 
-    setIsLoading(true)
-    const result = await setCredentialName(currentCredentialId, deviceName)
-    if (result?.success) {
+    const result = await setCredentialName(
+      registerDeviceState.data.credentialId,
+      deviceName,
+    )
+    if (result.success) {
       onStatusChange()
       if (credentials.length === 1) {
         setCurrentStep('backup')
@@ -91,7 +88,6 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
         openCredentialsList()
       }
     }
-    setIsLoading(false)
   }
 
   const handleDeleteCredential = async (id: string) => {
@@ -100,7 +96,6 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
         'Êtes-vous sûr de vouloir supprimer cette clé de sécurité ?',
       )
     ) {
-      setIsLoading(true)
       const success = await deleteCredential(id)
       if (success) {
         onStatusChange()
@@ -108,39 +103,33 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
           closeCredentialsList()
         }
       }
-      setIsLoading(false)
     }
   }
 
   const handleDisable = async () => {
-    setIsLoading(true)
-    const success = await disableWebAuthn(
+    const result = await disableWebAuthn(
       user?.email || '',
       disableMethod,
       disablePassword,
     )
-    if (success) {
+    if (result.success) {
       closeDisableFlow()
       onStatusChange()
     }
-    setIsLoading(false)
   }
 
   const handleSetPreferredMethod = async () => {
-    setIsLoading(true)
-    const success = await setPreferredMethod('webauthn')
-    if (success) {
+    const result = await setPreferredMethod('webauthn')
+    if (result.success) {
       onStatusChange()
     }
-    setIsLoading(false)
   }
 
   const handleFlowComplete = () => {
     closeEnableFlow()
     setCurrentStep('register')
+    registerDeviceState.resetData()
     setDeviceName('')
-    setCurrentCredentialId('')
-    setBackupCodes([])
     onStatusChange()
   }
 
@@ -172,7 +161,7 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
             <div className='flex space-x-3'>
               <PrimaryButton
                 onClick={handleSetName}
-                loading={isLoading}
+                loading={setCredentialNameState.loading}
                 disabled={!deviceName.trim()}
                 fullWidth
               >
@@ -192,7 +181,9 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
       case 'backup':
         return (
           <BackupCodesDisplay
-            codes={backupCodes.map((code: any) => code.code)}
+            codes={registerDeviceState.data.backupCodes.map(
+              (code: any) => code.code,
+            )}
             onContinue={() => setCurrentStep('security')}
             onSkip={handleFlowComplete}
           />
@@ -216,7 +207,7 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
       <div className='flex w-full justify-end'>
         <PrimaryButton
           onClick={handleEnable}
-          loading={isLoading}
+          loading={registerDeviceState.loading}
           size='sm'
           icon={Plus}
         >
@@ -249,6 +240,7 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
               variant='outline'
               size='sm'
               onClick={() => handleDeleteCredential(credential.id)}
+              loading={deleteCredentialState.loading}
               icon={Trash2}
               className='border-red-200 text-red-600 hover:border-red-300 hover:bg-red-50 hover:text-red-700 dark:border-red-300 dark:text-red-500 dark:hover:border-red-400 dark:hover:bg-red-900/20'
             >
@@ -323,7 +315,7 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
       <div className='flex space-x-3'>
         <PrimaryButton
           onClick={handleDisable}
-          loading={isLoading}
+          loading={disableWebAuthnState.loading}
           disabled={disableMethod === 'password' && !disablePassword}
           className='bg-red-600 text-white hover:bg-red-700'
           fullWidth
@@ -378,7 +370,7 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
                   ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400'
                   : 'cursor-pointer bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
               }`}
-              disabled={isLoading}
+              disabled={setPreferredMethodState.loading}
               {...(!isPreferredMethod && { onClick: handleSetPreferredMethod })}
             >
               {<Star className='mr-1 h-4 w-4' />}
@@ -395,7 +387,11 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
             size='sm'
             fullWidth
             onClick={isEnabled ? openDisableFlow : handleEnable}
-            loading={isLoading}
+            loading={
+              isEnabled
+                ? disableWebAuthnState.loading
+                : registerDeviceState.loading
+            }
           >
             {isEnabled ? 'Désactiver' : 'Activer'}
           </PrimaryButton>

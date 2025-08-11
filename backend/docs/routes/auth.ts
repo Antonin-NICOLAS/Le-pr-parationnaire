@@ -87,8 +87,8 @@
  *             schema:
  *               type: string
  *             description: |
- *               Supprime les cookies 'jwtauth' et 'sessionId'.
- *               Exemple: "jwtauth=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT"
+ *               Supprime les cookies 'accessToken' et 'sessionId'.
+ *               Exemple: "accessToken=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT"
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  *       500:
@@ -255,7 +255,7 @@
  *           Set-Cookie:
  *             schema:
  *               type: string
- *               Exemple: "jwtauth=biunusjcrekzlaxknjqvslfcmiqjomke; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT"
+ *               Exemple: "accessToken=biunusjcrekzlaxknjqvslfcmiqjomke; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT"
  *       400:
  *         description: Erreur de validation
  *         content:
@@ -431,8 +431,8 @@
  *             schema:
  *               type: string
  *               description: |
- *                 Ajoute le cookie de session 'jwtauth' pour initialiser la session.
- *               example: jwtauth=abcde12345; Path=/; HttpOnly
+ *                 Ajoute le cookie de session 'accessToken' pour initialiser la session.
+ *               example: accessToken=abcde12345; Path=/; HttpOnly
  *       202:
  *         description: 2FA requis - Réponse avec les méthodes disponibles
  *         content:
@@ -890,7 +890,7 @@
  *               type: string
  *             description: |
  *               Supprime les cookies de session.
- *               Exemple: "jwtauth=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT"
+ *               Exemple: "accessToken=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT"
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  *       404:

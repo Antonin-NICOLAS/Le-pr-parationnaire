@@ -26,7 +26,7 @@ import type {
 
 import {
   comparePassword,
-  generateCookie,
+  generateTokensAndCookies,
   getDeviceInfo,
   findLocation,
 } from '../helpers/AuthHelpers.js'
@@ -337,10 +337,19 @@ export const verifyAuthentication = asyncHandler(
         rememberMe,
       )
       user.lastLogin = new Date()
+      const { refreshToken } = await generateTokensAndCookies(
+        res,
+        user,
+        rememberMe,
+        session.sessionId,
+      )
+      await SessionService.createOrUpdateSession(
+        user,
+        req,
+        rememberMe,
+        refreshToken,
+      )
       await user.save()
-
-      // Génération des cookies avec le sessionId
-      generateCookie(res, user, rememberMe, session.sessionId)
 
       const deviceInfo = getDeviceInfo(session.userAgent)
       const localisation = await findLocation(t, i18next.language, session.ip)
@@ -412,30 +421,60 @@ export const switchLoginWithWebAuthn = asyncHandler(
       if (method && value) {
         let isValid = false
 
-        if (method === 'password') {
-          isValid = await comparePassword(value, user.password)
-        } else if (method === 'app' && user.twoFactor.app.isEnabled) {
-          isValid = verifyTwoFactorCode(user.twoFactor.app.secret!, value)
-        } else if (method === 'email' && user.twoFactor.email.isEnabled) {
-          if (user.twoFactor.email.token) {
-            isValid = await compareEmailCode(user.twoFactor.email.token, value)
-          }
-        } else {
-          return ApiResponse.error(
-            res,
-            t('auth:errors.2fa.invalid_method'),
-            400,
-          )
-        }
+        try {
+          if (method === 'password') {
+            isValid = await comparePassword(value, user.password)
+          } else if (method === 'app' && user.twoFactor.app.isEnabled) {
+            if (!user.twoFactor.app.secret) {
+              return ApiResponse.error(
+                res,
+                t('auth:errors.2fa.setup_required'),
+                400,
+              )
+            }
+            isValid = verifyTwoFactorCode(user.twoFactor.app.secret, value)
+          } else if (method === 'email' && user.twoFactor.email.isEnabled) {
+            if (
+              !user.twoFactor.email.token ||
+              !user.twoFactor.email.expiration
+            ) {
+              return ApiResponse.error(
+                res,
+                t('auth:errors.2fa.setup_required'),
+                400,
+              )
+            }
 
-        if (!isValid) {
-          return ApiResponse.error(
-            res,
-            method === 'password'
-              ? t('auth:errors.password_incorrect')
-              : t('auth:errors.2fa.invalid_code'),
-            400,
-          )
+            // Vérifier l'expiration
+            if (user.twoFactor.email.expiration < new Date()) {
+              return ApiResponse.error(
+                res,
+                t('auth:errors.2fa.code_expired'),
+                400,
+              )
+            }
+
+            isValid = await compareEmailCode(user.twoFactor.email.token, value)
+          } else {
+            return ApiResponse.error(
+              res,
+              t('auth:errors.2fa.invalid_method'),
+              400,
+            )
+          }
+
+          if (!isValid) {
+            return ApiResponse.error(
+              res,
+              method === 'password'
+                ? t('auth:errors.password_incorrect')
+                : t('auth:errors.2fa.invalid_code'),
+              400,
+            )
+          }
+        } catch (error) {
+          console.error('Erreur lors de la vérification:', error)
+          return ApiResponse.error(res, t('common:errors.server_error'), 500)
         }
       }
 
@@ -593,48 +632,70 @@ export const disableWebAuthn = asyncHandler(
 
     // 3. Vérifier le mot de passe ou le code de vérification
     let isValid = false
-    if (method === 'password') {
-      // Vérification du mot de passe
-      isValid = await comparePassword(value, user.password)
-    } else if (method === 'webauthn' && user.twoFactor.webauthn.isEnabled) {
-      // Vérification de la réponse WebAuthn
-      const credentialId = value.rawId || value.id
-      // Récupération de l'ID du credential correspondant
-      const dbCredential = findCredentialById(user, credentialId)
-      if (!dbCredential) {
-        return ApiResponse.error(
-          res,
-          t('auth:errors.webauthn.credential_not_found'),
-          404,
-        )
-      }
-      // Vérification de la réponse d'authentification
-      let verification: VerifiedAuthenticationResponse
-      try {
-        const opts: VerifyAuthenticationResponseOpts = {
-          response: value,
-          expectedChallenge: user?.twoFactor.webauthn.challenge || '',
-          expectedOrigin: origin,
-          expectedRPID: rpID,
-          credential: {
-            id: dbCredential.id,
-            publicKey: isoBase64URL.toBuffer(dbCredential.publicKey),
-            counter: dbCredential.counter,
-            transports: dbCredential.transports || [],
-          },
+    try {
+      if (method === 'password') {
+        // Vérification du mot de passe
+        isValid = await comparePassword(value, user.password)
+      } else if (method === 'webauthn' && user.twoFactor.webauthn.isEnabled) {
+        // Vérification de la réponse WebAuthn
+        if (!value || typeof value !== 'object') {
+          return ApiResponse.error(
+            res,
+            t('auth:errors.webauthn.invalid_response'),
+            400,
+          )
         }
-        verification = await verifyAuthenticationResponse(opts)
-      } catch (error) {
-        console.error('Erreur vérification authentification:', error)
-        return ApiResponse.error(
-          res,
-          t('auth:errors.webauthn.authentication'),
-          400,
-        )
+
+        const credentialId = value.rawId || value.id
+        if (!credentialId) {
+          return ApiResponse.error(
+            res,
+            t('auth:errors.webauthn.invalid_response'),
+            400,
+          )
+        }
+
+        // Récupération de l'ID du credential correspondant
+        const dbCredential = findCredentialById(user, credentialId)
+        if (!dbCredential) {
+          return ApiResponse.error(
+            res,
+            t('auth:errors.webauthn.credential_not_found'),
+            404,
+          )
+        }
+
+        // Vérification de la réponse d'authentification
+        let verification: VerifiedAuthenticationResponse
+        try {
+          const opts: VerifyAuthenticationResponseOpts = {
+            response: value,
+            expectedChallenge: user?.twoFactor.webauthn.challenge || '',
+            expectedOrigin: origin,
+            expectedRPID: rpID,
+            credential: {
+              id: dbCredential.id,
+              publicKey: isoBase64URL.toBuffer(dbCredential.publicKey),
+              counter: dbCredential.counter,
+              transports: dbCredential.transports || [],
+            },
+          }
+          verification = await verifyAuthenticationResponse(opts)
+        } catch (error) {
+          console.error('Erreur vérification authentification:', error)
+          return ApiResponse.error(
+            res,
+            t('auth:errors.webauthn.authentication'),
+            400,
+          )
+        }
+        isValid = verification.verified
+      } else {
+        return ApiResponse.error(res, t('auth:errors.2fa.invalid_method'), 400)
       }
-      isValid = verification.verified
-    } else {
-      return ApiResponse.error(res, t('auth:errors.2fa.invalid_method'), 400)
+    } catch (error) {
+      console.error('Erreur lors de la vérification:', error)
+      return ApiResponse.error(res, t('common:errors.server_error'), 500)
     }
 
     if (!isValid) {

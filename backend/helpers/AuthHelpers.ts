@@ -1,28 +1,26 @@
-import jwt from 'jsonwebtoken'
+import jwt, { type SignOptions } from 'jsonwebtoken'
 import bcrypt from 'bcrypt'
 import CryptoJS from 'crypto-js'
 import { UAParser } from 'ua-parser-js'
 import ms, { StringValue } from 'ms'
 import { v4 as uuidv4 } from 'uuid'
 import { Response } from 'express'
-import type { SignOptions } from 'jsonwebtoken'
 import type { IUser } from '../models/User.js'
+import { generateSecureCode } from './2FAHelpers.js'
+import { TokenService } from '../services/TokenService.js'
 
 export async function handleUnverifiedUser(user: IUser) {
   if (
     !user.emailVerification.token ||
-    isTokenExpired(user.emailVerification.expiration)
+    !user.emailVerification.expiration ||
+    user.emailVerification.expiration < new Date()
   ) {
-    user.emailVerification.token = generateVerificationCode()
+    user.emailVerification.token = generateSecureCode()
     user.emailVerification.expiration = new Date(
       Date.now() + 24 * 60 * 60 * 1000,
     )
     await user.save()
   }
-}
-
-function isTokenExpired(expiration?: Date): boolean {
-  return !expiration || expiration < new Date()
 }
 
 export async function hashPassword(password: string) {
@@ -81,59 +79,56 @@ export async function findLocation(
   return location
 }
 
-export function generateToken(
-  user: IUser,
-  duration: StringValue,
-  sessionId: string,
-) {
-  const payload = {
-    jti: sessionId,
-    id: user._id,
-    email: user.email,
-    role: user.role,
-    tokenVersion: user.tokenVersion,
-  }
-
-  const options: SignOptions = {
-    expiresIn: ms(duration),
-    algorithm: 'HS256',
-  }
-
-  return jwt.sign(payload, process.env.JWT_SECRET as string, options)
-}
-
-export function generateCookie(
+export async function generateTokensAndCookies(
   res: Response,
   user: IUser,
   stayLoggedIn = false,
   sessionId: string,
 ) {
-  const duration: StringValue = stayLoggedIn
-    ? (process.env.SESSION_DURATION_LONG! as StringValue)
-    : (process.env.SESSION_DURATION_SHORT! as StringValue)
+  const accessTokenDuration = stayLoggedIn
+    ? (process.env.ACCESS_TOKEN_DURATION as StringValue)
+    : (process.env.ACCESS_TOKEN_DURATION_SHORT as StringValue)
 
-  const finalSessionId = sessionId || uuidv4()
-  const token = generateToken(user, duration, finalSessionId)
+  const refreshTokenDuration = stayLoggedIn
+    ? (process.env.REFRESH_TOKEN_DURATION as StringValue)
+    : (process.env.REFRESH_TOKEN_DURATION_SHORT as StringValue)
+
+  const accessToken = TokenService.generateAccessToken(
+    user,
+    accessTokenDuration,
+    sessionId,
+  )
+
+  // Refresh token
+  const refreshToken = await TokenService.generateRefreshToken()
+  const hashedRefreshToken = await TokenService.hashToken(refreshToken)
+
+  // Mettre à jour la session
+  const session = user.loginHistory.find((s) => s.sessionId === sessionId)
+  if (session) {
+    session.refreshToken = hashedRefreshToken
+    session.expiresAt = new Date(Date.now() + ms(refreshTokenDuration))
+  }
 
   const options = {
     secure: process.env.NODE_ENV === 'production',
     httpOnly: true,
     sameSite: 'strict' as const,
-    maxAge: ms(duration),
+    maxAge: ms(accessTokenDuration),
     path: '/',
     ...(process.env.NODE_ENV === 'production' && {
       domain: process.env.DOMAIN || undefined,
     }),
   }
 
-  res.cookie('jwtauth', token, options)
-  res.cookie('sessionId', finalSessionId, { ...options, httpOnly: false })
+  res.cookie('accessToken', accessToken, options)
+  res.cookie('refreshToken', refreshToken, {
+    ...options,
+    maxAge: ms(refreshTokenDuration),
+  })
+  res.cookie('sessionId', sessionId, { ...options, httpOnly: false })
 
-  return { token, sessionId: finalSessionId }
-}
-
-export function generateVerificationCode(): string {
-  return CryptoJS.lib.WordArray.random(6).toString().slice(0, 6).toUpperCase()
+  return { accessToken, refreshToken, sessionId }
 }
 
 export function generateResetToken(): string {

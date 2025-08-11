@@ -1,66 +1,57 @@
 import { ArrowLeft, Mail } from 'lucide-react'
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { toast } from 'sonner'
 
 import CountdownTimer from '../../components/ui/CountdownTimer'
 import CustomInput from '../../components/ui/CustomInput'
 import PrimaryButton from '../../components/ui/PrimaryButton'
 import AuthLayout from '../../layouts/AuthLayout'
 import { validateEmail } from '../../utils/validation'
+import ErrorMessage from '../../components/ui/ErrorMessage'
+import useForgotPassword from '../../hooks/Auth/useForgotPassword'
 
 const ForgotPasswordPage: React.FC = () => {
   const navigate = useNavigate()
   const [email, setEmail] = useState('')
-  const [error, setError] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [canResend, setCanResend] = useState(false)
+  const {
+    forgotPassword,
+    forgotPasswordState,
+    resendForgotPassword,
+    resendForgotPasswordState,
+  } = useForgotPassword()
+  const errorMessage =
+    forgotPasswordState.error || resendForgotPasswordState.error
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    setIsLoading(true)
-    setError('')
-
-    try {
-      const emailError = validateEmail(email)
-      if (emailError) {
-        setError(emailError)
-        return
-      }
-
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1500))
-
+    setError(null)
+    const emailError = validateEmail(email)
+    if (emailError) {
+      setError(emailError)
+      return
+    }
+    const result = await forgotPassword(email)
+    if (result.success) {
       setIsSubmitted(true)
       setCanResend(false)
-      toast.success('Password reset instructions sent to your email!')
-    } catch (error) {
-      setError('Failed to send reset email. Please try again later.')
-    } finally {
-      setIsLoading(false)
     }
   }
 
-  const handleResend = async () => {
+  const handleResend = async (e: React.FormEvent) => {
+    e.preventDefault()
+    setError(null)
     if (!canResend) return
-
-    setIsLoading(true)
-    setError('')
-
-    try {
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+    const result = await resendForgotPassword(email)
+    if (result.success) {
       setCanResend(false)
-      toast.success('Password reset email sent again!')
-    } catch (error) {
-      setError('Failed to resend email. Please try again later.')
-    } finally {
-      setIsLoading(false)
     }
   }
 
   const handleBack = () => {
-    navigate('/auth')
+    navigate('/auth/login')
   }
 
   if (isSubmitted) {
@@ -117,8 +108,8 @@ const ForgotPasswordPage: React.FC = () => {
               <PrimaryButton
                 variant='outline'
                 onClick={handleResend}
-                loading={isLoading}
-                disabled={isLoading}
+                loading={resendForgotPasswordState.loading}
+                disabled={!canResend || resendForgotPasswordState.loading}
               >
                 Resend Email
               </PrimaryButton>
@@ -147,6 +138,16 @@ const ForgotPasswordPage: React.FC = () => {
       showBackButton
       onBack={handleBack}
     >
+      {errorMessage !== null && (
+        <ErrorMessage
+          message={errorMessage}
+          type='error'
+          onClose={() => {
+            forgotPasswordState.resetError()
+            resendForgotPasswordState.resetError()
+          }}
+        />
+      )}
       <form onSubmit={handleSubmit} className='space-y-6'>
         <CustomInput
           id='forgot-email'
@@ -155,14 +156,20 @@ const ForgotPasswordPage: React.FC = () => {
           placeholder='Enter your email address'
           value={email}
           onChange={(e) => setEmail(e.target.value)}
-          error={error}
+          error={error ?? undefined}
           icon={Mail}
           autoComplete='email'
           autoFocus
           required
         />
 
-        <PrimaryButton type='submit' loading={isLoading} fullWidth size='lg'>
+        <PrimaryButton
+          type='submit'
+          loading={forgotPasswordState.loading}
+          disabled={forgotPasswordState.loading}
+          fullWidth
+          size='lg'
+        >
           Send Reset Instructions
         </PrimaryButton>
 

@@ -5,6 +5,7 @@ dotenv.config()
 
 // Controllers
 import {
+  refreshToken,
   register,
   checkAuthStatus,
   login,
@@ -37,6 +38,7 @@ router.use(
 
 // Routes
 router.get('/profile', authenticate, checkSession)
+router.post('/refresh', refreshToken)
 
 // Authentication Flow
 router.get('/status', rateLimiterMiddleware, checkAuthStatus)

@@ -2,7 +2,6 @@ import { Mail, RefreshCw } from 'lucide-react'
 import type React from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { toast } from 'sonner'
 
 import CountdownTimer from '../../components/ui/CountdownTimer'
 import ErrorMessage from '../../components/ui/ErrorMessage'
@@ -15,12 +14,17 @@ const EmailVerificationPage: React.FC = () => {
   const location = useLocation()
   const navigate = useNavigate()
   const { email, rememberMe } = location.state || {}
-  const { emailVerification, resendVerificationEmail } = useAuth()
+  const {
+    emailVerification,
+    emailVerificationState,
+    resendVerificationEmail,
+    resendVerificationEmailState,
+  } = useAuth()
+  const errorMessage =
+    emailVerificationState.error || resendVerificationEmailState.error
   const [code, setCode] = useState<string[]>(Array(6).fill(''))
   const lastCodeRef = useRef<string>('')
-  const [isLoading, setIsLoading] = useState(false)
   const [canResend, setCanResend] = useState(false)
-  const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     // Auto-submit when code is complete
@@ -28,7 +32,8 @@ const EmailVerificationPage: React.FC = () => {
     if (
       codeValue.length === 6 &&
       codeValue !== lastCodeRef.current &&
-      !isLoading
+      !emailVerificationState.loading &&
+      !resendVerificationEmailState.loading
     ) {
       lastCodeRef.current = codeValue
       handleVerification(codeValue)
@@ -36,33 +41,22 @@ const EmailVerificationPage: React.FC = () => {
   }, [code])
 
   const handleVerification = async (verificationCode: string) => {
-    if (isLoading) return
-    setIsLoading(true)
-    setError(null)
+    emailVerificationState.resetError()
+    resendVerificationEmailState.resetError()
 
-    try {
-      await emailVerification(verificationCode, email, rememberMe, () => {
-        navigate('/home')
-      })
-    } catch (error) {
-      setError('Invalid verification code. Please try again later.')
-      setCode(Array(6).fill(''))
-    } finally {
-      setIsLoading(false)
+    const result = await emailVerification(verificationCode, email, rememberMe)
+    if (result.success) {
+      navigate('/home')
     }
   }
 
   const handleResendCode = async () => {
-    setIsLoading(true)
-    setError(null)
+    emailVerificationState.resetError()
+    resendVerificationEmailState.resetError()
 
-    try {
-      await resendVerificationEmail(email)
+    const result = await resendVerificationEmail(email)
+    if (result.success) {
       setCanResend(false)
-    } catch (error) {
-      toast.error('Failed to resend code. Please try again later.')
-    } finally {
-      setIsLoading(false)
     }
   }
 
@@ -87,19 +81,25 @@ const EmailVerificationPage: React.FC = () => {
             <Mail className='text-primary-600 dark:text-primary-400 h-8 w-8' />
           </div>
         </div>
-        {error && (
+        {errorMessage !== null && (
           <ErrorMessage
-            message={error}
+            message={errorMessage}
             type='error'
-            onClose={() => setError(null)}
+            onClose={() => {
+              emailVerificationState.resetError()
+              resendVerificationEmailState.resetError()
+            }}
           />
         )}
         <div className='space-y-4'>
           <SixDigitCodeInput
             value={code}
             onChange={setCode}
-            disabled={isLoading}
-            error={!!error}
+            disabled={
+              emailVerificationState.loading ||
+              resendVerificationEmailState.loading
+            }
+            error={!!errorMessage}
             autoFocus
           />
 
@@ -121,8 +121,8 @@ const EmailVerificationPage: React.FC = () => {
           <PrimaryButton
             variant='ghost'
             onClick={handleResendCode}
-            loading={isLoading}
-            disabled={!canResend || isLoading}
+            loading={resendVerificationEmailState.loading}
+            disabled={!canResend || resendVerificationEmailState.loading}
             icon={RefreshCw}
             className='mt-2'
           >

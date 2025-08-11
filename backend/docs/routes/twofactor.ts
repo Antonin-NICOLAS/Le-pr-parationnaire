@@ -458,26 +458,36 @@
 
 /**
  * @swagger
- * /auth/2fa/email/resend:
+ * /auth/2fa/email/resend/{context}:
  *   post:
  *     tags: [Two-Factor Authentication]
- *     summary: Renvoyer le code de vérification
+ *     summary: Renvoyer le code de vérification selon le contexte
  *     description: |
- *       Renvoie un nouveau code de vérification pour la 2FA par email.
+ *       Renvoie un nouveau code de vérification pour la 2FA par email selon le contexte.
+ *       - **login** : Pour l'authentification (pas d'authentification requise)
+ *       - **config** : Pour la configuration (authentification requise)
+ *       - **disable** : Pour la désactivation (authentification requise)
  *       Protégée par rate limiting (5 requêtes/2 minutes).
+ *     parameters:
+ *       - in: path
+ *         name: context
+ *         required: true
+ *         schema:
+ *           type: string
+ *           enum: [login, config, disable]
+ *         description: Contexte d'utilisation du code
  *     requestBody:
  *       required: true
  *       content:
  *         application/json:
  *           schema:
  *             type: object
- *             required:
- *               - email
  *             properties:
  *               email:
  *                 type: string
  *                 format: email
- *                 description: Email de l'utilisateur
+ *                 description: |
+ *                   Email de l'utilisateur (requis seulement pour le contexte 'login')
  *                 example: "utilisateur@example.com"
  *     responses:
  *       200:
@@ -495,9 +505,21 @@
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               success: false
- *               error: "Configuration 2FA requise"
+ *             examples:
+ *               invalid_context:
+ *                 value:
+ *                   success: false
+ *                   error: "Contexte invalide"
+ *               missing_email:
+ *                 value:
+ *                   success: false
+ *                   error: "Email requis pour le contexte de connexion"
+ *       401:
+ *         description: Non autorisé (pour les contextes config/disable)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/responses/Unauthorized'
  *       404:
  *         $ref: '#/components/responses/UserNotFound'
  *       429:

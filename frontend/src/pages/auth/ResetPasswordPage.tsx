@@ -2,7 +2,6 @@ import { CheckCircle, Lock } from 'lucide-react'
 import type React from 'react'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { toast } from 'sonner'
 
 import CustomInput from '../../components/ui/CustomInput'
 import ErrorMessage from '../../components/ui/ErrorMessage'
@@ -10,17 +9,18 @@ import PasswordStrengthMeter from '../../components/ui/PasswordStrengthMeter'
 import PrimaryButton from '../../components/ui/PrimaryButton'
 import AuthLayout from '../../layouts/AuthLayout'
 import type { PasswordStrength } from '../../types/auth'
+import useForgotPassword from '../../hooks/Auth/useForgotPassword'
 
 const ResetPasswordPage: React.FC = () => {
   const navigate = useNavigate()
   const [password, setPassword] = useState('')
   const [confirmPassword, setConfirmPassword] = useState('')
-  const [isLoading, setIsLoading] = useState(false)
   const [isSuccess, setIsSuccess] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const [tokenValid, setTokenValid] = useState<boolean | null>(null)
+  const [tokenValid, setTokenValid] = useState<boolean | null>(true)
   const [passwordStrength, setPasswordStrength] =
     useState<PasswordStrength | null>(null)
+  const { resetPassword, resetPasswordState } = useForgotPassword()
 
   // Mock token validation
   useEffect(() => {
@@ -56,19 +56,10 @@ const ResetPasswordPage: React.FC = () => {
       return
     }
 
-    setIsLoading(true)
     setError(null)
-
-    try {
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 2000))
-
+    const result = await resetPassword(password)
+    if (result.success) {
       setIsSuccess(true)
-      toast.success('Password reset successfully!')
-    } catch (error) {
-      setError('Failed to reset password. Please try again later.')
-    } finally {
-      setIsLoading(false)
     }
   }
 
@@ -158,11 +149,11 @@ const ResetPasswordPage: React.FC = () => {
           </div>
         </div>
 
-        {error && (
+        {resetPasswordState.error && (
           <ErrorMessage
-            message={error}
+            message={resetPasswordState.error}
             type='error'
-            onClose={() => setError(null)}
+            onClose={() => resetPasswordState.resetError()}
           />
         )}
 
@@ -175,10 +166,12 @@ const ResetPasswordPage: React.FC = () => {
             onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
               setPassword(e.target.value)
             }
+            error={error ?? undefined}
             icon={Lock}
             required
             autoComplete='new-password'
             autoFocus
+            disabled={resetPasswordState.loading}
           />
 
           {password && (
@@ -199,9 +192,15 @@ const ResetPasswordPage: React.FC = () => {
             icon={Lock}
             required
             autoComplete='new-password'
+            disabled={resetPasswordState.loading}
           />
 
-          <PrimaryButton type='submit' loading={isLoading} fullWidth size='lg'>
+          <PrimaryButton
+            type='submit'
+            loading={resetPasswordState.loading}
+            fullWidth
+            size='lg'
+          >
             Reset Password
           </PrimaryButton>
         </form>
