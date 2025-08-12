@@ -103,11 +103,11 @@ export const configTwoFactorApp = asyncHandler(
     }
 
     // 3. Générer un secret et un QR code pour la configuration de la 2FA
-    const secret = generateTwoFactorSecret()
+    const secret = await generateTwoFactorSecret()
     const qrCode = await generateQRCode(secret)
 
-    user.twoFactor.app!.secret = secret.base32
-    user.twoFactor.app!.isEnabled = false
+    user.twoFactor.app.secret = secret.base32
+    user.twoFactor.app.isEnabled = false
 
     await user.save()
 
@@ -622,12 +622,8 @@ export const twoFactorLogin = asyncHandler(
     }
 
     // 4. Créer une nouvelle session et connecter
-    const session = await SessionService.createOrUpdateSession(
-      user,
-      req,
-      rememberMe,
-    )
-    await generateTokensAndCookies(res, user, rememberMe, session.sessionId)
+    const { accessToken, refreshToken, session } =
+      await SessionService.createSessionWithTokens(user, req, res, rememberMe)
     user.lastLogin = new Date()
     await user.save()
 
@@ -643,7 +639,12 @@ export const twoFactorLogin = asyncHandler(
       localisation,
     )
 
-    return ApiResponse.success(res, {}, t('auth:success.logged_in'), 200)
+    return ApiResponse.success(
+      res,
+      { accessToken, refreshToken },
+      t('auth:success.logged_in'),
+      200,
+    )
   },
 )
 

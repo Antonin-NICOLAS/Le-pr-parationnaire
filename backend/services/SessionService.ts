@@ -2,84 +2,101 @@ import { IUser, LoginHistory } from '../models/User.js'
 import { UAParser } from 'ua-parser-js'
 import ms, { StringValue } from 'ms'
 import { v4 as uuidv4 } from 'uuid'
-import { Request } from 'express'
+import { Request, Response } from 'express'
+import { TokenService } from './TokenService.js'
 
 export class SessionService {
-  static async createOrUpdateSession(
-    user: any,
+  static async createSessionWithTokens(
+    user: IUser,
     req: Request,
+    res: Response,
     rememberMe: boolean,
-    refreshToken?: string,
   ) {
     const ip =
       req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress
     const userAgent = req.headers['user-agent'] || ''
+    const uaResult = new UAParser(userAgent).getResult()
 
-    const parser = new UAParser(userAgent)
-    const uaResult = parser.getResult()
+    const accessTokenDuration = rememberMe
+      ? (process.env.ACCESS_TOKEN_DURATION_LONG as StringValue)
+      : (process.env.ACCESS_TOKEN_DURATION_SHORT as StringValue)
 
-    // Check for existing session
-    const existingSession = user.loginHistory.find((session: LoginHistory) => {
-      if (
-        req.cookies?.sessionId &&
-        session.sessionId === req.cookies.sessionId
-      ) {
-        return true
-      }
-      return (
-        session.expiresAt! > new Date() &&
-        this.isSimilarDevice(session.userAgent as string, userAgent) &&
-        session.ip === ip
-      )
-    })
+    const refreshTokenDuration = rememberMe
+      ? (process.env.REFRESH_TOKEN_DURATION_LONG as StringValue)
+      : (process.env.REFRESH_TOKEN_DURATION_SHORT as StringValue)
 
-    let sessionId: string
-    if (existingSession) {
-      existingSession.lastActive = new Date()
-      existingSession.expiresAt = new Date(
-        Date.now() + ms(process.env.ACCESS_TOKEN_DURATION_SHORT as StringValue),
-      )
-      sessionId = existingSession.sessionId
-    } else {
-      sessionId = uuidv4()
-      user.loginHistory.push({
-        sessionId,
-        ip,
+    // Chercher une session existante
+    let session = user.loginHistory.find((s) =>
+      req.cookies?.sessionId
+        ? s.sessionId === req.cookies.sessionId
+        : s.expiresAt! > new Date() &&
+          this.isSimilarDevice(s.userAgent, userAgent) &&
+          s.ip === ip,
+    )
+
+    // Sinon, créer une nouvelle session
+    if (!session) {
+      session = {
+        sessionId: uuidv4(),
+        ip: ip as string,
         userAgent,
         deviceType: uaResult.device.type || 'Desktop',
         browser: uaResult.browser.name || 'inconnu',
         os: uaResult.os.name || 'inconnu',
         lastActive: new Date(),
-        expiresAt: new Date(
-          Date.now() +
-            ms(process.env.ACCESS_TOKEN_DURATION_SHORT as StringValue),
-        ),
-      })
+        expiresAt: new Date(Date.now() + ms(refreshTokenDuration)), // session vit aussi longtemps que refreshToken
+      }
+      user.loginHistory.push(session)
+    } else {
+      session.lastActive = new Date()
+      session.expiresAt = new Date(Date.now() + ms(refreshTokenDuration))
     }
 
-    const session = user.loginHistory.find(
-      (s: LoginHistory) => s.sessionId === sessionId,
+    // Générer tokens
+    const accessToken = TokenService.generateAccessToken(
+      user,
+      accessTokenDuration,
+      session.sessionId,
     )
+    const rawRefreshToken = await TokenService.generateRefreshToken()
+    session.refreshToken = await TokenService.hashToken(rawRefreshToken)
 
-    if (refreshToken && session) {
-      session.refreshToken = refreshToken
-      session.expiresAt = new Date(
-        Date.now() +
-          ms(
-            rememberMe
-              ? (process.env.REFRESH_TOKEN_DURATION_LONG as StringValue)
-              : (process.env.REFRESH_TOKEN_DURATION_SHORT as StringValue),
-          ),
-      )
-    }
-
-    // Clean expired sessions
+    // Nettoyer sessions expirées
     user.loginHistory = user.loginHistory.filter(
-      (session: LoginHistory) =>
-        session.expiresAt && session.expiresAt > new Date(),
+      (s) => s.expiresAt > new Date(),
     )
 
-    return session
+    await user.save()
+
+    // Cookies
+    const baseCookieOpts = {
+      secure: process.env.NODE_ENV === 'production',
+      httpOnly: true,
+      sameSite: 'strict' as const,
+      ...(process.env.NODE_ENV === 'production' && {
+        domain: process.env.DOMAIN,
+      }),
+    }
+
+    res.cookie('accessToken', accessToken, {
+      ...baseCookieOpts,
+      maxAge: ms(accessTokenDuration),
+    })
+    res.cookie('refreshToken', rawRefreshToken, {
+      ...baseCookieOpts,
+      maxAge: ms(refreshTokenDuration),
+    })
+    res.cookie('sessionId', session.sessionId, {
+      ...baseCookieOpts,
+      httpOnly: false,
+      maxAge: ms(refreshTokenDuration),
+    })
+
+    return {
+      accessToken,
+      refreshToken: rawRefreshToken,
+      session,
+    }
   }
 
   private static isSimilarDevice(ua1: string, ua2: string): boolean {

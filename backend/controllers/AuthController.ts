@@ -29,13 +29,13 @@ import {
 import { TokenService } from '../services/TokenService.js'
 import { generateSecureCode } from '../helpers/2FAHelpers.js'
 
-// src/controllers/AuthController.ts
 export const refreshToken = asyncHandler(
   async (req: Request, res: Response) => {
     const { t } = req
-    const refreshToken = req.cookies?.refreshToken
+    const rawRefreshToken = req.cookies?.refreshToken
+    const sessionId = req.cookies?.sessionId
 
-    if (!refreshToken) {
+    if (!rawRefreshToken || !sessionId) {
       return ApiResponse.error(res, t('auth:errors.unauthorized'), 401)
     }
 
@@ -53,40 +53,39 @@ export const refreshToken = asyncHandler(
     const session = user.loginHistory.find(
       (s) => s.sessionId === req.cookies?.sessionId,
     )
-
-    if (!session || !session.refreshToken || !session.expiresAt) {
-      return ApiResponse.error(res, t('auth:errors.session_expired'), 401)
-    }
-
-    // 3. Vérifier le refresh token
-    const isValid = await TokenService.compareTokens(
-      refreshToken,
-      session.refreshToken,
+    console.log(
+      'Session trouvée:',
+      session,
+      'ID de la session trouvée:',
+      session?.sessionId,
+      'Cookie trouvé:',
+      req.cookies?.sessionId,
     )
 
-    if (!isValid) {
-      return ApiResponse.error(res, t('auth:errors.invalid_refresh_token'), 401)
+    if (!session || !session.refreshToken || session.expiresAt < new Date()) {
+      return ApiResponse.error(res, t('auth:errors.session_expired'), 401)
     }
 
-    // 4. Vérifier l'expiration
-    if (session.expiresAt < new Date()) {
-      return ApiResponse.error(res, t('auth:errors.session_expired'), 401)
+    console.log('Refresh token trouvé:', rawRefreshToken)
+    // 3. Vérifier le refresh token
+    const isValid = await TokenService.compareTokens(
+      rawRefreshToken,
+      session.refreshToken,
+    )
+    if (!isValid) {
+      return ApiResponse.error(res, t('common:errors.server_error'), 401)
     }
 
     // 5. Générer de nouveaux tokens
-    const { accessToken } = await generateTokensAndCookies(
-      res,
+    const rememberMe = session.expiresAt > new Date(Date.now() + ms('1d'))
+    const { accessToken } = await SessionService.createSessionWithTokens(
       user,
-      session.expiresAt > new Date(Date.now() + ms('1d')),
-      session.sessionId,
+      req,
+      res,
+      rememberMe,
     )
 
-    return ApiResponse.success(
-      res,
-      { accessToken },
-      t('auth:success.token_refreshed'),
-      200,
-    )
+    return ApiResponse.success(res, { accessToken }, '', 200)
   },
 )
 
@@ -239,12 +238,8 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   }
 
   // 6. Update last login and login history, génération des cookies avec le sessionId
-  const session = await SessionService.createOrUpdateSession(
-    user,
-    req,
-    rememberMe,
-  )
-  await generateTokensAndCookies(res, user, rememberMe, session.sessionId)
+  const { accessToken, refreshToken, session } =
+    await SessionService.createSessionWithTokens(user, req, res, rememberMe)
   user.lastLogin = new Date()
   await user.save()
 
@@ -260,7 +255,12 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     localisation,
   )
 
-  return ApiResponse.success(res, {}, t('auth:success.logged_in'), 200)
+  return ApiResponse.success(
+    res,
+    { accessToken, refreshToken },
+    t('auth:success.logged_in'),
+    200,
+  )
 })
 
 export const logout = asyncHandler(async (req: Request, res: Response) => {
@@ -516,19 +516,20 @@ export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
   await user.save()
 
   // 6. On génère le cookie de session
-  const session = await SessionService.createOrUpdateSession(
-    user,
-    req,
-    rememberMe,
-  )
-  await generateTokensAndCookies(res, user, rememberMe, session.sessionId)
+  const { accessToken, refreshToken } =
+    await SessionService.createSessionWithTokens(user, req, res, rememberMe)
   user.lastLogin = new Date()
   await user.save()
 
   // 7. Envoyer un email de bienvenue
   // TODO: envoyer un email de bienvenue
 
-  return ApiResponse.success(res, {}, t('auth:success.email_verified'), 200)
+  return ApiResponse.success(
+    res,
+    { accessToken, refreshToken },
+    t('auth:success.email_verified'),
+    200,
+  )
 })
 
 export const resendVerificationEmail = asyncHandler(

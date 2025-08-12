@@ -331,12 +331,8 @@ export const verifyAuthentication = asyncHandler(
       )
       clearChallenge(user)
 
-      const session = await SessionService.createOrUpdateSession(
-        user,
-        req,
-        rememberMe,
-      )
-      await generateTokensAndCookies(res, user, rememberMe, session.sessionId)
+      const { accessToken, refreshToken, session } =
+        await SessionService.createSessionWithTokens(user, req, res, rememberMe)
       user.lastLogin = new Date()
       await user.save()
 
@@ -352,7 +348,12 @@ export const verifyAuthentication = asyncHandler(
         localisation,
       )
 
-      return ApiResponse.success(res, {}, t('auth:success.logged_in'), 200)
+      return ApiResponse.success(
+        res,
+        { accessToken, refreshToken },
+        t('auth:success.logged_in'),
+        200,
+      )
     } else {
       return ApiResponse.error(
         res,

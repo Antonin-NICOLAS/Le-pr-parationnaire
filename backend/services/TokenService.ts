@@ -10,11 +10,12 @@ export class TokenService {
   }
 
   static async hashToken(token: string) {
-    return bcrypt.hash(token, 10)
+    const salt = await bcrypt.genSalt(10)
+    return await bcrypt.hash(token, salt)
   }
 
   static async compareTokens(token: string, hashedToken: string) {
-    return bcrypt.compare(token, hashedToken)
+    return await bcrypt.compare(token, hashedToken)
   }
 
   static generateAccessToken(

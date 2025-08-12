@@ -73,7 +73,7 @@
  * /auth/profile:
  *   get:
  *     tags: [Authentication]
- *     summary: Vérifier la session active
+ *     summary: Vérifier la session active : OK
  *     description: |
  *       Cette route permet de vérifier si l'utilisateur est connecté
  *       et retourne ses informations de profil essentielles.
@@ -135,7 +135,7 @@
  * /auth/logout:
  *   post:
  *     tags: [Authentication]
- *     summary: Déconnexion de l'utilisateur
+ *     summary: Déconnexion de l'utilisateur : OK
  *     description: |
  *       Cette route déconnecte l'utilisateur en invalidant sa session
  *       et en supprimant les cookies de session.
@@ -578,7 +578,7 @@
  * /auth/forgot-password:
  *   post:
  *     tags: [Forgot Password Flow]
- *     summary: Demande de réinitialisation de mot de passe
+ *     summary: Demande de réinitialisation de mot de passe : OK
  *     description: |
  *       Cette route initie le processus de réinitialisation de mot de passe.
  *       Un email est envoyé avec un lien de réinitialisation valable 1 heure.
@@ -641,7 +641,7 @@
  * /auth/resend-forgot-password:
  *   post:
  *     tags: [Forgot Password Flow]
- *     summary: Renvoyer le lien de réinitialisation
+ *     summary: Renvoyer le lien de réinitialisation : OK
  *     description: |
  *       Cette route permet de renvoyer le lien de réinitialisation de mot de passe.
  *       Si le token existant est encore valide, il est réutilisé, sinon un nouveau est généré.
@@ -703,7 +703,7 @@
  * /auth/reset-password:
  *   post:
  *     tags: [Forgot Password Flow]
- *     summary: Réinitialiser le mot de passe
+ *     summary: Réinitialiser le mot de passe : OK
  *     description: |
  *       Cette route permet de définir un nouveau mot de passe après vérification du token.
  *       Le token doit avoir été obtenu via le lien envoyé par email.
@@ -787,7 +787,7 @@
  * /auth/active-sessions:
  *   get:
  *     tags: [Session Management]
- *     summary: Récupérer les sessions actives
+ *     summary: Récupérer les sessions actives : OK
  *     description: |
  *       Cette route retourne la liste de toutes les sessions actives de l'utilisateur,
  *       à l'exception de la session courante.
@@ -937,7 +937,7 @@
  * /auth/revoke-all-sessions:
  *   delete:
  *     tags: [Session Management]
- *     summary: Révoquer toutes les sessions
+ *     summary: Révoquer toutes les sessions : OK
  *     description: |
  *       Cette route révoque toutes les sessions actives de l'utilisateur,
  *       y compris la session courante (ce qui déconnectera l'utilisateur).
