@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { Shield, Key, AlertTriangle } from 'lucide-react'
+import { Fingerprint, Key, Shield, Mail, AlertTriangle } from 'lucide-react'
 import ToggleSwitch from './ToggleSwitch'
 import Modal from './Modal'
 import PrimaryButton from './PrimaryButton'
@@ -102,7 +102,7 @@ const SecuritySwitch: React.FC<SecuritySwitchProps> = ({
         title: 'Double authentification',
         description:
           'Ajoute une couche de sécurité supplémentaire à votre compte',
-        icon: Shield,
+        icon: Key,
         enableModalTitle: 'Activer la double authentification',
         disableModalTitle: 'Désactiver la double authentification',
       }
@@ -110,7 +110,7 @@ const SecuritySwitch: React.FC<SecuritySwitchProps> = ({
       return {
         title: 'Connexion sans mot de passe',
         description: 'Utilisez WebAuthn pour vous connecter sans mot de passe',
-        icon: Key,
+        icon: Fingerprint,
         enableModalTitle: 'Activer la connexion WebAuthn',
         disableModalTitle: 'Désactiver la connexion WebAuthn',
       }
@@ -225,7 +225,7 @@ const SecuritySwitch: React.FC<SecuritySwitchProps> = ({
                     : 'border-gray-200 hover:border-gray-300 dark:border-gray-600'
                 }`}
               >
-                <Shield className='mx-auto mb-2 h-6 w-6' />
+                <Mail className='mx-auto mb-2 h-6 w-6' />
                 <div className='text-sm font-medium'>Code email</div>
               </button>
             </div>

@@ -1,4 +1,4 @@
-import express from 'express'
+import express, { type Request, Response, NextFunction } from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
 dotenv.config()
@@ -33,6 +33,14 @@ router.use(
   }),
 )
 
+const authIfNeeded = (req: Request, res: Response, next: NextFunction) => {
+  const { context } = req.params
+  if (['config', 'disable'].includes(context)) {
+    return authenticate(req, res, next)
+  }
+  next()
+}
+
 // Routes
 router.get('/status', authenticate, getStatus)
 router.post('/set-preferred-method', authenticate, setPreferredMethod)
@@ -50,17 +58,10 @@ router.post(
 )
 router.post('/email/enable', authenticate, enableTwoFactorEmail)
 router.post('/email/disable', authenticate, disableTwoFactorEmail)
-router.post('/email/resend/login', rateLimiterMiddleware, resendEmailCode)
 router.post(
-  '/email/resend/config',
+  '/email/resend/:context',
   rateLimiterMiddleware,
-  authenticate,
-  resendEmailCode,
-)
-router.post(
-  '/email/resend/disable',
-  rateLimiterMiddleware,
-  authenticate,
+  authIfNeeded,
   resendEmailCode,
 )
 

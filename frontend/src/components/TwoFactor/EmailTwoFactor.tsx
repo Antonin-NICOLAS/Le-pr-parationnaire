@@ -75,9 +75,9 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
     }
   }
 
-  const handleResendCode = async () => {
+  const handleResendCode = async (method: 'config' | 'disable') => {
     resendCodeState.resetError()
-    await resendCode(user?.email, 'config')
+    await resendCode(user?.email, method)
     setCanResend(false)
   }
 
@@ -168,7 +168,7 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
               ou{' '}
               <PrimaryButton
                 variant='ghost'
-                onClick={handleResendCode}
+                onClick={() => handleResendCode('config')}
                 loading={resendCodeState.loading}
                 disabled={!canResend || resendCodeState.loading}
                 icon={RefreshCw}
@@ -362,7 +362,13 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
           variant={isEnabled ? 'secondary' : 'primary'}
           size='sm'
           fullWidth
-          onClick={isEnabled ? openDisableFlow : handleEnable}
+          onClick={
+            isEnabled
+              ? () => {
+                  ;(openDisableFlow(), resendCode(user?.email || '', 'disable'))
+                }
+              : handleEnable
+          }
           loading={
             isEnabled ? disableEmailState.loading : configureEmailState.loading
           }

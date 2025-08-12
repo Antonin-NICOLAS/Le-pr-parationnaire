@@ -188,7 +188,7 @@ export const resendEmailCode = asyncHandler(
   async (req: Request, res: Response) => {
     const { t } = req
     const { email } = req.body
-    const { context } = req.query
+    const { context } = req.params
 
     // 1. Validation du contexte
     const validContexts = ['config', 'login', 'disable'] as const
@@ -197,8 +197,6 @@ export const resendEmailCode = asyncHandler(
     if (!context || !validContexts.includes(context as ValidContext)) {
       return ApiResponse.error(res, t('common:errors.invalid_context'), 400)
     }
-
-    const parsedContext = context as ValidContext
 
     // 2. Récupération de l'utilisateur selon le contexte
     let user = null
@@ -241,17 +239,18 @@ export const resendEmailCode = asyncHandler(
           minute: '2-digit',
         },
       ),
-      parsedContext,
+      context as ValidContext,
     )
 
     await user.save()
+    const successMessage =
+      context === 'config'
+        ? t('auth:success.email.code_resend')
+        : context === 'login'
+        ? t('auth:success.email.code_resend')
+        : t('auth:success.code_sent')
 
-    return ApiResponse.success(
-      res,
-      {},
-      t('auth:success.email.code_resend'),
-      200,
-    )
+    return ApiResponse.success(res, {}, successMessage, 200)
   },
 )
 
