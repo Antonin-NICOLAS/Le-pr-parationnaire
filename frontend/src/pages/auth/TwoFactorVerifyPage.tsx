@@ -4,13 +4,16 @@ import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 
 import CountdownTimer from '../../components/ui/CountdownTimer'
+import CustomInput from '../../components/ui/CustomInput'
 import ErrorMessage from '../../components/ui/ErrorMessage'
 import PrimaryButton from '../../components/ui/PrimaryButton'
 import SixDigitCodeInput from '../../components/ui/SixDigitCodeInput'
 import useEmailTwoFactor from '../../hooks/TwoFactor/Email'
 import useTwoFactorAuth from '../../hooks/TwoFactor/Main'
+import useSecurityQuestions from '../../hooks/TwoFactor/SecurityQuestions'
 import useWebAuthnTwoFactor from '../../hooks/TwoFactor/WebAuthn'
 import AuthLayout from '../../layouts/AuthLayout'
+import type { SecurityQuestion } from '../../types/user'
 
 const TwoFactorPage: React.FC = () => {
   const navigate = useNavigate()
@@ -18,9 +21,9 @@ const TwoFactorPage: React.FC = () => {
   const {
     email,
     rememberMe = false,
-    email2FA = true,
-    app2FA = true,
-    webauthn2FA = true,
+    email2FA = false,
+    app2FA = false,
+    webauthn2FA = false,
   } = location.state || {}
   const [code, setCode] = useState<string[]>(Array(6).fill(''))
   const { method } = useParams<{ method: string }>()
@@ -30,9 +33,30 @@ const TwoFactorPage: React.FC = () => {
   const [canResend, setCanResend] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [backupCodes, setBackupCodes] = useState<string[]>(Array(8).fill(''))
+  const [securityAnswers, setSecurityAnswers] = useState<
+    { questionId: string; answer: string }[]
+  >([])
+  const [securityQuestions, setSecurityQuestions] = useState<
+    SecurityQuestion[]
+  >([])
   const { resendCode, resendCodeState } = useEmailTwoFactor()
   const { authenticate, authenticateState } = useWebAuthnTwoFactor()
   const { twoFactorLogin, twoFactorLoginState } = useTwoFactorAuth()
+  const { getAvailableQuestions, verifySecurityQuestions } =
+    useSecurityQuestions()
+
+  useEffect(() => {
+    if (currentMethod === 'security_question') {
+      const loadQuestions = async () => {
+        const questions = await getAvailableQuestions()
+        setSecurityQuestions(questions.slice(0, 2)) // Get first 2 questions
+        setSecurityAnswers(
+          questions.slice(0, 2).map((q) => ({ questionId: q.id, answer: '' })),
+        )
+      }
+      loadQuestions()
+    }
+  }, [currentMethod])
 
   useEffect(() => {
     // Auto-submit when code is complete
@@ -89,6 +113,26 @@ const TwoFactorPage: React.FC = () => {
     const backupCode = backupCodes.join('').toUpperCase()
     if (backupCode.length === 8) {
       handleVerification(backupCode)
+    }
+  }
+
+  const handleSecurityQuestionSubmit = async () => {
+    if (securityAnswers.some((answer) => !answer.answer.trim())) {
+      setError('Please answer all security questions')
+      return
+    }
+
+    const success = await verifySecurityQuestions(securityAnswers)
+    if (success) {
+      const result = await twoFactorLogin(
+        email,
+        rememberMe,
+        'security_question',
+        JSON.stringify(securityAnswers),
+      )
+      if (result.success) {
+        navigate('/home')
+      }
     }
   }
 
@@ -261,6 +305,40 @@ const TwoFactorPage: React.FC = () => {
               }
             >
               Verify Backup Code
+            </PrimaryButton>
+          </div>
+        ) : currentMethod === 'security_question' ? (
+          <div className='space-y-4'>
+            <div className='space-y-4'>
+              {securityQuestions.map((question, index) => (
+                <div key={question.id} className='space-y-2'>
+                  <label className='text-sm font-medium text-gray-900 dark:text-gray-100'>
+                    {question.question}
+                  </label>
+                  <CustomInput
+                    type='text'
+                    value={securityAnswers[index]?.answer || ''}
+                    onChange={(e: React.ChangeEvent<HTMLInputElement>) => {
+                      const newAnswers = [...securityAnswers]
+                      newAnswers[index] = {
+                        ...newAnswers[index],
+                        answer: e.target.value,
+                      }
+                      setSecurityAnswers(newAnswers)
+                    }}
+                    placeholder='Your answer'
+                    autoComplete='off'
+                  />
+                </div>
+              ))}
+            </div>
+            <PrimaryButton
+              onClick={handleSecurityQuestionSubmit}
+              loading={twoFactorLoginState.loading}
+              fullWidth
+              disabled={securityAnswers.some((answer) => !answer.answer.trim())}
+            >
+              Verify Answers
             </PrimaryButton>
           </div>
         ) : (

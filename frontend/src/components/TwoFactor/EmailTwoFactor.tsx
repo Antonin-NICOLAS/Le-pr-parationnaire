@@ -206,6 +206,7 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
             )}
             onContinue={() => setCurrentStep('security')}
             onSkip={handleFlowComplete}
+            isModal
           />
         )
 

@@ -31,6 +31,12 @@ const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
     lg: 'w-6 h-6',
   }
 
+  const marginSizeClasses = {
+    sm: 'mt-0',
+    md: 'mt-0',
+    lg: 'mt-[2px]',
+  }
+
   const translateClasses = {
     sm: checked ? 'translate-x-4' : 'translate-x-0',
     md: checked ? 'translate-x-5' : 'translate-x-0',
@@ -60,7 +66,7 @@ const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
         onClick={() => !disabled && onChange(!checked)}
       >
         <span
-          className={` ${thumbSizeClasses[size]} ${translateClasses[size]} pointer-events-none inline-block transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
+          className={` ${thumbSizeClasses[size]} ${marginSizeClasses[size]} ${translateClasses[size]} pointer-events-none inline-block transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
         />
       </button>
     </div>

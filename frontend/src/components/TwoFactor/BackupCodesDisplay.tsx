@@ -141,15 +141,16 @@ Ces codes vous permettront d'accéder à votre compte si vous perdez l'accès à
           </div>
         )}
       </div>
-
-      <div className='flex space-x-3'>
-        <PrimaryButton onClick={onContinue} fullWidth>
-          Configurer les questions de sécurité
-        </PrimaryButton>
-        <PrimaryButton variant='outline' onClick={onSkip} fullWidth>
-          Ignorer pour l'instant
-        </PrimaryButton>
-      </div>
+      {isModal && (
+        <div className='flex space-x-3'>
+          <PrimaryButton onClick={onContinue} fullWidth>
+            Configurer les questions de sécurité
+          </PrimaryButton>
+          <PrimaryButton variant='outline' onClick={onSkip} fullWidth>
+            Ignorer pour l'instant
+          </PrimaryButton>
+        </div>
+      )}
     </div>
   )
 }

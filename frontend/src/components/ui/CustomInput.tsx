@@ -8,6 +8,7 @@ interface CustomInputProps extends React.InputHTMLAttributes<HTMLInputElement> {
   helperText?: string
   icon?: LucideIcon
   wrapperClassName?: string
+  onBlur?: (e: React.FocusEvent<HTMLInputElement>) => void
 }
 
 const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
@@ -21,6 +22,7 @@ const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
       className = '',
       wrapperClassName = '',
       disabled = false,
+      onBlur,
       ...props
     },
     ref,
@@ -51,6 +53,7 @@ const CustomInput = forwardRef<HTMLInputElement, CustomInputProps>(
                 ? 'border-red-500 focus:border-red-500'
                 : 'focus:border-primary-500 border-gray-200 hover:border-gray-300 dark:border-gray-600 dark:hover:border-gray-500'
             } ${disabled ? 'cursor-not-allowed bg-gray-100 opacity-60 dark:bg-gray-700' : 'focus:-translate-y-0.5'} ${className} `}
+            onBlur={onBlur}
             {...props}
           />
 

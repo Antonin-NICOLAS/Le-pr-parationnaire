@@ -1,15 +1,16 @@
+import axios from 'axios'
 import React, {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useState,
-  useCallback,
 } from 'react'
-import { VITE_AUTH } from '../utils/env'
-import type { User } from '../types/user'
+
+import { type ApiResponse, useApiCall } from '../hooks/useApiCall'
 import type { LoginData, RegisterData } from '../types/auth'
-import axios from 'axios'
-import { useApiCall, type ApiResponse } from '../hooks/useApiCall'
+import type { User } from '../types/user'
+import { VITE_AUTH } from '../utils/env'
 
 type CheckAuthResponse = {
   user?: {
@@ -47,7 +48,6 @@ type AuthContextType = {
   user: User | null
   isAuthenticated: boolean
   loading: boolean
-  refreshToken: () => Promise<ApiResponse>
   checkAuth: () => Promise<ApiResponse>
   checkAuthStatus: (email: string) => Promise<ApiResponse>
   login: (loginData: LoginData) => Promise<ApiResponse>
@@ -73,27 +73,6 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   const [user, setUser] = useState<User | null>(null)
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-
-  const refreshTokenCall = useApiCall(
-    async () => {
-      return axios.post(
-        `${VITE_AUTH}/refresh-token`,
-        {},
-        { withCredentials: true },
-      )
-    },
-    {
-      showSuccessToast: false,
-      onSuccess: (res) => {
-        setUser(res.user)
-        setIsAuthenticated(true)
-      },
-      onError: () => {
-        setIsAuthenticated(false)
-        setUser(null)
-      },
-    },
-  )
 
   const checkAuthCall = useApiCall<CheckAuthResponse>(
     async () => {
@@ -182,11 +161,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   /** ---------------------------
    * --------------------------- */
 
-  const refreshToken = useCallback(
-    () => refreshTokenCall.execute(),
-    [refreshTokenCall],
-  )
-
   const checkAuth = useCallback(() => checkAuthCall.execute(), [checkAuthCall])
   const checkAuthStatus = useCallback(
     (email: string) => checkAuthStatusCall.execute(email),
@@ -227,7 +201,6 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         user,
         isAuthenticated,
         loading: globalLoading,
-        refreshToken,
         checkAuth,
         checkAuthStatus,
         login,

@@ -7,8 +7,8 @@ import { useApiCall } from '../useApiCall'
 const configureAppApi = () =>
   axios.post(`${VITE_2FA_APP}/config`, {}, { withCredentials: true })
 
-const enableAppApi = (token: string) =>
-  axios.post(`${VITE_2FA_APP}/enable`, { token }, { withCredentials: true })
+const enableAppApi = (code: string) =>
+  axios.post(`${VITE_2FA_APP}/enable`, { code }, { withCredentials: true })
 
 const disableAppApi = (method: 'otp' | 'password', value: string) =>
   axios.post(

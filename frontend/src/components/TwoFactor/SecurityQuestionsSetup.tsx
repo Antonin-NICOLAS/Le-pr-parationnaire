@@ -1,9 +1,10 @@
-import React, { useState, useEffect } from 'react'
-import { HelpCircle, Check } from 'lucide-react'
-import PrimaryButton from '../ui/PrimaryButton'
-import CustomInput from '../ui/CustomInput'
+import { Check, HelpCircle } from 'lucide-react'
+import React, { useEffect, useState } from 'react'
+
 import useSecurityQuestions from '../../hooks/TwoFactor/SecurityQuestions'
 import type { SecurityQuestion } from '../../types/user'
+import CustomInput from '../ui/CustomInput'
+import PrimaryButton from '../ui/PrimaryButton'
 
 interface SecurityQuestionsSetupProps {
   onComplete: () => void

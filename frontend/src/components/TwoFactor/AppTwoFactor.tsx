@@ -2,9 +2,9 @@ import {
   AlertCircle,
   Copy,
   QrCode,
+  Shield,
   Smartphone,
   Star,
-  Shield,
 } from 'lucide-react'
 import React, { useState } from 'react'
 import { toast } from 'sonner'
@@ -12,8 +12,8 @@ import { toast } from 'sonner'
 import useAppTwoFactor from '../../hooks/TwoFactor/App'
 import useTwoFactorAuth from '../../hooks/TwoFactor/Main'
 import { useUrlModal } from '../../routes/UseUrlModal'
-import ErrorMessage from '../ui/ErrorMessage'
 import CustomInput from '../ui/CustomInput'
+import ErrorMessage from '../ui/ErrorMessage'
 import Modal from '../ui/Modal'
 import PrimaryButton from '../ui/PrimaryButton'
 import SixDigitCodeInput from '../ui/SixDigitCodeInput'
@@ -231,6 +231,7 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
             )}
             onContinue={() => setCurrentStep('security')}
             onSkip={handleFlowComplete}
+            isModal
           />
         )
 

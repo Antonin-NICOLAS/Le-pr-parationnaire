@@ -1,8 +1,10 @@
 import axios from 'axios'
+import { useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
+
 import { useAuth } from '../context/Auth'
 import { VITE_AUTH } from '../utils/env'
-import { useEffect } from 'react'
+import { toast } from 'sonner'
 
 const AxiosInterceptor = () => {
   const navigate = useNavigate()
@@ -47,7 +49,16 @@ const AxiosInterceptor = () => {
             return axios(originalRequest)
           } catch (refreshError) {
             processQueue(refreshError)
+            const axiosError = refreshError as import('axios').AxiosError
+            const errorMessage =
+              axiosError?.response?.data &&
+              typeof axiosError.response.data === 'object' &&
+              'error' in axiosError.response.data
+                ? (axiosError.response.data as { error?: string }).error
+                : 'Votre session a expiré. Veuillez vous reconnecter.'
+            toast.error(errorMessage)
             await logout()
+            await navigate('/auth/login')
             return Promise.reject(refreshError)
           } finally {
             isRefreshing = false

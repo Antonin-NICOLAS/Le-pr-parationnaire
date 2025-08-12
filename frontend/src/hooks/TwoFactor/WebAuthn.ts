@@ -1,14 +1,14 @@
-import axios from 'axios'
 import {
-  startRegistration,
-  startAuthentication,
-  type RegistrationResponseJSON,
   type AuthenticationResponseJSON,
+  type RegistrationResponseJSON,
+  startAuthentication,
+  startRegistration,
 } from '@simplewebauthn/browser'
-import { VITE_WEB_AUTHN } from '../../utils/env'
-import { useAuth } from '../../context/Auth'
+import axios from 'axios'
 
-import { useApiCall, type ApiCallConfig } from '../useApiCall'
+import { useAuth } from '../../context/Auth'
+import { VITE_WEB_AUTHN } from '../../utils/env'
+import { type ApiCallConfig, useApiCall } from '../useApiCall'
 
 export function useWebAuthnApiCall<T = any>(
   apiFunction: (...args: any[]) => Promise<any>,
@@ -152,15 +152,11 @@ const useWebAuthnTwoFactor = () => {
   )
 
   const disableWebAuthn = useWebAuthnApiCall(
-    async ({
-      email,
-      method,
-      password,
-    }: {
-      email: string
-      method: 'password' | 'webauthn'
-      password?: string
-    }) => {
+    async (
+      email: string,
+      method: 'password' | 'webauthn',
+      password?: string,
+    ) => {
       if (method === 'password') {
         return (await disableWebAuthnApi('password', password)).data
       } else {

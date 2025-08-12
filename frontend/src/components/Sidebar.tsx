@@ -17,7 +17,7 @@ import {
   Users,
 } from 'lucide-react'
 import React, { useEffect, useRef } from 'react'
-import { NavLink } from 'react-router-dom'
+import { NavLink, useNavigate } from 'react-router-dom'
 
 // Image
 import Logo from '../assets/icon.png'
@@ -36,6 +36,7 @@ const Sidebar: React.FC<SidebarProps> = ({
   setSidebarOpen,
   isMobileView,
 }) => {
+  const navigate = useNavigate()
   const { user, isAuthenticated, logout } = useAuth()
   const { theme, toggleTheme } = useTheme()
   const closeMenuRef = useRef<HTMLDivElement>(null)
@@ -168,7 +169,7 @@ const Sidebar: React.FC<SidebarProps> = ({
           </div>
           <div className='min-[640px]:hidden block'>
             <button
-              className='text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[1.9rem] transition-[color] duration-[0.1s]'
+              className='text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[2rem] transition-[color] duration-[0.1s]'
               onClick={toggleSidebar}
             >
               <ChevronsLeft />
@@ -196,7 +197,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   to='/dashboard'
                   onClick={handleNavClick}
                   className={({ isActive }) =>
-                    `text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[1.9rem] [transition:color_0.4s,_opacity_0.4s] ${
+                    `text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[2rem] [transition:color_0.4s,_opacity_0.4s] ${
                       isActive
                         ? 'text-primary-500 after:bg-primary-500 after:absolute after:left-0 after:h-[calc(0.75rem_+_24.5px)] after:w-[3px] after:content-[""]'
                         : ''
@@ -216,7 +217,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   to='/steps'
                   onClick={handleNavClick}
                   className={({ isActive }) =>
-                    `text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[1.9rem] [transition:color_0.4s,_opacity_0.4s] ${
+                    `text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[2rem] [transition:color_0.4s,_opacity_0.4s] ${
                       isActive
                         ? 'text-primary-500 after:bg-primary-500 after:absolute after:left-0 after:h-[calc(0.75rem_+_24.5px)] after:w-[3px] after:content-[""]'
                         : ''
@@ -236,7 +237,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   to='/challenges'
                   onClick={handleNavClick}
                   className={({ isActive }) =>
-                    `text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[1.9rem] [transition:color_0.4s,_opacity_0.4s] ${
+                    `text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[2rem] [transition:color_0.4s,_opacity_0.4s] ${
                       isActive
                         ? 'text-primary-500 after:bg-primary-500 after:absolute after:left-0 after:h-[calc(0.75rem_+_24.5px)] after:w-[3px] after:content-[""]'
                         : ''
@@ -256,7 +257,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   to='/rewards'
                   onClick={handleNavClick}
                   className={({ isActive }) =>
-                    `text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[1.9rem] [transition:color_0.4s,_opacity_0.4s] ${
+                    `text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[2rem] [transition:color_0.4s,_opacity_0.4s] ${
                       isActive
                         ? 'text-primary-500 after:bg-primary-500 after:absolute after:left-0 after:h-[calc(0.75rem_+_24.5px)] after:w-[3px] after:content-[""]'
                         : ''
@@ -276,7 +277,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   to='/leaderboard'
                   onClick={handleNavClick}
                   className={({ isActive }) =>
-                    `text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[1.9rem] [transition:color_0.4s,_opacity_0.4s] ${
+                    `text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[2rem] [transition:color_0.4s,_opacity_0.4s] ${
                       isActive
                         ? 'text-primary-500 after:bg-primary-500 after:absolute after:left-0 after:h-[calc(0.75rem_+_24.5px)] after:w-[3px] after:content-[""]'
                         : ''
@@ -296,7 +297,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   to='/friends'
                   onClick={handleNavClick}
                   className={({ isActive }) =>
-                    `text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[1.9rem] [transition:color_0.4s,_opacity_0.4s] ${
+                    `text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[2rem] [transition:color_0.4s,_opacity_0.4s] ${
                       isActive
                         ? 'text-primary-500 after:bg-primary-500 after:absolute after:left-0 after:h-[calc(0.75rem_+_24.5px)] after:w-[3px] after:content-[""]'
                         : ''
@@ -329,7 +330,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                     to='/settings'
                     onClick={handleNavClick}
                     className={({ isActive }) =>
-                      `text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[1.9rem] [transition:color_0.4s,_opacity_0.4s] ${
+                      `text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[2rem] [transition:color_0.4s,_opacity_0.4s] ${
                         isActive
                           ? 'text-primary-500 after:bg-primary-500 after:absolute after:left-0 after:h-[calc(0.75rem_+_24.5px)] after:w-[3px] after:content-[""]'
                           : ''
@@ -350,7 +351,7 @@ const Sidebar: React.FC<SidebarProps> = ({
                   to='/about'
                   onClick={handleNavClick}
                   className={({ isActive }) =>
-                    `text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[1.9rem] [transition:color_0.4s,_opacity_0.4s] ${
+                    `text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[2rem] [transition:color_0.4s,_opacity_0.4s] ${
                       isActive
                         ? 'text-primary-500 after:bg-primary-500 after:absolute after:left-0 after:h-[calc(0.75rem_+_24.5px)] after:w-[3px] after:content-[""]'
                         : ''
@@ -372,7 +373,7 @@ const Sidebar: React.FC<SidebarProps> = ({
 
           <div className='mt-auto grid gap-6'>
             <div
-              className='text-text hover:text-primary-500 relative grid cursor-pointer grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[1.9rem] transition-[color] duration-[0.1s]'
+              className='text-text hover:text-primary-500 relative grid cursor-pointer grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[2rem] transition-[color] duration-[0.1s]'
               onClick={toggleTheme}
             >
               {theme === 'dark' ? (
@@ -390,9 +391,10 @@ const Sidebar: React.FC<SidebarProps> = ({
             </div>
             {isAuthenticated ? (
               <button
-                className='text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[1.9rem] transition-[color] duration-[0.1s]'
+                className='text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[2rem] transition-[color] duration-[0.1s]'
                 onClick={() => {
                   logout()
+                  navigate('/auth/login')
                 }}
               >
                 <LogOut className='text-xl' />
@@ -408,7 +410,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               <NavLink
                 to='/auth'
                 onClick={handleNavClick}
-                className='text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[1.9rem] transition-[color] duration-[0.1s]'
+                className='text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[2rem] transition-[color] duration-[0.1s]'
               >
                 <LogIn className='text-xl' />
                 <span

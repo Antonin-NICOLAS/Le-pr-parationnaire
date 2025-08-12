@@ -30,6 +30,7 @@ import TabNavigation from '../components/ui/TabNavigation'
 import ToggleSwitch from '../components/ui/ToggleSwitch'
 import { useAuth } from '../context/Auth'
 import useTwoFactorAuth from '../hooks/TwoFactor/Main'
+import SecuritySwitch from '../components/ui/SecuritySwitch'
 import useUserSettings from '../hooks/useUserSettings'
 import { useUrlModal } from '../routes/UseUrlModal'
 import type { ChangePassword, PasswordStrength } from '../types/auth'
@@ -194,7 +195,10 @@ const SettingsPage: React.FC = () => {
   }
 
   const handleRevokeAllSessions = async () => {
-    await revokeAllSessions()
+    const result = await revokeAllSessions()
+    if (result.success) {
+      navigate('auth/login', { replace: true })
+    }
   }
 
   const handleDeleteAccount = async () => {
@@ -214,6 +218,28 @@ const SettingsPage: React.FC = () => {
 
   const renderSecurityTab = () => (
     <div className='space-y-6'>
+      {/* Security Switches */}
+      <SettingsCard
+        title='Paramètres de sécurité'
+        description='Configurez vos options de sécurité avancées'
+        icon={Shield}
+      >
+        <div className='space-y-4'>
+          <SecuritySwitch
+            type='2fa'
+            isEnabled={getTwoFactorStatusState.data?.isEnabled || false}
+            onStatusChange={() => fetch2FAStatus()}
+          />
+          <SecuritySwitch
+            type='webauthn-login'
+            isEnabled={
+              getTwoFactorStatusState.data?.webauthn?.isEnabled || false
+            }
+            onStatusChange={() => fetch2FAStatus()}
+          />
+        </div>
+      </SettingsCard>
+
       {/* Sessions actives */}
       <SettingsCard
         title='Sessions actives'

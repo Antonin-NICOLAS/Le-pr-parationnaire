@@ -1,5 +1,6 @@
 import axios from 'axios'
 import { toast } from 'sonner'
+
 import type { SecurityQuestion } from '../../types/user'
 import { VITE_2FA_QUESTIONS } from '../../utils/env'
 

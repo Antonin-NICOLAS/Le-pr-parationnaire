@@ -1,10 +1,11 @@
 import React, {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useState,
-  useCallback,
 } from 'react'
+
 import { useAuth } from './Auth'
 
 type Theme = 'light' | 'dark'

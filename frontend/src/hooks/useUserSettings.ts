@@ -1,8 +1,9 @@
+import axios from 'axios'
+
+import { useAuth } from '../context/Auth'
 import type { ChangePassword } from '../types/auth'
 import { VITE_USER } from '../utils/env'
 import { useApiCall } from './useApiCall'
-import axios from 'axios'
-import { useAuth } from '../context/Auth'
 
 const deleteAccountApi = () =>
   axios.delete(`${VITE_USER}/delete-account`, {

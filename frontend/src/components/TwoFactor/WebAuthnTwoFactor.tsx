@@ -186,6 +186,7 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
             )}
             onContinue={() => setCurrentStep('security')}
             onSkip={handleFlowComplete}
+            isModal
           />
         )
 

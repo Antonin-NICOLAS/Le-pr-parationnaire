@@ -1,6 +1,8 @@
 import axios from 'axios'
+
 import { VITE_AUTH } from '../../utils/env'
 import { useApiCall } from '../useApiCall'
+import { useAuth } from '../../context/Auth'
 
 // API functions
 const checkActiveSessionsApi = () =>
@@ -17,6 +19,7 @@ const revokeAllSessionsApi = () =>
   })
 
 const useSessions = () => {
+  const { logout } = useAuth()
   const checkActiveSessions = useApiCall(checkActiveSessionsApi, {
     showSuccessToast: false,
     successMessage: 'Sessions actives récupérées',
@@ -34,8 +37,8 @@ const useSessions = () => {
   const revokeAllSessions = useApiCall(revokeAllSessionsApi, {
     successMessage: 'Toutes les sessions révoquées avec succès',
     errorMessage: 'Erreur lors de la révocation des sessions',
-    onSuccess: () => {
-      checkActiveSessions.execute()
+    onSuccess: async () => {
+      await logout()
     },
   })
 

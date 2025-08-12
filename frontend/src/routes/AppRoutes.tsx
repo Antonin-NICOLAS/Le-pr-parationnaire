@@ -1,14 +1,14 @@
-import { Routes, Route, Navigate } from 'react-router-dom'
+import { Navigate, Route, Routes } from 'react-router-dom'
+
 import SidebarLayout from '../layouts/SidebarLayout'
 import Home from '../pages/Home'
 import SettingsPage from '../pages/Settings'
-
 // authentification routes
 import AuthPage from '../pages/auth/AuthPage'
-import VerifyEmailPage from '../pages/auth/VerifyEmailPage'
-import TwoFactorVerifyPage from '../pages/auth/TwoFactorVerifyPage'
 import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage'
 import ResetPasswordPage from '../pages/auth/ResetPasswordPage'
+import TwoFactorVerifyPage from '../pages/auth/TwoFactorVerifyPage'
+import VerifyEmailPage from '../pages/auth/VerifyEmailPage'
 
 export default function AppRoutes() {
   return (

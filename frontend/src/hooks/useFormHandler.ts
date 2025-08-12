@@ -1,132 +1,175 @@
 import { useCallback, useState } from 'react'
-
-import type { ApiCallResult } from './useApiCall'
-
-export interface FormField {
-  value: any
-  error?: string
-  touched?: boolean
-}
-
-export interface FormState {
-  [key: string]: FormField
-}
-
-export interface FormHandlerConfig<T> {
-  initialValues: T
-  validate?: (values: T) => Partial<Record<keyof T, string>>
-  onSubmit: (values: T) => Promise<any>
-  resetOnSuccess?: boolean
-}
+import { z } from 'zod'
 
 export interface FormHandlerResult<T> {
   values: T
-  errors: Partial<Record<keyof T, string>>
-  touched: Partial<Record<keyof T, boolean>>
-  loading: boolean
-  error: string | null
-  handleChange: (field: keyof T, value: any) => void
-  handleBlur: (field: keyof T) => void
-  handleSubmit: (e?: React.FormEvent) => Promise<void>
-  setFieldError: (field: keyof T, error: string) => void
-  setFieldValue: (field: keyof T, value: any) => void
-  reset: () => void
+  errors: Record<string, string>
+  touched: Record<string, boolean>
   isValid: boolean
+  isSubmitting: boolean
+  handleChange: (field: string, value: any) => void
+  handleBlur: (field: string) => void
+  handleSubmit: (
+    onSubmit: (values: T) => Promise<void> | void,
+  ) => (e?: React.FormEvent) => Promise<void>
+  setFieldError: (field: string, error: string) => void
+  setFieldValue: (field: string, value: any) => void
+  clearErrors: () => void
+  reset: (newValues?: Partial<T>) => void
+  validateField: (field: string) => boolean
+  validateForm: () => boolean
 }
 
-/**
- * Universal form handler that integrates with API calls
- */
-export function useFormHandler<T extends Record<string, any>>(
-  config: FormHandlerConfig<T>,
-  apiCall?: ApiCallResult,
-): FormHandlerResult<T> {
-  const { initialValues, validate, onSubmit, resetOnSuccess = true } = config
+interface UseFormHandlerOptions<T> {
+  initialValues: T
+  validationSchema?: z.ZodSchema<T>
+  validateOnChange?: boolean
+  validateOnBlur?: boolean
+}
 
+export function useFormHandler<T extends Record<string, any>>({
+  initialValues,
+  validationSchema,
+  validateOnChange = false,
+  validateOnBlur = true,
+}: UseFormHandlerOptions<T>): FormHandlerResult<T> {
   const [values, setValues] = useState<T>(initialValues)
-  const [errors, setErrors] = useState<Partial<Record<keyof T, string>>>({})
-  const [touched, setTouched] = useState<Partial<Record<keyof T, boolean>>>({})
+  const [errors, setErrors] = useState<Record<string, string>>({})
+  const [touched, setTouched] = useState<Record<string, boolean>>({})
+  const [isSubmitting, setIsSubmitting] = useState(false)
+
+  const validateField = useCallback(
+    (field: string): boolean => {
+      if (!validationSchema) return true
+
+      try {
+        if (validationSchema instanceof z.ZodObject) {
+          const shape = (validationSchema as z.ZodObject<any>).shape
+          const fieldSchema = shape[field as keyof typeof shape]
+          if (fieldSchema) {
+            fieldSchema.parse(values[field])
+            setErrors((prev) => {
+              const newErrors = { ...prev }
+              delete newErrors[field]
+              return newErrors
+            })
+            return true
+          }
+        }
+      } catch (error) {
+        if (error instanceof z.ZodError) {
+          const fieldError = error.issues[0]?.message || 'Invalid value'
+          setErrors((prev) => ({ ...prev, [field]: fieldError }))
+          return false
+        }
+      }
+      return true
+    },
+    [values, validationSchema],
+  )
+
+  const validateForm = useCallback((): boolean => {
+    if (!validationSchema) return true
+
+    try {
+      validationSchema.parse(values)
+      setErrors({})
+      return true
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const newErrors: Record<string, string> = {}
+        error.issues.forEach((err) => {
+          if (err.path.length > 0) {
+            newErrors[err.path[0] as string] = err.message
+          }
+        })
+        setErrors(newErrors)
+        return false
+      }
+    }
+    return false
+  }, [values, validationSchema])
 
   const handleChange = useCallback(
-    (field: keyof T, value: any) => {
+    (field: string, value: any) => {
       setValues((prev) => ({ ...prev, [field]: value }))
 
-      // Clear field error when user starts typing
-      if (errors[field]) {
-        setErrors((prev) => ({ ...prev, [field]: undefined }))
+      if (validateOnChange && touched[field]) {
+        setTimeout(() => validateField(field), 0)
       }
     },
-    [errors],
+    [validateOnChange, touched, validateField],
   )
 
   const handleBlur = useCallback(
-    (field: keyof T) => {
+    (field: string) => {
       setTouched((prev) => ({ ...prev, [field]: true }))
 
-      // Validate field on blur if validation function exists
-      if (validate) {
-        const fieldErrors = validate(values)
-        if (fieldErrors[field]) {
-          setErrors((prev) => ({ ...prev, [field]: fieldErrors[field] }))
+      if (validateOnBlur) {
+        validateField(field)
+      }
+    },
+    [validateOnBlur, validateField],
+  )
+
+  const handleSubmit = useCallback(
+    (onSubmit: (values: T) => Promise<void> | void) => {
+      return async (e?: React.FormEvent) => {
+        if (e) {
+          e.preventDefault()
+        }
+
+        setIsSubmitting(true)
+
+        // Mark all fields as touched
+        const allTouched = Object.keys(values).reduce(
+          (acc, key) => {
+            acc[key] = true
+            return acc
+          },
+          {} as Record<string, boolean>,
+        )
+        setTouched(allTouched)
+
+        // Validate form
+        if (!validateForm()) {
+          setIsSubmitting(false)
+          return
+        }
+
+        try {
+          await onSubmit(values)
+        } catch (error) {
+          // Error handling is managed by the hook that calls onSubmit
+        } finally {
+          setIsSubmitting(false)
         }
       }
     },
-    [values, validate],
+    [values, validateForm],
   )
 
-  const setFieldError = useCallback((field: keyof T, error: string) => {
+  const setFieldError = useCallback((field: string, error: string) => {
     setErrors((prev) => ({ ...prev, [field]: error }))
   }, [])
 
-  const setFieldValue = useCallback((field: keyof T, value: any) => {
+  const setFieldValue = useCallback((field: string, value: any) => {
     setValues((prev) => ({ ...prev, [field]: value }))
   }, [])
 
-  const handleSubmit = useCallback(
-    async (e?: React.FormEvent) => {
-      if (e) {
-        e.preventDefault()
-      }
-
-      // Mark all fields as touched
-      const touchedFields = Object.keys(values).reduce(
-        (acc, key) => {
-          acc[key as keyof T] = true
-          return acc
-        },
-        {} as Partial<Record<keyof T, boolean>>,
-      )
-      setTouched(touchedFields)
-
-      // Validate all fields
-      if (validate) {
-        const validationErrors = validate(values)
-        setErrors(validationErrors)
-
-        if (Object.keys(validationErrors).length > 0) {
-          return
-        }
-      }
-
-      try {
-        const result = await onSubmit(values)
-
-        if (result?.success && resetOnSuccess) {
-          reset()
-        }
-      } catch (error) {
-        // Error handling is managed by the API call hook
-        console.error('Form submission error:', error)
-      }
-    },
-    [values, validate, onSubmit, resetOnSuccess],
-  )
-
-  const reset = useCallback(() => {
-    setValues(initialValues)
+  const clearErrors = useCallback(() => {
     setErrors({})
-    setTouched({})
-  }, [initialValues])
+  }, [])
+
+  const reset = useCallback(
+    (newValues?: Partial<T>) => {
+      setValues(newValues ? { ...initialValues, ...newValues } : initialValues)
+      setErrors({})
+      setTouched({})
+      setIsSubmitting(false)
+    },
+    [initialValues],
+  )
 
   const isValid = Object.keys(errors).length === 0
 
@@ -134,14 +177,16 @@ export function useFormHandler<T extends Record<string, any>>(
     values,
     errors,
     touched,
-    loading: apiCall?.loading || false,
-    error: apiCall?.error || null,
+    isValid,
+    isSubmitting,
     handleChange,
     handleBlur,
     handleSubmit,
     setFieldError,
     setFieldValue,
+    clearErrors,
     reset,
-    isValid,
+    validateField,
+    validateForm,
   }
 }

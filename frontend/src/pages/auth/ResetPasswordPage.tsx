@@ -7,9 +7,9 @@ import CustomInput from '../../components/ui/CustomInput'
 import ErrorMessage from '../../components/ui/ErrorMessage'
 import PasswordStrengthMeter from '../../components/ui/PasswordStrengthMeter'
 import PrimaryButton from '../../components/ui/PrimaryButton'
+import useForgotPassword from '../../hooks/Auth/useForgotPassword'
 import AuthLayout from '../../layouts/AuthLayout'
 import type { PasswordStrength } from '../../types/auth'
-import useForgotPassword from '../../hooks/Auth/useForgotPassword'
 
 const ResetPasswordPage: React.FC = () => {
   const navigate = useNavigate()

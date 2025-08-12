@@ -1,3 +1,5 @@
+import { z } from 'zod'
+
 import type { FormErrors, PasswordStrength } from '../types/auth'
 
 export const validateEmail = (email: string): string | null => {
@@ -152,6 +154,87 @@ export const validateRegistrationForm = (data: {
   }
 
   return errors
+}
+
+// Zod schemas for comprehensive validation
+export const emailSchema = z
+  .string()
+  .toLowerCase()
+  .min(1, 'Email is required')
+  .email('Please enter a valid email address')
+
+export const passwordSchema = z
+  .string()
+  .min(8, 'Password must be at least 8 characters long')
+  .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
+  .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
+  .regex(/[0-9]/, 'Password must contain at least one number')
+  .regex(/[^a-zA-Z0-9]/, 'Password must contain at least one special character')
+
+export const nameSchema = z
+  .string()
+  .min(3, 'Name must be at least 3 characters long')
+  .max(30, 'Name must be less than 30 characters')
+  .regex(/^[a-zA-Z\s'-]+$/, 'Name contains invalid characters')
+
+export const registrationSchema = z
+  .object({
+    firstName: nameSchema,
+    lastName: nameSchema,
+    email: emailSchema,
+    password: passwordSchema,
+    confirmPassword: z.string(),
+    acceptTerms: z
+      .boolean()
+      .refine((val) => val === true, 'Please accept the terms of service'),
+    rememberMe: z.boolean().optional(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  })
+
+export const loginSchema = z.object({
+  email: emailSchema,
+  password: z.string().min(1, 'Password is required'),
+  rememberMe: z.boolean().optional(),
+})
+
+export const changePasswordSchema = z
+  .object({
+    currentPassword: z.string().min(1, 'Current password is required'),
+    newPassword: passwordSchema,
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  })
+
+// Validation helper function
+export const validateWithSchema = <T>(
+  schema: z.ZodSchema<T>,
+  data: any,
+): {
+  success: boolean
+  data?: T
+  errors?: Record<string, string>
+} => {
+  try {
+    const validatedData = schema.parse(data)
+    return { success: true, data: validatedData }
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      const errors: Record<string, string> = {}
+      error.issues.forEach((err) => {
+        if (err.path.length > 0) {
+          errors[err.path[0] as string] = err.message
+        }
+      })
+      return { success: false, errors }
+    }
+    return { success: false, errors: { general: 'Validation failed' } }
+  }
 }
 
 export const sanitizeInput = (input: string): string => {
