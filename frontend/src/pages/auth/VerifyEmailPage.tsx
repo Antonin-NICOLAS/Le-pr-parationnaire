@@ -1,6 +1,6 @@
 import { Mail, RefreshCw } from 'lucide-react'
 import type React from 'react'
-import { useEffect, useRef, useState } from 'react'
+import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import CountdownTimer from '../../components/ui/CountdownTimer'
@@ -23,22 +23,7 @@ const EmailVerificationPage: React.FC = () => {
   const errorMessage =
     emailVerificationState.error || resendVerificationEmailState.error
   const [code, setCode] = useState<string[]>(Array(6).fill(''))
-  const lastCodeRef = useRef<string>('')
   const [canResend, setCanResend] = useState(false)
-
-  useEffect(() => {
-    // Auto-submit when code is complete
-    const codeValue = code.join('')
-    if (
-      codeValue.length === 6 &&
-      codeValue !== lastCodeRef.current &&
-      !emailVerificationState.loading &&
-      !resendVerificationEmailState.loading
-    ) {
-      lastCodeRef.current = codeValue
-      handleVerification(codeValue)
-    }
-  }, [code])
 
   const handleVerification = async (token: string) => {
     emailVerificationState.resetError()
@@ -99,6 +84,7 @@ const EmailVerificationPage: React.FC = () => {
               emailVerificationState.loading ||
               resendVerificationEmailState.loading
             }
+            onComplete={() => handleVerification(code.join(''))}
             error={!!errorMessage}
             autoFocus
           />

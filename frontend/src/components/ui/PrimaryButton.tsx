@@ -5,7 +5,7 @@ interface PrimaryButtonProps
   extends React.ButtonHTMLAttributes<HTMLButtonElement> {
   loading?: boolean
   icon?: LucideIcon
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost'
+  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger'
   size?: 'sm' | 'md' | 'lg'
   fullWidth?: boolean
 }
@@ -25,7 +25,7 @@ const PrimaryButton: React.FC<PrimaryButtonProps> = ({
     inline-flex items-center justify-center gap-2 
     font-medium rounded-lg transition-all duration-200 
     focus:outline-none focus:ring-2 focus:ring-offset-2 
-    disabled:opacity-60 disabled:cursor-not-allowed
+    disabled:opacity-60 disabled:cursor-not-allowed cursor-pointer
     ${fullWidth ? 'w-full' : ''}
   `
 
@@ -51,14 +51,19 @@ const PrimaryButton: React.FC<PrimaryButtonProps> = ({
     `,
     ghost: `
       text-primary-600 dark:text-primary-400 
-      hover:bg-primary-50 dark:hover:bg-primary-400/20 focus:ring-primary-500
+      hover:bg-primary-50 dark:hover:bg-primary-900/20 focus:ring-primary-500
     `,
+    danger: `
+        bg-red-500 dark:bg-red-700 text-white 
+        hover:bg-red-600 focus:ring-red-500 
+        active:bg-red-700 shadow-md hover:shadow-lg
+      `,
   }
 
   return (
     <button
       disabled={disabled || loading}
-      className={` ${baseClasses} ${sizeClasses[size]} ${variantClasses[variant]} ${loading ? 'cursor-wait' : ''} ${className} cursor-pointer`}
+      className={` ${baseClasses} ${sizeClasses[size]} ${variantClasses[variant]} ${loading ? 'cursor-wait' : ''} ${className}`}
       {...props}
     >
       {loading ? (

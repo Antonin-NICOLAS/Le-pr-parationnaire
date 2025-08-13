@@ -267,11 +267,11 @@ const SecuritySwitch: React.FC<SecuritySwitchProps> = ({
           <div className='flex space-x-3'>
             <PrimaryButton
               onClick={handleDisable}
+              variant='danger'
               disabled={
                 (disableMethod === 'password' && !disablePassword) ||
                 (disableMethod === 'email' && disableCode.join('').length !== 6)
               }
-              className='bg-red-600 text-white hover:bg-red-700'
               fullWidth
             >
               Désactiver

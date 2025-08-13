@@ -175,14 +175,12 @@ const ForgotPasswordPage: React.FC = () => {
               Back to Sign In
             </Link>
           </p>
-
-          <div className='text-deg-gray-500 bg-deg-gray-50 border-deg-gray-200 rounded-lg border p-3 text-xs'>
-            <p className='mb-1 font-medium'>Security Note:</p>
-            <p>
-              For security reasons, we'll send reset instructions to your email
-              even if the account doesn't exist.
-            </p>
-          </div>
+          <ErrorMessage
+            type='info'
+            title='Security Note:'
+            message="For security reasons, we'll send reset instructions to your email
+              even if the account doesn't exist."
+          />
         </div>
       </form>
     </AuthLayout>

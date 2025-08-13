@@ -6,12 +6,14 @@ import {
   useRef,
   useState,
 } from 'react'
-
+import { motion, AnimatePresence } from 'framer-motion'
 import PrimaryButton from './PrimaryButton'
 
 interface SixDigitCodeInputProps {
   value: string[]
   onChange: (value: string[]) => void
+  onComplete?: () => void
+  loading?: boolean
   disabled?: boolean
   error?: boolean
   autoFocus?: boolean
@@ -21,6 +23,8 @@ interface SixDigitCodeInputProps {
 const SixDigitCodeInput: React.FC<SixDigitCodeInputProps> = ({
   value,
   onChange,
+  onComplete,
+  loading = false,
   disabled = false,
   error = false,
   autoFocus = false,
@@ -28,12 +32,26 @@ const SixDigitCodeInput: React.FC<SixDigitCodeInputProps> = ({
 }) => {
   const inputRefs = useRef<(HTMLInputElement | null)[]>([])
   const [focusedIndex, setFocusedIndex] = useState<number>(-1)
+  const lastCodeRef = useRef<string>('')
   const [clipboardError, setClipboardError] = useState<React.ReactNode>(null)
   const [isClipboardSupported, setIsClipboardSupported] =
     useState<boolean>(false)
+  const [shakeError, setShakeError] = useState(false)
 
   useEffect(() => {
-    // Vérifie si l'API Clipboard est disponible ET si la permission peut être demandée
+    const codeValue = value.join('')
+    if (
+      onComplete &&
+      codeValue.length === 6 &&
+      !loading &&
+      lastCodeRef.current !== codeValue
+    ) {
+      lastCodeRef.current = codeValue
+      onComplete()
+    }
+  }, [value, loading, onComplete])
+
+  useEffect(() => {
     const checkClipboardSupport = async () => {
       try {
         if (
@@ -45,7 +63,6 @@ const SixDigitCodeInput: React.FC<SixDigitCodeInputProps> = ({
           setIsClipboardSupported(true)
         }
       } catch (error) {
-        console.log('Clipboard API non supportée:', error)
         setIsClipboardSupported(false)
       }
     }
@@ -54,26 +71,30 @@ const SixDigitCodeInput: React.FC<SixDigitCodeInputProps> = ({
   }, [])
 
   useEffect(() => {
-    // Focus sur le premier champ si autoFocus est activé
     if (autoFocus && inputRefs.current[0]) {
       inputRefs.current[0].focus()
       setFocusedIndex(0)
     }
   }, [autoFocus])
 
+  useEffect(() => {
+    if (error) {
+      setShakeError(true)
+      const timer = setTimeout(() => setShakeError(false), 600)
+      return () => clearTimeout(timer)
+    }
+  }, [error])
+
   const handleInputChange = (index: number, inputValue: string) => {
     if (disabled) return
 
-    // Only allow single digit/letter
     const newValue = inputValue.slice(-1)
-
-    if (newValue && !/^[a-zA-Z0-9]$/.test(newValue)) return
+    if (newValue && !/^[0-9]$/.test(newValue)) return
 
     const newValues = [...value]
-    newValues[index] = newValue.toUpperCase()
+    newValues[index] = newValue
     onChange(newValues)
 
-    // Auto-focus next input
     if (newValue && index < 5) {
       inputRefs.current[index + 1]?.focus()
       setFocusedIndex(index + 1)
@@ -88,11 +109,9 @@ const SixDigitCodeInput: React.FC<SixDigitCodeInputProps> = ({
       const newValues = [...value]
 
       if (newValues[index]) {
-        // Clear current input
         newValues[index] = ''
         onChange(newValues)
       } else if (index > 0) {
-        // Move to previous input and clear it
         newValues[index - 1] = ''
         onChange(newValues)
         inputRefs.current[index - 1]?.focus()
@@ -104,6 +123,8 @@ const SixDigitCodeInput: React.FC<SixDigitCodeInputProps> = ({
     } else if (e.key === 'ArrowRight' && index < 5) {
       inputRefs.current[index + 1]?.focus()
       setFocusedIndex(index + 1)
+    } else if (e.key === 'Enter' && index === 5 && value[5]) {
+      inputRefs.current[index]?.blur()
     }
   }
 
@@ -116,7 +137,7 @@ const SixDigitCodeInput: React.FC<SixDigitCodeInputProps> = ({
       .replace(/\s/g, '')
       .toUpperCase()
 
-    if (pastedData && /^[A-Z0-9]{1,6}$/.test(pastedData)) {
+    if (pastedData && /^[0-9]{1,6}$/.test(pastedData)) {
       const newValues = [...value]
       const chars = pastedData.split('')
 
@@ -127,8 +148,6 @@ const SixDigitCodeInput: React.FC<SixDigitCodeInputProps> = ({
       })
 
       onChange(newValues)
-
-      // Focus the next empty input or the last input
       const nextIndex = Math.min(chars.length, 5)
       inputRefs.current[nextIndex]?.focus()
       setFocusedIndex(nextIndex)
@@ -145,10 +164,11 @@ const SixDigitCodeInput: React.FC<SixDigitCodeInputProps> = ({
 
   const handlePasteFromClipboard = async () => {
     try {
-      // Demande la permission si nécessaire (certains navigateurs le font automatiquement)
+      console.log('Pasting from clipboard...')
       const permission = await navigator.permissions.query({
         name: 'clipboard-read' as PermissionName,
       })
+      console.log('Clipboard permission:', permission)
 
       if (permission.state === 'denied') {
         setClipboardError(
@@ -167,15 +187,16 @@ const SixDigitCodeInput: React.FC<SixDigitCodeInputProps> = ({
         )
         return
       }
-
+      console.log('Clipboard text...')
       const text = await navigator.clipboard.readText()
+      console.log('Clipboard text:', text)
       if (!text) {
         setClipboardError('Le presse-papiers est vide')
         return
       }
 
       const sanitized = text.replace(/\s/g, '').toUpperCase()
-      if (!/^[A-Z0-9]{1,6}$/.test(sanitized)) {
+      if (!/^[0-9]{1,6}$/.test(sanitized)) {
         setClipboardError('Le contenu ne correspond pas au format attendu')
         return
       }
@@ -186,13 +207,11 @@ const SixDigitCodeInput: React.FC<SixDigitCodeInputProps> = ({
       })
 
       onChange(newValues)
-      setClipboardError(null)
 
       const focusIndex = Math.min(sanitized.length, 5)
       inputRefs.current[focusIndex]?.focus()
       setFocusedIndex(focusIndex)
     } catch (err) {
-      console.error('Erreur de presse-papiers:', err)
       setClipboardError(
         'Accès au presse-papiers refusé. Veuillez utiliser Ctrl+V directement ou vérifier les permissions de votre navigateur.',
       )
@@ -203,9 +222,19 @@ const SixDigitCodeInput: React.FC<SixDigitCodeInputProps> = ({
     <div
       className={`flex flex-col items-center justify-center gap-3 ${className}`}
     >
-      <div className={`flex justify-center gap-3 ${className}`}>
+      <motion.div
+        className={`flex justify-center gap-3 ${className}`}
+        animate={
+          shakeError
+            ? {
+                x: [0, -10, 10, -10, 10, 0],
+                transition: { duration: 0.6 },
+              }
+            : {}
+        }
+      >
         {Array.from({ length: 6 }, (_, index) => (
-          <input
+          <motion.input
             key={index}
             ref={(el) => {
               inputRefs.current[index] = el
@@ -224,7 +253,7 @@ const SixDigitCodeInput: React.FC<SixDigitCodeInputProps> = ({
               error
                 ? 'border-red-500 text-red-600 dark:text-red-400'
                 : focusedIndex === index
-                  ? 'border-primary-500 text-primary-600 dark:text-primary-400 scale-105 shadow-lg'
+                  ? 'border-primary-500 text-primary-600 dark:text-primary-400 scale-110 shadow-lg'
                   : value[index]
                     ? 'border-primary-300 text-gray-900 dark:text-gray-100'
                     : 'border-gray-200 text-gray-500 dark:border-gray-600'
@@ -232,26 +261,40 @@ const SixDigitCodeInput: React.FC<SixDigitCodeInputProps> = ({
               disabled
                 ? 'cursor-not-allowed bg-gray-100 opacity-50 dark:bg-gray-700'
                 : 'hover:border-gray-300 dark:hover:border-gray-500'
-            } `}
+            }`}
             maxLength={1}
             aria-label={`Digit ${index + 1}`}
           />
         ))}
-      </div>
+      </motion.div>
+
       {isClipboardSupported && (
-        <>
-          <PrimaryButton
-            fullWidth={false}
-            className='max-w-xs'
-            size='sm'
-            onClick={handlePasteFromClipboard}
-          >
-            Coller le code depuis le presse-papiers
-          </PrimaryButton>
-          {clipboardError && (
-            <p className='mt-2 text-sm text-red-500'>{clipboardError}</p>
-          )}
-        </>
+        <div className='flex flex-col items-center gap-2'>
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <PrimaryButton
+              fullWidth={false}
+              className='max-w-xs'
+              size='sm'
+              onClick={handlePasteFromClipboard}
+              variant='ghost'
+            >
+              Coller le code depuis le presse-papiers
+            </PrimaryButton>
+          </motion.div>
+
+          <AnimatePresence>
+            {clipboardError && (
+              <motion.p
+                initial={{ opacity: 0, y: -10 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -10 }}
+                className='mt-2 text-sm text-red-500 text-center max-w-xs'
+              >
+                {clipboardError}
+              </motion.p>
+            )}
+          </AnimatePresence>
+        </div>
       )}
     </div>
   )

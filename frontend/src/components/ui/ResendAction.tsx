@@ -7,7 +7,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 interface ResendSectionProps {
   message?: string
   countdownSeconds?: number
-  onResend: () => void
+  onResend: () => Promise<void> | void
   loading?: boolean
   variant?: 'inline' | 'block'
   icon?: LucideIcon
@@ -28,20 +28,74 @@ export default function ResendSection({
   className = '',
 }: ResendSectionProps) {
   const [canResend, setCanResend] = useState(false)
+  const [resendSuccess, setResendSuccess] = useState(false)
+
+  const handleResend = async () => {
+    try {
+      await onResend()
+      setResendSuccess(true)
+      setTimeout(() => setResendSuccess(false), 2000) // Success message duration
+      setCanResend(false)
+    } catch (error) {
+      // Error handling would go here
+    }
+  }
 
   return (
-    <div className={`space-y-3 text-${align} ${className}`}>
+    <div
+      className={`space-y-3 flex flex-col ${align === 'center' && 'items-center justify-center'} text-${align} ${className}`}
+    >
       {variant === 'block' && (
-        <p className='text-sm text-gray-600 dark:text-gray-400'>{message}</p>
+        <motion.p
+          initial={{ opacity: 0, y: 5 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3 }}
+          className='text-sm text-gray-600 dark:text-gray-400'
+        >
+          {message}
+        </motion.p>
       )}
 
       <AnimatePresence mode='wait'>
-        {!canResend ? (
+        {resendSuccess ? (
+          <motion.div
+            key='success'
+            initial={{ opacity: 0, y: 10 }}
+            animate={{
+              opacity: 1,
+              y: 0,
+              transition: {
+                type: 'spring',
+                stiffness: 500,
+                damping: 20,
+              },
+            }}
+            exit={{
+              opacity: 0,
+              transition: { duration: 0.2 },
+            }}
+            className='text-green-600 dark:text-green-400 text-sm'
+          >
+            Verification code sent successfully!
+          </motion.div>
+        ) : !canResend ? (
           <motion.div
             key='countdown'
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{
+              opacity: 1,
+              y: 0,
+              transition: {
+                type: 'spring',
+                stiffness: 400,
+                damping: 25,
+              },
+            }}
+            exit={{
+              opacity: 0,
+              y: -10,
+              transition: { duration: 0.2 },
+            }}
             className={variant === 'inline' ? 'flex items-center gap-2' : ''}
           >
             <CountdownTimer
@@ -53,33 +107,117 @@ export default function ResendSection({
         ) : (
           <motion.div
             key='button'
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{
+              opacity: 1,
+              scale: 1,
+              transition: {
+                type: 'spring',
+                stiffness: 400,
+                damping: 15,
+              },
+            }}
+            exit={{
+              opacity: 0,
+              scale: 0.95,
+              transition: { duration: 0.15 },
+            }}
           >
             {variant === 'inline' ? (
               <PrimaryButton
                 variant='ghost'
-                onClick={onResend}
+                onClick={handleResend}
                 loading={loading}
                 disabled={!canResend || loading}
                 icon={Icon}
               >
-                {buttonText}
+                <motion.span
+                  animate={{
+                    scale: [1, 1.05, 1], // Pulse effect
+                    transition: {
+                      repeat: Infinity,
+                      duration: 1.5,
+                      repeatDelay: 2,
+                    },
+                  }}
+                >
+                  {buttonText}
+                </motion.span>
+                {loading && (
+                  <motion.span
+                    animate={{
+                      rotate: 360,
+                      transition: {
+                        duration: 1,
+                        repeat: Infinity,
+                        ease: 'linear',
+                      },
+                    }}
+                    className='ml-2'
+                  >
+                    <Icon className='h-4 w-4' />
+                  </motion.span>
+                )}
               </PrimaryButton>
             ) : (
               <PrimaryButton
                 variant='ghost'
-                onClick={onResend}
+                onClick={handleResend}
                 loading={loading}
                 disabled={!canResend || loading}
                 icon={Icon}
                 className='mt-2'
               >
-                {buttonText}
+                <motion.span
+                  animate={{
+                    scale: [1, 1.05, 1], // Pulse effect
+                    transition: {
+                      repeat: Infinity,
+                      duration: 1.5,
+                      repeatDelay: 2,
+                    },
+                  }}
+                >
+                  {buttonText}
+                </motion.span>
+                {loading && (
+                  <motion.span
+                    animate={{
+                      rotate: 360,
+                      transition: {
+                        duration: 1,
+                        repeat: Infinity,
+                        ease: 'linear',
+                      },
+                    }}
+                    className='ml-2'
+                  >
+                    <Icon className='h-4 w-4' />
+                  </motion.span>
+                )}
               </PrimaryButton>
             )}
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Progress indicator during countdown */}
+      <AnimatePresence>
+        {!canResend && !resendSuccess && (
+          <div className='min-w-[200px] w-[30%] bg-gray-300 dark:bg-gray-500 rounded-full overflow-hidden'>
+            <motion.div
+              initial={{ width: 0 }}
+              animate={{
+                width: '100%',
+                transition: {
+                  duration: countdownSeconds,
+                  ease: 'linear',
+                },
+              }}
+              exit={{ opacity: 0 }}
+              className='h-2 bg-primary-400 dark:bg-primary-700 rounded-full overflow-hidden'
+            ></motion.div>
+          </div>
         )}
       </AnimatePresence>
     </div>

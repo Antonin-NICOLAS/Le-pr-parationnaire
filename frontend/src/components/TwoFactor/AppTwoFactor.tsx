@@ -6,7 +6,7 @@ import {
   Smartphone,
   Star,
 } from 'lucide-react'
-import React, { useState, useRef, useEffect } from 'react'
+import React, { useState } from 'react'
 import { toast } from 'sonner'
 
 import useAppTwoFactor from '../../hooks/TwoFactor/App'
@@ -43,7 +43,6 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
   )
   // Disable flow
   const [disableMethod, setDisableMethod] = useState<'otp' | 'password'>('otp')
-  const lastCodeRef = useRef<string>('')
   const [disableCode, setDisableCode] = useState<string[]>(Array(6).fill(''))
   const [disablePassword, setDisablePassword] = useState('')
 
@@ -56,19 +55,6 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
     disableAppState,
   } = useAppTwoFactor()
   const { setPreferredMethod, setPreferredMethodState } = useTwoFactorAuth()
-
-  useEffect(() => {
-    // Auto-submit when code is complete
-    const codeValue = disableCode.join('')
-    if (
-      codeValue.length === 6 &&
-      codeValue !== lastCodeRef.current &&
-      !disableAppState.loading
-    ) {
-      lastCodeRef.current = codeValue
-      handleDisable()
-    }
-  }, [disableCode])
 
   // Step 1 : Request QR Code and Secret
   const handleEnable = async () => {
@@ -318,6 +304,8 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
             value={disableCode}
             onChange={setDisableCode}
             disabled={disableAppState.loading}
+            loading={disableAppState.loading}
+            onComplete={() => handleDisable()}
             autoFocus
           />
         ) : (
@@ -334,13 +322,13 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
       <div className='flex space-x-3'>
         <PrimaryButton
           onClick={handleDisable}
+          variant='danger'
           loading={disableAppState.loading}
           disabled={
             disableMethod === 'otp'
               ? disableCode.join('').length !== 6
               : !disablePassword
           }
-          className='bg-red-600 text-white hover:bg-red-700'
           fullWidth
         >
           Désactiver

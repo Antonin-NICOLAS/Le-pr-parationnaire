@@ -370,14 +370,34 @@ const AuthPage: React.FC = () => {
   return (
     <div className='from-primary-50 to-primary-100 flex min-h-screen items-center justify-center bg-gradient-to-br via-white p-4 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900'>
       <div className='w-full max-w-md'>
-        <div className='overflow-hidden rounded-3xl border border-white/30 bg-white/90 shadow-2xl backdrop-blur-xl dark:border-gray-700/30 dark:bg-gray-800/90'>
+        <motion.div
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className='overflow-hidden rounded-3xl border border-white/30 bg-white/90 shadow-2xl backdrop-blur-xl dark:border-gray-700/30 dark:bg-gray-800/90'
+        >
           {/* Header */}
-          <div className='p-8 pb-4'>
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.2 }}
+            className='p-8 pb-4'
+          >
             <div className='text-center'>
-              <h1 className='from-primary-600 to-primary-800 mb-2 bg-gradient-to-r bg-clip-text text-4xl font-bold text-transparent'>
+              <motion.h1
+                initial={{ y: -10, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.3 }}
+                className='from-primary-600 to-primary-800 mb-2 bg-gradient-to-r bg-clip-text text-4xl font-bold text-transparent'
+              >
                 {isLogin ? 'Welcome Back' : 'Join Us'}
-              </h1>
-              <p className='text-gray-600 dark:text-gray-400'>
+              </motion.h1>
+              <motion.p
+                initial={{ y: -10, opacity: 0 }}
+                animate={{ y: 0, opacity: 1 }}
+                transition={{ delay: 0.4 }}
+                className='text-gray-600 dark:text-gray-400'
+              >
                 {isLogin
                   ? loginStep === 'email'
                     ? 'Sign in to your account'
@@ -385,13 +405,23 @@ const AuthPage: React.FC = () => {
                       ? 'Enter your password'
                       : 'Choose authentication method'
                   : 'Create your account'}
-              </p>
+              </motion.p>
             </div>
-          </div>
+          </motion.div>
 
           {/* Form Toggle */}
-          <div className='mb-6 px-8'>
-            <div className='flex rounded-xl bg-gray-100 p-1 dark:bg-gray-700'>
+          <div className='mb-6 px-8 relative'>
+            <div className='flex rounded-xl bg-gray-100 p-1 dark:bg-gray-700 relative'>
+              <motion.div
+                layoutId='activeTab'
+                className={`absolute inset-0 rounded-lg bg-white shadow-md dark:bg-gray-600`}
+                style={{
+                  width: '50%',
+                  left: isLogin ? '0%' : '50%',
+                }}
+                transition={{ type: 'spring', stiffness: 300, damping: 30 }}
+              />
+
               <button
                 onClick={() => {
                   navigate('/auth/login', {
@@ -400,14 +430,15 @@ const AuthPage: React.FC = () => {
                   })
                   setLoginStep('email')
                 }}
-                className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-300 ${
+                className={`relative flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors duration-300 ${
                   isLogin
-                    ? 'bg-white text-gray-900 shadow-md dark:bg-gray-600 dark:text-white'
-                    : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 cursor-pointer'
+                    ? 'text-gray-900 dark:text-white'
+                    : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
                 }`}
               >
                 Sign In
               </button>
+
               <button
                 onClick={() =>
                   navigate('/auth/register', {
@@ -415,10 +446,10 @@ const AuthPage: React.FC = () => {
                     state: location.state,
                   })
                 }
-                className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-300 ${
+                className={`relative flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors duration-300 ${
                   !isLogin
-                    ? 'bg-white text-gray-900 shadow-md dark:bg-gray-600 dark:text-white'
-                    : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 cursor-pointer'
+                    ? 'text-gray-900 dark:text-white'
+                    : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
                 }`}
               >
                 Sign Up
@@ -427,194 +458,222 @@ const AuthPage: React.FC = () => {
           </div>
 
           {/* Forms */}
-          <div className='px-8 pb-8'>
-            {isLogin ? (
-              <div className='animate-fade-in'>{renderLoginForm()}</div>
-            ) : (
-              <form
-                onSubmit={(e) => registerForm.handleSubmit(handleRegister)(e)}
-                className='animate-fade-in space-y-6'
+          <div className='px-8 pb-8 relative min-h-[200px]'>
+            <AnimatePresence mode='wait' custom={isLogin}>
+              <motion.div
+                key={isLogin ? 'login' : 'register'}
+                initial={{
+                  x: isLogin ? -50 : 50,
+                  opacity: 0,
+                  position: 'relative', // Change from absolute to relative
+                  width: '100%',
+                }}
+                animate={{
+                  x: 0,
+                  opacity: 1,
+                  transition: { duration: 0.3, ease: 'easeInOut' },
+                }}
+                exit={{
+                  x: isLogin ? 50 : -50,
+                  opacity: 0,
+                  transition: { duration: 0.2, ease: 'easeInOut' },
+                }}
+                className='w-full'
               >
-                {registerState.error && (
-                  <ErrorMessage
-                    message={registerState.error}
-                    type='error'
-                    onClose={() => registerState.resetError()}
-                  />
-                )}
-                <div className='grid grid-cols-2 gap-4'>
-                  <CustomInput
-                    type='text'
-                    label='First Name'
-                    placeholder='John'
-                    value={registerForm.values.firstName}
-                    onChange={(e) =>
-                      registerForm.handleChange('firstName', e.target.value)
+                {isLogin ? (
+                  <div className='space-y-6'>{renderLoginForm()}</div>
+                ) : (
+                  <form
+                    onSubmit={(e) =>
+                      registerForm.handleSubmit(handleRegister)(e)
                     }
-                    onBlur={() => registerForm.handleBlur('firstName')}
-                    error={
-                      registerForm.touched.firstName &&
-                      registerForm.values.firstName
-                        ? registerForm.errors.firstName
-                        : undefined
-                    }
-                    helperText='3-30 characters'
-                    icon={User}
-                    required
-                    autoComplete='given-name'
-                  />
-                  <CustomInput
-                    type='text'
-                    label='Last Name'
-                    placeholder='Doe'
-                    value={registerForm.values.lastName}
-                    onChange={(e) =>
-                      registerForm.handleChange('lastName', e.target.value)
-                    }
-                    onBlur={() => registerForm.handleBlur('lastName')}
-                    error={
-                      registerForm.touched.lastName &&
-                      registerForm.values.lastName
-                        ? registerForm.errors.lastName
-                        : undefined
-                    }
-                    helperText='3-30 characters'
-                    icon={User}
-                    required
-                    autoComplete='family-name'
-                  />
-                </div>
+                    className='space-y-6'
+                  >
+                    {registerState.error && (
+                      <ErrorMessage
+                        message={registerState.error}
+                        type='error'
+                        onClose={() => registerState.resetError()}
+                      />
+                    )}
+                    <div className='grid grid-cols-2 gap-4'>
+                      <CustomInput
+                        type='text'
+                        label='First Name'
+                        placeholder='John'
+                        value={registerForm.values.firstName}
+                        onChange={(e) =>
+                          registerForm.handleChange('firstName', e.target.value)
+                        }
+                        onBlur={() => registerForm.handleBlur('firstName')}
+                        error={
+                          registerForm.touched.firstName &&
+                          registerForm.values.firstName
+                            ? registerForm.errors.firstName
+                            : undefined
+                        }
+                        helperText='3-30 characters'
+                        icon={User}
+                        required
+                        autoComplete='given-name'
+                      />
+                      <CustomInput
+                        type='text'
+                        label='Last Name'
+                        placeholder='Doe'
+                        value={registerForm.values.lastName}
+                        onChange={(e) =>
+                          registerForm.handleChange('lastName', e.target.value)
+                        }
+                        onBlur={() => registerForm.handleBlur('lastName')}
+                        error={
+                          registerForm.touched.lastName &&
+                          registerForm.values.lastName
+                            ? registerForm.errors.lastName
+                            : undefined
+                        }
+                        helperText='3-30 characters'
+                        icon={User}
+                        required
+                        autoComplete='family-name'
+                      />
+                    </div>
 
-                <CustomInput
-                  type='email'
-                  label='Email Address'
-                  placeholder='john@example.com'
-                  value={registerForm.values.email}
-                  onChange={(e) =>
-                    registerForm.handleChange('email', e.target.value)
-                  }
-                  onBlur={() => registerForm.handleBlur('email')}
-                  error={
-                    registerForm.touched.email && registerForm.values.email
-                      ? registerForm.errors.email
-                      : undefined
-                  }
-                  icon={Mail}
-                  required
-                  autoComplete='email'
-                />
-
-                <CustomInput
-                  type='password'
-                  label='Password'
-                  placeholder='Create a strong password'
-                  value={registerForm.values.password}
-                  onChange={(e) =>
-                    registerForm.handleChange('password', e.target.value)
-                  }
-                  onBlur={() => registerForm.handleBlur('password')}
-                  error={
-                    registerForm.touched.password &&
-                    registerForm.values.password
-                      ? registerForm.errors.password
-                      : undefined
-                  }
-                  icon={Lock}
-                  required
-                  autoComplete='new-password'
-                />
-
-                {registerForm.values.password && (
-                  <PasswordStrengthMeter
-                    password={registerForm.values.password}
-                    onStrengthChange={() => {}}
-                    className='mb-4'
-                  />
-                )}
-
-                <CustomInput
-                  type='password'
-                  label='Confirm Password'
-                  placeholder='Confirm your password'
-                  value={registerForm.values.confirmPassword}
-                  onChange={(e) =>
-                    registerForm.handleChange('confirmPassword', e.target.value)
-                  }
-                  onBlur={() => registerForm.handleBlur('confirmPassword')}
-                  error={
-                    registerForm.touched.confirmPassword &&
-                    registerForm.values.confirmPassword
-                      ? registerForm.errors.confirmPassword
-                      : undefined
-                  }
-                  icon={Lock}
-                  required
-                  autoComplete='new-password'
-                />
-
-                <div className='space-y-3'>
-                  <label className='accent-primary-500 flex items-start gap-3 text-sm text-gray-600 dark:text-gray-400'>
-                    <input
-                      type='checkbox'
-                      checked={registerForm.values.acceptTerms}
+                    <CustomInput
+                      type='email'
+                      label='Email Address'
+                      placeholder='john@example.com'
+                      value={registerForm.values.email}
                       onChange={(e) =>
-                        registerForm.handleChange(
-                          'acceptTerms',
-                          e.target.checked,
-                        )
+                        registerForm.handleChange('email', e.target.value)
                       }
-                      onBlur={() => registerForm.handleBlur('acceptTerms')}
-                      className='text-primary-600 focus:ring-primary-500 mt-1 rounded border-gray-300'
+                      onBlur={() => registerForm.handleBlur('email')}
+                      error={
+                        registerForm.touched.email && registerForm.values.email
+                          ? registerForm.errors.email
+                          : undefined
+                      }
+                      icon={Mail}
                       required
+                      autoComplete='email'
                     />
-                    <span>
-                      I accept the{' '}
-                      <button
-                        type='button'
-                        className='text-primary-600 hover:text-primary-700 dark:text-primary-400 underline'
-                      >
-                        Terms of Service
-                      </button>{' '}
-                      and{' '}
-                      <button
-                        type='button'
-                        className='text-primary-600 hover:text-primary-700 dark:text-primary-400 underline'
-                      >
-                        Privacy Policy
-                      </button>
-                    </span>
-                  </label>
 
-                  <label className='accent-primary-500 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400'>
-                    <input
-                      type='checkbox'
-                      checked={registerForm.values.rememberMe}
+                    <CustomInput
+                      type='password'
+                      label='Password'
+                      placeholder='Create a strong password'
+                      value={registerForm.values.password}
+                      onChange={(e) =>
+                        registerForm.handleChange('password', e.target.value)
+                      }
+                      onBlur={() => registerForm.handleBlur('password')}
+                      error={
+                        registerForm.touched.password &&
+                        registerForm.values.password
+                          ? registerForm.errors.password
+                          : undefined
+                      }
+                      icon={Lock}
+                      required
+                      autoComplete='new-password'
+                    />
+
+                    {registerForm.values.password && (
+                      <PasswordStrengthMeter
+                        password={registerForm.values.password}
+                        onStrengthChange={() => {}}
+                        className='mb-4'
+                      />
+                    )}
+
+                    <CustomInput
+                      type='password'
+                      label='Confirm Password'
+                      placeholder='Confirm your password'
+                      value={registerForm.values.confirmPassword}
                       onChange={(e) =>
                         registerForm.handleChange(
-                          'rememberMe',
-                          e.target.checked,
+                          'confirmPassword',
+                          e.target.value,
                         )
                       }
-                      onBlur={() => registerForm.handleBlur('rememberMe')}
-                      className='text-primary-600 focus:ring-primary-500 rounded border-gray-300'
+                      onBlur={() => registerForm.handleBlur('confirmPassword')}
+                      error={
+                        registerForm.touched.confirmPassword &&
+                        registerForm.values.confirmPassword
+                          ? registerForm.errors.confirmPassword
+                          : undefined
+                      }
+                      icon={Lock}
+                      required
+                      autoComplete='new-password'
                     />
-                    Stay logged in
-                  </label>
-                </div>
 
-                <PrimaryButton
-                  type='submit'
-                  loading={registerState.loading}
-                  fullWidth
-                  size='lg'
-                  icon={ArrowRight}
-                >
-                  Create Account
-                </PrimaryButton>
-              </form>
-            )}
+                    <div className='space-y-3'>
+                      <label className='accent-primary-500 flex items-start gap-3 text-sm text-gray-600 dark:text-gray-400'>
+                        <input
+                          type='checkbox'
+                          checked={registerForm.values.acceptTerms}
+                          onChange={(e) =>
+                            registerForm.handleChange(
+                              'acceptTerms',
+                              e.target.checked,
+                            )
+                          }
+                          onBlur={() => registerForm.handleBlur('acceptTerms')}
+                          className='text-primary-600 focus:ring-primary-500 mt-1 rounded border-gray-300'
+                          required
+                        />
+                        <span>
+                          I accept the{' '}
+                          <button
+                            type='button'
+                            className='text-primary-600 hover:text-primary-700 dark:text-primary-400 underline'
+                          >
+                            Terms of Service
+                          </button>{' '}
+                          and{' '}
+                          <button
+                            type='button'
+                            className='text-primary-600 hover:text-primary-700 dark:text-primary-400 underline'
+                          >
+                            Privacy Policy
+                          </button>
+                        </span>
+                      </label>
+
+                      <label className='accent-primary-500 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400'>
+                        <input
+                          type='checkbox'
+                          checked={registerForm.values.rememberMe}
+                          onChange={(e) =>
+                            registerForm.handleChange(
+                              'rememberMe',
+                              e.target.checked,
+                            )
+                          }
+                          onBlur={() => registerForm.handleBlur('rememberMe')}
+                          className='text-primary-600 focus:ring-primary-500 rounded border-gray-300'
+                        />
+                        Stay logged in
+                      </label>
+                    </div>
+
+                    <PrimaryButton
+                      type='submit'
+                      loading={registerState.loading}
+                      fullWidth
+                      size='lg'
+                      icon={ArrowRight}
+                    >
+                      Create Account
+                    </PrimaryButton>
+                  </form>
+                )}
+              </motion.div>
+            </AnimatePresence>
           </div>
-        </div>
+        </motion.div>
       </div>
     </div>
   )

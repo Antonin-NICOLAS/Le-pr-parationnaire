@@ -36,7 +36,6 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
     'config' | 'verify' | 'backup' | 'security'
   >('config')
   const [canResend, setCanResend] = useState(false)
-  const lastCodeRef = useRef<string>('')
   const [verificationCode, setVerificationCode] = useState<string[]>(
     Array(6).fill(''),
   )
@@ -57,31 +56,6 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
   } = useEmailTwoFactor()
 
   const { setPreferredMethod, setPreferredMethodState } = useTwoFactorAuth()
-
-  useEffect(() => {
-    // Auto-submit when code is complete
-    const codeValue = verificationCode.join('')
-    if (
-      codeValue.length === 6 &&
-      !enableEmailState.loading &&
-      codeValue !== lastCodeRef.current
-    ) {
-      lastCodeRef.current = codeValue
-      handleVerifyCode()
-    }
-  }, [verificationCode])
-  useEffect(() => {
-    // Auto-submit when code is complete
-    const codeValue = disableCode.join('')
-    if (
-      codeValue.length === 6 &&
-      !disableEmailState.loading &&
-      codeValue !== lastCodeRef.current
-    ) {
-      lastCodeRef.current = codeValue
-      handleDisable()
-    }
-  }, [disableCode])
 
   // Step 1: Send Verification code
   const handleEnable = async () => {
@@ -106,7 +80,6 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
     enableEmailState.resetError()
     const result = await enableEmail(verificationCode.join(''))
     if (result.success) {
-      lastCodeRef.current = ''
       setCurrentStep('backup')
     }
   }
@@ -118,7 +91,6 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
       disableMethod === 'otp' ? disableCode.join('') : disablePassword
     const result = await disableEmail(disableMethod, value)
     if (result.success) {
-      lastCodeRef.current = ''
       closeDisableFlow()
       onStatusChange()
     }
@@ -170,6 +142,7 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
                 onChange={setVerificationCode}
                 disabled={enableEmailState.loading}
                 error={!!enableEmailState.error}
+                onComplete={() => handleVerifyCode()}
                 autoFocus
               />
             </div>
@@ -309,6 +282,7 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
                 onChange={setDisableCode}
                 disabled={disableEmailState.loading}
                 error={!!disableEmailState.error}
+                onComplete={() => handleDisable()}
                 autoFocus
               />
             </div>
@@ -351,13 +325,13 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
       <div className='flex space-x-3'>
         <PrimaryButton
           onClick={handleDisable}
+          variant='danger'
           loading={disableEmailState.loading}
           disabled={
             disableMethod === 'otp'
               ? disableCode.join('').length !== 6
               : !disablePassword
           }
-          className='bg-red-600 text-white hover:bg-red-700'
           fullWidth
         >
           Désactiver

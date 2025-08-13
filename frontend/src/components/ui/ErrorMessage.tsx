@@ -2,6 +2,7 @@ import type React from 'react'
 import { AlertCircle, X, Info, CheckCircle } from 'lucide-react'
 
 interface ErrorMessageProps {
+  title?: string
   message: string
   type?: 'error' | 'warning' | 'info' | 'success'
   onClose?: () => void
@@ -9,6 +10,7 @@ interface ErrorMessageProps {
 }
 
 const ErrorMessage: React.FC<ErrorMessageProps> = ({
+  title,
   message,
   type = 'error',
   onClose,
@@ -57,7 +59,17 @@ const ErrorMessage: React.FC<ErrorMessageProps> = ({
         size={20}
         className={`mt-0.5 flex-shrink-0 ${config.iconColor}`}
       />
-      <div className={`flex-1 text-sm ${config.textColor}`}>{message}</div>
+      <div className='flex flex-col'>
+        {' '}
+        {title && (
+          <div
+            className={`flex-1 text-md font-semibold mb-1 ${config.textColor}`}
+          >
+            {title}
+          </div>
+        )}
+        <div className={`flex-1 text-sm ${config.textColor}`}>{message}</div>
+      </div>
       {onClose && (
         <button
           onClick={onClose}

@@ -103,7 +103,6 @@ const SettingsPage: React.FC = () => {
   const { open, close } = useUrlModal('delete-account')
   const [deleteConfirmation, setDeleteConfirmation] = useState('')
   const [deletePassword, setDeletePassword] = useState('')
-  const lastCodeRef = useRef<string>('')
   const changeEmailForm = useFormHandler({
     initialValues: {
       currentEmailCode: Array(6).fill(''),
@@ -126,32 +125,6 @@ const SettingsPage: React.FC = () => {
     fetchActiveSessions()
     fetch2FAStatus()
   }, [])
-
-  useEffect(() => {
-    // Auto-submit when code is complete
-    const codeValue = changeEmailForm.values.currentEmailCode.join('')
-    if (
-      codeValue.length === 6 &&
-      !changeEmailStep2State.loading &&
-      codeValue !== lastCodeRef.current
-    ) {
-      lastCodeRef.current = codeValue
-      handleCurrentEmailVerification()
-    }
-  }, [changeEmailForm.values.currentEmailCode])
-
-  useEffect(() => {
-    // Auto-submit when code is complete
-    const codeValue = changeEmailForm.values.newEmailCode.join('')
-    if (
-      codeValue.length === 6 &&
-      !changeEmailStep4State.loading &&
-      codeValue !== lastCodeRef.current
-    ) {
-      lastCodeRef.current = codeValue
-      handleNewEmailVerification()
-    }
-  }, [changeEmailForm.values.newEmailCode])
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -187,7 +160,6 @@ const SettingsPage: React.FC = () => {
       changeEmailForm.values.currentEmailCode.join(''),
     )
     if (result.success) {
-      lastCodeRef.current = ''
       setEmailChangeStep('new-email')
     }
   }
@@ -204,7 +176,6 @@ const SettingsPage: React.FC = () => {
       changeEmailForm.values.newEmailCode.join(''),
     )
     if (result.success) {
-      lastCodeRef.current = ''
       changeEmailForm.reset()
       setEmailChangeStep(null)
     }
@@ -449,6 +420,7 @@ const SettingsPage: React.FC = () => {
                   onChange={(value) =>
                     changeEmailForm.handleChange('currentEmailCode', value)
                   }
+                  onComplete={() => handleCurrentEmailVerification()}
                   error={!!changeEmailForm.errors.currentEmailCode}
                   autoFocus
                 />
@@ -535,6 +507,7 @@ const SettingsPage: React.FC = () => {
                     changeEmailForm.handleChange('newEmailCode', value)
                   }
                   error={!!changeEmailForm.errors.newEmailCode}
+                  onComplete={() => handleNewEmailVerification()}
                   autoFocus
                 />
                 <ResendAction
@@ -762,9 +735,10 @@ const SettingsPage: React.FC = () => {
             </p>
           </div>
           <PrimaryButton
-            variant='secondary'
+            variant='danger'
+            size='md'
+            loading={deleteAccountState.loading}
             onClick={open}
-            className='bg-red-600 text-white hover:bg-red-700'
           >
             Supprimer mon compte
           </PrimaryButton>

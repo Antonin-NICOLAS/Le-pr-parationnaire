@@ -238,12 +238,11 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
               </div>
             </div>
             <PrimaryButton
-              variant='outline'
+              variant='danger'
               size='sm'
               onClick={() => handleDeleteCredential(credential.id)}
               loading={deleteCredentialState.loading}
               icon={Trash2}
-              className='border-red-200 text-red-600 hover:border-red-300 hover:bg-red-50 hover:text-red-700 dark:border-red-300 dark:text-red-500 dark:hover:border-red-400 dark:hover:bg-red-900/20'
             >
               Supprimer
             </PrimaryButton>
@@ -320,9 +319,9 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
       <div className='flex space-x-3'>
         <PrimaryButton
           onClick={handleDisable}
+          variant='danger'
           loading={disableWebAuthnState.loading}
           disabled={disableMethod === 'password' && !disablePassword}
-          className='bg-red-600 text-white hover:bg-red-700'
           fullWidth
         >
           Désactiver
