@@ -1,46 +1,5 @@
 import { z } from 'zod'
-
-import type { FormErrors, PasswordStrength } from '../types/auth'
-
-export const validateEmail = (email: string): string | null => {
-  if (!email) return 'Email is required'
-
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  if (!emailRegex.test(email)) return 'Please enter a valid email address'
-
-  return null
-}
-
-export const validatePassword = (password: string): string | null => {
-  if (!password) return 'Password is required'
-  if (password.length < 8) return 'Password must be at least 8 characters long'
-
-  return null
-}
-
-export const validateConfirmPassword = (
-  password: string,
-  confirmPassword: string,
-): string | null => {
-  if (!confirmPassword) return 'Please confirm your password'
-  if (password !== confirmPassword) return 'Passwords do not match'
-
-  return null
-}
-
-export const validateName = (
-  name: string,
-  fieldName: string,
-): string | null => {
-  if (!name) return `${fieldName} is required`
-  if (name.length < 2) return `${fieldName} must be at least 2 characters long`
-  if (name.length > 50) return `${fieldName} must be less than 50 characters`
-
-  const nameRegex = /^[a-zA-Z\s'-]+$/
-  if (!nameRegex.test(name)) return `${fieldName} contains invalid characters`
-
-  return null
-}
+import type { PasswordStrength } from '../types/auth'
 
 export const calculatePasswordStrength = (
   password: string,
@@ -111,52 +70,7 @@ export const calculatePasswordStrength = (
   }
 }
 
-export const validateRegistrationForm = (data: {
-  firstName: string
-  lastName: string
-  email: string
-  password: string
-  confirmPassword: string
-  acceptTerms: boolean
-}): FormErrors => {
-  const errors: FormErrors = {}
-
-  if (
-    !data.firstName ||
-    !data.lastName ||
-    !data.email ||
-    !data.password ||
-    !data.confirmPassword
-  ) {
-    errors.name = 'Please fill in all fields'
-  }
-
-  const firstNameError = validateName(data.firstName, 'First name')
-  if (firstNameError) errors.firstName = firstNameError
-
-  const lastNameError = validateName(data.lastName, 'Last name')
-  if (lastNameError) errors.lastName = lastNameError
-
-  const emailError = validateEmail(data.email)
-  if (emailError) errors.email = emailError
-
-  const passwordError = validatePassword(data.password)
-  if (passwordError) errors.password = passwordError
-
-  const confirmPasswordError = validateConfirmPassword(
-    data.password,
-    data.confirmPassword,
-  )
-  if (confirmPasswordError) errors.confirmPassword = confirmPasswordError
-
-  if (!data.acceptTerms) {
-    errors.acceptTerms = 'Please accept the terms of service'
-  }
-
-  return errors
-}
-
-// Zod schemas for comprehensive validation
+// Zod schemas for validation
 export const emailSchema = z
   .string()
   .toLowerCase()
@@ -165,17 +79,41 @@ export const emailSchema = z
 
 export const passwordSchema = z
   .string()
-  .min(8, 'Password must be at least 8 characters long')
   .regex(/[a-z]/, 'Password must contain at least one lowercase letter')
   .regex(/[A-Z]/, 'Password must contain at least one uppercase letter')
   .regex(/[0-9]/, 'Password must contain at least one number')
   .regex(/[^a-zA-Z0-9]/, 'Password must contain at least one special character')
+  .min(8, 'Password must be at least 8 characters long')
 
 export const nameSchema = z
   .string()
+  .regex(/^[a-zA-Z\s'-]+$/, 'Name contains invalid characters')
   .min(3, 'Name must be at least 3 characters long')
   .max(30, 'Name must be less than 30 characters')
-  .regex(/^[a-zA-Z\s'-]+$/, 'Name contains invalid characters')
+
+export const verificationCodeSchema = z
+  .string()
+  .regex(/^\d+$/, 'Verification code must contain only numbers')
+  .length(6, 'Verification code must be 6 digits')
+
+export const backupCodeSchema = z
+  .string()
+  .regex(/^[a-zA-Z0-9]{8}$/, 'Invalid backup code format')
+  .length(8, 'Backup code must be 8 characters')
+
+// Form schemas to use with form handler
+
+export const loginStep1Schema = z.object({
+  email: emailSchema,
+  password: z.string().optional(),
+  rememberMe: z.boolean(),
+})
+
+export const loginStep2Schema = z.object({
+  email: emailSchema,
+  password: z.string().min(1, 'Password is required'),
+  rememberMe: z.boolean(),
+})
 
 export const registrationSchema = z
   .object({
@@ -187,17 +125,17 @@ export const registrationSchema = z
     acceptTerms: z
       .boolean()
       .refine((val) => val === true, 'Please accept the terms of service'),
-    rememberMe: z.boolean().optional(),
+    rememberMe: z.boolean(),
   })
   .refine((data) => data.password === data.confirmPassword, {
     message: 'Passwords do not match',
     path: ['confirmPassword'],
   })
 
-export const loginSchema = z.object({
+export const emailVerificationSchema = z.object({
   email: emailSchema,
-  password: z.string().min(1, 'Password is required'),
-  rememberMe: z.boolean().optional(),
+  token: verificationCodeSchema,
+  rememberMe: z.boolean(),
 })
 
 export const changePasswordSchema = z
@@ -211,51 +149,16 @@ export const changePasswordSchema = z
     path: ['confirmPassword'],
   })
 
-// Validation helper function
-export const validateWithSchema = <T>(
-  schema: z.ZodSchema<T>,
-  data: any,
-): {
-  success: boolean
-  data?: T
-  errors?: Record<string, string>
-} => {
-  try {
-    const validatedData = schema.parse(data)
-    return { success: true, data: validatedData }
-  } catch (error) {
-    if (error instanceof z.ZodError) {
-      const errors: Record<string, string> = {}
-      error.issues.forEach((err) => {
-        if (err.path.length > 0) {
-          errors[err.path[0] as string] = err.message
-        }
-      })
-      return { success: false, errors }
-    }
-    return { success: false, errors: { general: 'Validation failed' } }
-  }
-}
+export const emailFormSchema = z.object({
+  email: emailSchema,
+})
 
-export const sanitizeInput = (input: string): string => {
-  return input
-    .replace(/[<>]/g, '') // Remove potential HTML tags
-    .trim()
-}
-
-export const validateVerificationCode = (code: string): string | null => {
-  if (!code) return 'Verification code is required'
-  if (code.length !== 6) return 'Verification code must be 6 digits'
-  if (!/^\d{6}$/.test(code))
-    return 'Verification code must contain only numbers'
-
-  return null
-}
-
-export const validateBackupCode = (code: string): string | null => {
-  if (!code) return 'Backup code is required'
-  if (code.length !== 8) return 'Backup code must be 8 characters'
-  if (!/^[a-zA-Z0-9]{8}$/.test(code)) return 'Invalid backup code format'
-
-  return null
-}
+export const resetPasswordSchema = z
+  .object({
+    newPassword: passwordSchema,
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.newPassword === data.confirmPassword, {
+    message: 'Passwords do not match',
+    path: ['confirmPassword'],
+  })

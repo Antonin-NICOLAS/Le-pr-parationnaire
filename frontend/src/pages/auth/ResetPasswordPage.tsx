@@ -1,8 +1,9 @@
 import { CheckCircle, Lock } from 'lucide-react'
 import type React from 'react'
 import { useEffect, useState } from 'react'
-import { useNavigate } from 'react-router-dom'
-
+import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useFormHandler } from '../../hooks/useFormHandler'
+import { resetPasswordSchema } from '../../utils/validation'
 import CustomInput from '../../components/ui/CustomInput'
 import ErrorMessage from '../../components/ui/ErrorMessage'
 import PasswordStrengthMeter from '../../components/ui/PasswordStrengthMeter'
@@ -13,57 +14,50 @@ import type { PasswordStrength } from '../../types/auth'
 
 const ResetPasswordPage: React.FC = () => {
   const navigate = useNavigate()
-  const [password, setPassword] = useState('')
-  const [confirmPassword, setConfirmPassword] = useState('')
   const [isSuccess, setIsSuccess] = useState(false)
-  const [error, setError] = useState<string | null>(null)
   const [tokenValid, setTokenValid] = useState<boolean | null>(true)
   const [passwordStrength, setPasswordStrength] =
     useState<PasswordStrength | null>(null)
-  const { resetPassword, resetPasswordState } = useForgotPassword()
+  const { verifyToken, verifyTokenState, resetPassword, resetPasswordState } =
+    useForgotPassword()
+  const [searchParams] = useSearchParams()
+  const token = searchParams.get('token')
+  const email = searchParams.get('email')
+  const form = useFormHandler({
+    initialValues: {
+      newPassword: '',
+      confirmPassword: '',
+    },
+    validationSchema: resetPasswordSchema,
+    validateOnChange: true,
+    validateOnBlur: false,
+  })
 
-  // Mock token validation
   useEffect(() => {
     const validateToken = async () => {
-      try {
-        // Simulate token validation
-        await new Promise((resolve) => setTimeout(resolve, 1000))
-        setTokenValid(true)
-      } catch (error) {
+      if (!token) {
         setTokenValid(false)
-        setError('This password reset link is invalid or has expired.')
+        return
+      }
+      const result = await verifyToken(token)
+      if (result.success) {
+        setTokenValid(true)
+      } else {
+        setTokenValid(false)
       }
     }
 
     validateToken()
   }, [])
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    if (!password || !confirmPassword) {
-      setError('Please fill in all fields')
-      return
-    }
-
-    if (password !== confirmPassword) {
-      setError('Passwords do not match')
-      return
-    }
-
-    if (passwordStrength && passwordStrength.score < 70) {
-      setError('Please choose a stronger password')
-      return
-    }
-
-    setError(null)
-    const result = await resetPassword(password)
+  const handleSubmit = async (values: { newPassword: string }) => {
+    const result = await resetPassword(email, token, values.newPassword)
     if (result.success) {
       setIsSuccess(true)
     }
   }
 
-  if (tokenValid === null) {
+  if (tokenValid === null || verifyTokenState.loading) {
     return (
       <AuthLayout
         title='Validating Reset Link'
@@ -141,6 +135,8 @@ const ResetPasswordPage: React.FC = () => {
     <AuthLayout
       title='Reset Your Password'
       subtitle='Enter your new password below'
+      showBackButton={true}
+      onBack={() => navigate('/auth/login')}
     >
       <div className='space-y-6'>
         <div className='flex justify-center'>
@@ -148,51 +144,80 @@ const ResetPasswordPage: React.FC = () => {
             <Lock className='text-primary-600 dark:text-primary-400 h-8 w-8' />
           </div>
         </div>
-
-        {resetPasswordState.error && (
-          <ErrorMessage
-            message={resetPasswordState.error}
-            type='error'
-            onClose={() => resetPasswordState.resetError()}
-          />
+        {verifyTokenState.data && verifyTokenState.data.user && (
+          <p className='mb-4 text-gray-700 dark:text-gray-400'>
+            Hello{' '}
+            <strong>
+              {verifyTokenState.data.user.firstName}{' '}
+              {verifyTokenState.data.user.lastName}
+            </strong>
+            , choose a new password for your account.
+          </p>
         )}
 
-        <form onSubmit={handleSubmit} className='space-y-6'>
+        <form
+          onSubmit={(e) => form.handleSubmit(handleSubmit)(e)}
+          className='space-y-6'
+        >
           <CustomInput
             type='password'
             label='New Password'
             placeholder='Enter your new password'
-            value={password}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setPassword(e.target.value)
+            value={form.values.newPassword}
+            onChange={(e) => form.handleChange('newPassword', e.target.value)}
+            error={
+              form.touched.newPassword && form.values.newPassword
+                ? form.errors.newPassword
+                : undefined
             }
-            error={error ?? undefined}
             icon={Lock}
             required
             autoComplete='new-password'
             autoFocus
             disabled={resetPasswordState.loading}
+            onBlur={() => form.handleBlur('newPassword')}
           />
 
-          {password && (
+          {form.values.newPassword && (
             <PasswordStrengthMeter
-              password={password}
+              password={form.values.newPassword}
               onStrengthChange={setPasswordStrength}
             />
+          )}
+
+          {form.errors.confirmPassword && form.values.confirmPassword && (
+            <div
+              className={`text-sm ${
+                form.values.newPassword === form.values.confirmPassword
+                  ? 'text-green-600'
+                  : 'text-red-600'
+              }`}
+            >
+              {form.values.newPassword === form.values.confirmPassword
+                ? '✓ Passwords match'
+                : '✗ Passwords do not match'}
+            </div>
           )}
 
           <CustomInput
             type='password'
             label='Confirm New Password'
             placeholder='Confirm your new password'
-            value={confirmPassword}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setConfirmPassword(e.target.value)
+            value={form.values.confirmPassword}
+            onChange={(e) =>
+              form.handleChange('confirmPassword', e.target.value)
+            }
+            error={
+              form.touched.confirmPassword && form.values.confirmPassword
+                ? form.errors.confirmPassword
+                : undefined
             }
             icon={Lock}
             required
             autoComplete='new-password'
+            autoFocus
             disabled={resetPasswordState.loading}
+            onBlur={() => form.handleBlur('confirmPassword')}
           />
 
           <PrimaryButton

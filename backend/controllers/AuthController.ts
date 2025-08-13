@@ -53,20 +53,11 @@ export const refreshToken = asyncHandler(
     const session = user.loginHistory.find(
       (s) => s.sessionId === req.cookies?.sessionId,
     )
-    console.log(
-      'Session trouvée:',
-      session,
-      'ID de la session trouvée:',
-      session?.sessionId,
-      'Cookie trouvé:',
-      req.cookies?.sessionId,
-    )
 
     if (!session || !session.refreshToken || session.expiresAt < new Date()) {
       return ApiResponse.error(res, t('auth:errors.session_expired'), 401)
     }
 
-    console.log('Refresh token trouvé:', rawRefreshToken)
     // 3. Vérifier le refresh token
     const isValid = await TokenService.compareTokens(
       rawRefreshToken,
@@ -367,12 +358,17 @@ export const forgotPassword = asyncHandler(
     }
 
     // 4. On génère un token de réinitialisation
-    const resetToken = generateResetToken()
-    const expiration = new Date(Date.now() + 60 * 60 * 1000) // 1h
-    user.resetPassword = { token: resetToken, expiration }
+    if (
+      !user.resetPassword.token ||
+      !user.resetPassword.expiration ||
+      user.resetPassword.expiration < new Date()
+    ) {
+      user.resetPassword.token = generateResetToken()
+      user.resetPassword.expiration = new Date(Date.now() + 24 * 60 * 60 * 1000)
+      await user.save()
+    }
     const hashedEmail = bcrypt.hashSync(email, 10)
-    const link = `${process.env.FRONTEND_SERVER}/reset-password?token=${resetToken}&email=${hashedEmail}`
-    await user.save()
+    const link = `${process.env.FRONTEND_SERVER}/reset-password?token=${user.resetPassword.token}&email=${hashedEmail}`
 
     // 5. On envoie un email avec le token
     await sendResetPasswordEmail(t as TFunction, user, link)
@@ -429,6 +425,51 @@ export const resendForgotPassword = asyncHandler(
   },
 )
 
+export const verifyResetToken = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { t } = req
+    const { token } = req.body
+
+    // 1. Validation du token
+    if (!token) {
+      return ApiResponse.error(res, t('auth:errors.missing_fields'), 400)
+    }
+
+    // 2. Recherche de l'utilisateur avec ce token
+    const users = await User.find({ 'resetPassword.token': token })
+
+    // 3. Vérification qu'un seul utilisateur a ce token
+    if (users.length === 0) {
+      return ApiResponse.error(res, t('auth:errors.invalid_token'), 400)
+    }
+
+    if (users.length > 1) {
+      // Log l'erreur pour investigation
+      console.error(`Multiple users found with same reset token: ${token}`)
+      return ApiResponse.error(res, t('common:errors.server_error'), 500)
+    }
+
+    const user = users[0]
+
+    // 4. Vérification de l'expiration du token
+    if (
+      user.resetPassword.expiration &&
+      user.resetPassword.expiration < new Date()
+    ) {
+      return ApiResponse.error(res, t('auth:errors.token_expired'), 400)
+    }
+
+    // 5. Retour des informations de base de l'utilisateur
+    return ApiResponse.success(res, {
+      user: {
+        firstName: user.firstName,
+        lastName: user.lastName,
+        email: user.email,
+      },
+    })
+  },
+)
+
 export const resetPassword = asyncHandler(
   async (req: Request, res: Response) => {
     const { email, token, newPassword } = req.body
@@ -438,19 +479,16 @@ export const resetPassword = asyncHandler(
     if (!email || !token || !newPassword) {
       return ApiResponse.error(res, t('auth:errors.missing_fields'), 400)
     }
-    // 2. Vérification de l'email
-    if (!validateEmail(email)) {
-      return ApiResponse.error(res, t('auth:errors.invalid_email'), 400)
-    }
-    // 3. Vérification du mot de passe
+
+    // 2. Vérification du mot de passe
     if (!validatePassword(newPassword)) {
       return ApiResponse.error(res, t('auth:errors.invalid_password'), 400)
     }
 
-    // 4. On cherche l'utilisateur
+    // 3. On cherche l'utilisateur
     const user = await User.findOne({ resetPassword: { token } })
 
-    // 5. Vérification de l'email
+    // 4. Vérification de l'email
     if (!user || !bcrypt.compareSync(user.email, email)) {
       return ApiResponse.error(res, t('auth:errors.invalid_token'), 400)
     }
@@ -460,19 +498,19 @@ export const resetPassword = asyncHandler(
     ) {
       return ApiResponse.error(res, t('auth:errors.token_expired'), 400)
     }
-    // 6. Vérification si le mot de passe est similaire à l'ancien
+    // 5. Vérification si le mot de passe est similaire à l'ancien
     const isSimilar = await comparePassword(newPassword, user.password)
     if (isSimilar) {
       return ApiResponse.error(res, t('auth:errors.similar_password'), 400)
     }
 
-    // 7. On met à jour le mot de passe
+    // 6. On met à jour le mot de passe
     user.password = await hashPassword(newPassword)
     user.resetPassword.token = undefined
     user.resetPassword.expiration = undefined
     await user.save()
 
-    // 8. On envoie un mail de confirmation
+    // 7. On envoie un mail de confirmation
     // TODO: envoyer un email de confirmation
 
     return ApiResponse.success(res, {}, t('auth:success.password_reset'), 200)

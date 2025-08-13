@@ -13,6 +13,7 @@ import {
   checkSession,
   forgotPassword,
   resendForgotPassword,
+  verifyResetToken,
   resetPassword,
   verifyEmail,
   resendVerificationEmail,
@@ -61,6 +62,7 @@ router.post(
   rateLimiterMiddleware,
   resendForgotPassword,
 )
+router.post('/verify-reset-token', rateLimiterMiddleware, verifyResetToken)
 router.post('/reset-password', resetPassword)
 
 // Session Management

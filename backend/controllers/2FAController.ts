@@ -247,7 +247,7 @@ export const resendEmailCode = asyncHandler(
       context === 'config'
         ? t('auth:success.email.code_resend')
         : context === 'login'
-        ? t('auth:success.email.code_resend')
+        ? t('auth:success.code_sent')
         : t('auth:success.code_sent')
 
     return ApiResponse.success(res, {}, successMessage, 200)

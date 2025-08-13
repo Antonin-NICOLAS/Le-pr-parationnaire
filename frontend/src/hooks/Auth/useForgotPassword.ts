@@ -19,7 +19,11 @@ const resendForgotPasswordApi = (email: string) =>
   )
 
 const verifyTokenApi = (token: string) =>
-  axios.post(`${VITE_AUTH}/verify-token`, { token }, { withCredentials: true })
+  axios.post(
+    `${VITE_AUTH}/verify-reset-token`,
+    { token },
+    { withCredentials: true },
+  )
 
 const resetPasswordApi = (email: string, token: string, newPassword: string) =>
   axios.post(
@@ -44,8 +48,7 @@ const useForgotPassword = () => {
 
   const verifyToken = useApiCall(verifyTokenApi, {
     successMessage: 'Le token de réinitialisation est valide.',
-    errorMessage:
-      'Erreur lors de la vérification du token de réinitialisation.',
+    showErrorToast: false,
   })
 
   const resetPassword = useApiCall(resetPasswordApi, {

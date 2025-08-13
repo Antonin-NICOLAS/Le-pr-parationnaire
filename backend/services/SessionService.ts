@@ -17,9 +17,7 @@ export class SessionService {
     const userAgent = req.headers['user-agent'] || ''
     const uaResult = new UAParser(userAgent).getResult()
 
-    const accessTokenDuration = rememberMe
-      ? (process.env.ACCESS_TOKEN_DURATION_LONG as StringValue)
-      : (process.env.ACCESS_TOKEN_DURATION_SHORT as StringValue)
+    const accessTokenDuration = process.env.ACCESS_TOKEN_DURATION as StringValue
 
     const refreshTokenDuration = rememberMe
       ? (process.env.REFRESH_TOKEN_DURATION_LONG as StringValue)

@@ -8,41 +8,17 @@ import React, {
 } from 'react'
 
 import { type ApiResponse, useApiCall } from '../hooks/useApiCall'
-import type { LoginData, RegisterData } from '../types/auth'
+import type {
+  CheckAuthResponse,
+  CheckAuthStatusResponse,
+  LoginData,
+  LoginResponse,
+  RegisterData,
+  RegisterResponse,
+  EmailVerificationData,
+} from '../types/auth'
 import type { User } from '../types/user'
 import { VITE_AUTH } from '../utils/env'
-
-type CheckAuthResponse = {
-  user?: {
-    id: string
-    email: string
-    lastName: string
-    firstName: string
-    language: string
-    theme: string
-    role: 'admin' | 'user'
-  }
-}
-
-type CheckAuthStatusResponse = {
-  webauthn: boolean
-}
-
-type LoginResponse = {
-  requiresTwoFactor?: boolean
-  twoFactor?: {
-    email: boolean
-    app: boolean
-    webauthn: boolean
-    preferredMethod: 'email' | 'app' | 'webauthn' | 'none'
-  }
-}
-
-type RegisterResponse = {
-  requiresVerification: boolean
-  email: string
-  rememberMe: boolean
-}
 
 type AuthContextType = {
   user: User | null
@@ -50,14 +26,10 @@ type AuthContextType = {
   loading: boolean
   checkAuth: () => Promise<ApiResponse>
   checkAuthStatus: (email: string) => Promise<ApiResponse>
-  login: (loginData: LoginData) => Promise<ApiResponse>
+  login: (data: LoginData) => Promise<ApiResponse>
   logout: () => Promise<ApiResponse>
   register: (data: RegisterData) => Promise<ApiResponse>
-  emailVerification: (
-    token: string,
-    email: string,
-    rememberMe: boolean,
-  ) => Promise<ApiResponse>
+  emailVerification: (data: EmailVerificationData) => Promise<ApiResponse>
   resendVerificationEmail: (email: string) => Promise<ApiResponse>
   checkAuthState: ReturnType<typeof useApiCall<CheckAuthResponse>>
   checkAuthStatusState: ReturnType<typeof useApiCall<CheckAuthStatusResponse>>
@@ -136,12 +108,10 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
   )
 
   const emailVerificationCall = useApiCall(
-    async (token: string, email: string, rememberMe: boolean) => {
-      return axios.post(
-        `${VITE_AUTH}/verify-email`,
-        { token, email, rememberMe },
-        { withCredentials: true },
-      )
+    async (data: EmailVerificationData) => {
+      return axios.post(`${VITE_AUTH}/verify-email`, data, {
+        withCredentials: true,
+      })
     },
     {
       onSuccess: async () => {
@@ -176,8 +146,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
     [registerCall],
   )
   const emailVerification = useCallback(
-    (token: string, email: string, rememberMe: boolean) =>
-      emailVerificationCall.execute(token, email, rememberMe),
+    (data: EmailVerificationData) => emailVerificationCall.execute(data),
     [emailVerificationCall],
   )
   const resendVerificationEmail = useCallback(

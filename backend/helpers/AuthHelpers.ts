@@ -85,9 +85,7 @@ export async function generateTokensAndCookies(
   stayLoggedIn = false,
   sessionId: string,
 ) {
-  const accessTokenDuration = stayLoggedIn
-    ? (process.env.ACCESS_TOKEN_DURATION_LONG as StringValue)
-    : (process.env.ACCESS_TOKEN_DURATION_SHORT as StringValue)
+  const accessTokenDuration = process.env.ACCESS_TOKEN_DURATION as StringValue
 
   const refreshTokenDuration = stayLoggedIn
     ? (process.env.REFRESH_TOKEN_DURATION_LONG as StringValue)

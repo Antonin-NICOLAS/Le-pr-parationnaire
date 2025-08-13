@@ -1,20 +1,22 @@
 import { ArrowRight, Fingerprint, Lock, Mail, User } from 'lucide-react'
 import React, { useState } from 'react'
-import { useLocation, useNavigate, useParams } from 'react-router-dom'
-import { toast } from 'sonner'
+import { useLocation, useNavigate, useParams, Link } from 'react-router-dom'
+import { motion, AnimatePresence } from 'framer-motion'
 
 import CustomInput from '../../components/ui/CustomInput'
 import PasswordStrengthMeter from '../../components/ui/PasswordStrengthMeter'
 import PrimaryButton from '../../components/ui/PrimaryButton'
 import { useAuth } from '../../context/Auth'
 import useWebAuthnTwoFactor from '../../hooks/TwoFactor/WebAuthn'
-import type {
-  LoginData,
-  PasswordStrength,
-  RegisterData,
-} from '../../types/auth'
-import { validateRegistrationForm } from '../../utils/validation'
+import type { PasswordStrength } from '../../types/auth'
 import ErrorMessage from '../../components/ui/ErrorMessage'
+import useEmailTwoFactor from '../../hooks/TwoFactor/Email'
+import {
+  loginStep1Schema,
+  loginStep2Schema,
+  registrationSchema,
+} from '../../utils/validation'
+import { useFormHandler } from '../../hooks/useFormHandler'
 
 const AuthPage: React.FC = () => {
   // Login state
@@ -31,59 +33,73 @@ const AuthPage: React.FC = () => {
     checkAuthStatusState,
     checkAuth,
   } = useAuth()
+  const { resendCode } = useEmailTwoFactor()
   const { authenticate, authenticateState } = useWebAuthnTwoFactor()
   const [loginStep, setLoginStep] = useState<
     'email' | 'password' | 'webauthn-choice'
   >('email')
   // Login state
-  const [loginData, setLoginData] = useState<LoginData>({
-    email: '',
-    password: '',
-    rememberMe: false,
+  const loginForm = useFormHandler({
+    initialValues: {
+      email: '',
+      password: '',
+      rememberMe: false,
+    },
+    validationSchema:
+      loginStep === 'email' ? loginStep1Schema : loginStep2Schema,
+    validateOnBlur: true,
   })
 
   // Register state
-  const [registerData, setRegisterData] = useState<RegisterData>({
-    firstName: '',
-    lastName: '',
-    email: '',
-    password: '',
-    confirmPassword: '',
-    acceptTerms: false,
-    rememberMe: false,
-    onSuccess: () =>
-      navigate('/verify-email', {
-        state: {
-          email: registerData.email,
-          rememberMe: registerData.rememberMe,
-        },
-      }),
+  const registerForm = useFormHandler({
+    initialValues: {
+      firstName: '',
+      lastName: '',
+      email: '',
+      password: '',
+      confirmPassword: '',
+      acceptTerms: false,
+      rememberMe: false,
+    },
+    validationSchema: registrationSchema,
+    validateOnBlur: true,
   })
+  const [direction, setDirection] = useState(1)
 
   const [passwordStrength, setPasswordStrength] =
     useState<PasswordStrength | null>(null)
 
-  const handleEmailSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    const result = await checkAuthStatus(loginData.email)
+  const handleEmailSubmit = async () => {
+    if (!loginForm.validateForm()) return
+    loginForm.clearErrors()
+    const result = await checkAuthStatus(loginForm.values.email)
     if (result.webauthn) {
       setLoginStep('webauthn-choice')
+      setDirection(1)
     } else {
       setLoginStep('password')
+      setDirection(1)
     }
   }
 
-  const handlePasswordLogin = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    const result = await login(loginData)
+  const handlePasswordLogin = async () => {
+    if (!loginForm.validateForm()) return
+    loginForm.clearErrors()
+    const result = await login({
+      email: loginForm.values.email,
+      password: loginForm.values.password!,
+      rememberMe: loginForm.values.rememberMe,
+    })
     if (result.success) {
       navigate('/home')
     } else if (result.requiresTwoFactor || loginState.data?.requiresTwoFactor) {
+      if (result.twoFactor.preferredMethod === 'email') {
+        await resendCode(loginForm.values.email, 'login')
+      }
       navigate(`/2fa-verify/${result.twoFactor.preferredMethod}`, {
         state: {
-          email: loginData.email,
-          rememberMe: loginData.rememberMe,
+          email: loginForm.values.email,
+          rememberMe: loginForm.values.rememberMe,
           email2FA: result.twoFactor.email || loginState.data?.twoFactor?.email,
           app2FA: result.twoFactor.app || loginState.data?.twoFactor?.app,
           webauthn2FA:
@@ -94,227 +110,265 @@ const AuthPage: React.FC = () => {
   }
 
   const handleWebAuthnLogin = async () => {
-    const result = await authenticate(loginData.email, loginData.rememberMe)
+    const result = await authenticate(
+      loginForm.values.email,
+      loginForm.values.rememberMe,
+    )
 
     if (result?.success) {
       navigate('/home')
       await checkAuth()
     } else {
       setLoginStep('password')
+      setDirection(-1)
     }
   }
 
   const handleUsePassword = () => {
     setLoginStep('password')
+    setDirection(-1)
   }
 
   const handleBackToEmail = () => {
     setLoginStep('email')
+    setDirection(-1)
   }
 
-  const handleRegister = async (e: React.FormEvent) => {
-    e.preventDefault()
-
-    const errors = validateRegistrationForm(registerData)
-    if (Object.keys(errors).length > 0) {
-      for (const key in errors) {
-        toast.error(errors[key as keyof typeof errors])
-      }
-      return
-    }
-
-    if (passwordStrength && passwordStrength.score < 70) {
-      toast.error('Please choose a stronger password')
-      return
-    }
-
-    const result = await register(registerData)
+  const handleRegister = async () => {
+    if (!registerForm.validateForm()) return
+    registerForm.clearErrors()
+    const result = await register(registerForm.values)
     if (result.success) {
       navigate('/verify-email', {
         state: {
-          email: registerData.email || registerState.data?.email,
-          rememberMe: registerData.rememberMe || registerState.data?.rememberMe,
+          email: registerForm.values.email || registerState.data?.email,
+          rememberMe:
+            registerForm.values.rememberMe || registerState.data?.rememberMe,
         },
       })
     }
   }
 
   const renderLoginForm = () => {
-    switch (loginStep) {
-      case 'email':
-        return (
-          <form onSubmit={handleEmailSubmit} className='space-y-6'>
-            <CustomInput
-              type='email'
-              label='Email Address'
-              placeholder='Enter your email'
-              value={loginData.email}
-              onChange={(e) =>
-                setLoginData((prev) => ({ ...prev, email: e.target.value }))
-              }
-              icon={Mail}
-              required
-              autoComplete='email'
-              autoFocus
-            />
+    return (
+      <form
+        onSubmit={(e) =>
+          loginForm.handleSubmit(
+            loginStep === 'email' ? handleEmailSubmit : handlePasswordLogin,
+          )(e)
+        }
+        className='space-y-6 '
+      >
+        <AnimatePresence custom={direction} mode='wait' initial={false}>
+          <motion.div
+            key={loginStep}
+            custom={direction}
+            variants={{
+              enter: (direction: number) => ({
+                x: direction > 0 ? 50 : -50,
+                opacity: 0,
+              }),
+              center: {
+                x: 0,
+                opacity: 1,
+                transition: { duration: 0.3 },
+              },
+              exit: (direction: number) => ({
+                x: direction < 0 ? 50 : -50,
+                opacity: 0,
+                transition: { duration: 0.2 },
+              }),
+            }}
+            initial='enter'
+            animate='center'
+            exit='exit'
+            layout
+            className='space-y-6'
+          >
+            {loginStep === 'email' ? (
+              <div>
+                {checkAuthStatusState.error && (
+                  <ErrorMessage
+                    message={checkAuthStatusState.error}
+                    type='error'
+                    onClose={() => checkAuthStatusState.resetError()}
+                  />
+                )}
 
-            <PrimaryButton
-              type='submit'
-              loading={checkAuthStatusState.loading}
-              fullWidth
-              size='lg'
-              icon={ArrowRight}
-            >
-              Continue
-            </PrimaryButton>
-          </form>
-        )
-      case 'password':
-        return (
-          <form onSubmit={handlePasswordLogin} className='space-y-6'>
-            <div className='mb-4 text-center'>
-              <p className='text-gray-600 dark:text-gray-400'>
-                Welcome back, <strong>{loginData.email}</strong>
-              </p>
-            </div>
-
-            <CustomInput
-              type='email'
-              label='Email Address'
-              placeholder='Enter your email'
-              value={loginData.email}
-              icon={Mail}
-              required
-              disabled
-            />
-
-            <CustomInput
-              type='password'
-              label='Password'
-              placeholder='Enter your password'
-              value={loginData.password}
-              onChange={(e) =>
-                setLoginData((prev) => ({ ...prev, password: e.target.value }))
-              }
-              icon={Lock}
-              required
-              autoComplete='current-password'
-              autoFocus
-            />
-
-            <div className='flex items-center justify-between'>
-              <label className='accent-primary-500 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400'>
-                <input
-                  type='checkbox'
-                  checked={loginData.rememberMe}
+                <CustomInput
+                  type='email'
+                  label='Email Address'
+                  placeholder='Enter your email'
+                  value={loginForm.values.email}
                   onChange={(e) =>
-                    setLoginData((prev) => ({
-                      ...prev,
-                      rememberMe: e.target.checked,
-                    }))
+                    loginForm.handleChange('email', e.target.value)
                   }
-                  className='text-primary-600 focus:ring-primary-500 rounded border-gray-300'
+                  onBlur={() => loginForm.handleBlur('email')}
+                  error={
+                    loginForm.touched.email && loginForm.values.email
+                      ? loginForm.errors.email
+                      : undefined
+                  }
+                  icon={Mail}
+                  required
+                  autoComplete='email'
+                  autoFocus
                 />
-                Remember me
-              </label>
-              <button
-                type='button'
-                className='text-primary-600 hover:text-primary-700 dark:text-primary-400 dark:hover:text-primary-300 text-sm'
-              >
-                Forgot password?
-              </button>
-            </div>
+              </div>
+            ) : loginStep === 'password' ? (
+              <div className='space-y-6'>
+                <div className='mb-4 text-center'>
+                  <p className='text-gray-600 dark:text-gray-400'>
+                    Welcome back, <strong>{loginForm.values.email}</strong>
+                  </p>
+                </div>
 
-            <PrimaryButton
-              type='submit'
-              loading={loginState.loading}
-              fullWidth
-              size='lg'
-              icon={ArrowRight}
-            >
-              Sign In
-            </PrimaryButton>
+                {loginState.error && (
+                  <ErrorMessage
+                    message={loginState.error}
+                    type='error'
+                    onClose={() => loginState.resetError()}
+                  />
+                )}
 
-            {checkAuthStatusState.data?.webauthn && (
-              <div className='text-center'>
+                <CustomInput
+                  type='email'
+                  label='Email Address'
+                  placeholder='Enter your email'
+                  value={loginForm.values.email}
+                  icon={Mail}
+                  required
+                  disabled
+                  readOnly
+                  autoComplete='off'
+                  data-1p-ignore='true'
+                />
+
+                <CustomInput
+                  type='password'
+                  label='Password'
+                  placeholder='Enter your password'
+                  value={loginForm.values.password}
+                  onChange={(e) =>
+                    loginForm.handleChange('password', e.target.value)
+                  }
+                  onBlur={() => loginForm.handleBlur('password')}
+                  error={
+                    loginForm.touched.password && loginForm.values.password
+                      ? loginForm.errors.password
+                      : undefined
+                  }
+                  icon={Lock}
+                  required
+                  autoComplete='current-password'
+                  autoFocus
+                />
+
+                <div className='flex items-center justify-between'>
+                  <label className='accent-primary-500 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400'>
+                    <input
+                      type='checkbox'
+                      checked={loginForm.values.rememberMe}
+                      onChange={(e) =>
+                        loginForm.handleChange('rememberMe', e.target.checked)
+                      }
+                      className='text-primary-600 focus:ring-primary-500 rounded border-gray-300'
+                    />
+                    Remember me
+                  </label>
+                  <Link
+                    to='/forgot-password'
+                    className='text-primary-600 hover:text-primary-700 font-medium text-sm transition-colors'
+                  >
+                    Forgot password?
+                  </Link>
+                </div>
+
+                {checkAuthStatusState.data?.webauthn === true && (
+                  <div className='text-center'>
+                    <PrimaryButton
+                      type='button'
+                      variant='secondary'
+                      size='lg'
+                      fullWidth
+                      onClick={() => {
+                        setLoginStep('webauthn-choice')
+                        setDirection(1)
+                      }}
+                    >
+                      <Fingerprint size={16} />
+                      Use passkey instead
+                    </PrimaryButton>
+                  </div>
+                )}
+
                 <PrimaryButton
                   type='button'
-                  variant='secondary'
-                  size='lg'
+                  variant='outline'
+                  size='sm'
+                  onClick={handleBackToEmail}
                   fullWidth
-                  onClick={() => setLoginStep('webauthn-choice')}
                 >
-                  <Fingerprint size={16} />
-                  Use passkey instead
+                  Back to email input
                 </PrimaryButton>
               </div>
-            )}
+            ) : (
+              <div className='space-y-6'>
+                <div className='mb-6 text-center'>
+                  <div className='bg-primary-100 mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full'>
+                    <Fingerprint className='text-primary-600 h-8 w-8' />
+                  </div>
+                  <p className='text-gray-600 dark:text-gray-400'>
+                    We found a passkey for{' '}
+                    <strong>{loginForm.values.email}</strong>
+                  </p>
+                </div>
+                {authenticateState.error && (
+                  <ErrorMessage
+                    message={authenticateState.error}
+                    type='error'
+                    onClose={() => authenticateState.resetError()}
+                  />
+                )}
+                <div className='space-y-4'>
+                  <PrimaryButton
+                    onClick={handleWebAuthnLogin}
+                    loading={loginState.loading || authenticateState.loading}
+                    fullWidth
+                    size='lg'
+                    icon={Fingerprint}
+                  >
+                    Use Passkey
+                  </PrimaryButton>
 
-            <PrimaryButton
-              type='button'
-              variant='outline'
-              size='sm'
-              onClick={handleBackToEmail}
-              fullWidth
-            >
-              Back to email input
-            </PrimaryButton>
-          </form>
-        )
-      case 'webauthn-choice':
-        return (
-          <div className='space-y-6'>
-            <div className='mb-6 text-center'>
-              <div className='bg-primary-100 mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full'>
-                <Fingerprint className='text-primary-600 h-8 w-8' />
+                  <PrimaryButton
+                    variant='secondary'
+                    onClick={handleUsePassword}
+                    disabled={loginState.loading || authenticateState.loading}
+                    fullWidth
+                    size='lg'
+                    icon={Lock}
+                  >
+                    Use Password Instead
+                  </PrimaryButton>
+                </div>
               </div>
-              <p className='text-gray-600 dark:text-gray-400'>
-                We found a passkey for <strong>{loginData.email}</strong>
-              </p>
-            </div>
-            {authenticateState.error && (
-              <ErrorMessage
-                message={authenticateState.error}
-                type='error'
-                onClose={() => authenticateState.resetError()}
-              />
             )}
-            <div className='space-y-4'>
-              <PrimaryButton
-                onClick={handleWebAuthnLogin}
-                loading={loginState.loading || authenticateState.loading}
-                fullWidth
-                size='lg'
-                icon={Fingerprint}
-              >
-                Use Passkey
-              </PrimaryButton>
-
-              <PrimaryButton
-                variant='secondary'
-                onClick={handleUsePassword}
-                disabled={loginState.loading || authenticateState.loading}
-                fullWidth
-                size='lg'
-                icon={Lock}
-              >
-                Use Password Instead
-              </PrimaryButton>
-            </div>
-
-            <PrimaryButton
-              type='button'
-              onClick={handleBackToEmail}
-              variant='outline'
-              size='sm'
-              fullWidth
-              className='text-primary-600 hover:text-primary-700 text-center text-sm'
-            >
-              Back to email input
-            </PrimaryButton>
-          </div>
-        )
-    }
+          </motion.div>
+        </AnimatePresence>
+        {loginStep !== 'webauthn-choice' && (
+          <PrimaryButton
+            type='submit'
+            loading={checkAuthStatusState.loading || loginState.loading}
+            fullWidth
+            size='lg'
+            icon={ArrowRight}
+          >
+            {loginStep === 'email' ? 'Continue' : 'Sign In'}
+          </PrimaryButton>
+        )}
+      </form>
+    )
   }
 
   return (
@@ -353,7 +407,7 @@ const AuthPage: React.FC = () => {
                 className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-300 ${
                   isLogin
                     ? 'bg-white text-gray-900 shadow-md dark:bg-gray-600 dark:text-white'
-                    : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
+                    : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 cursor-pointer'
                 }`}
               >
                 Sign In
@@ -368,7 +422,7 @@ const AuthPage: React.FC = () => {
                 className={`flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-all duration-300 ${
                   !isLogin
                     ? 'bg-white text-gray-900 shadow-md dark:bg-gray-600 dark:text-white'
-                    : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
+                    : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 cursor-pointer'
                 }`}
               >
                 Sign Up
@@ -382,7 +436,7 @@ const AuthPage: React.FC = () => {
               <div className='animate-fade-in'>{renderLoginForm()}</div>
             ) : (
               <form
-                onSubmit={handleRegister}
+                onSubmit={(e) => registerForm.handleSubmit(handleRegister)(e)}
                 className='animate-fade-in space-y-6'
               >
                 {registerState.error && (
@@ -397,13 +451,18 @@ const AuthPage: React.FC = () => {
                     type='text'
                     label='First Name'
                     placeholder='John'
-                    value={registerData.firstName}
+                    value={registerForm.values.firstName}
                     onChange={(e) =>
-                      setRegisterData({
-                        ...registerData,
-                        firstName: e.target.value,
-                      })
+                      registerForm.handleChange('firstName', e.target.value)
                     }
+                    onBlur={() => registerForm.handleBlur('firstName')}
+                    error={
+                      registerForm.touched.firstName &&
+                      registerForm.values.firstName
+                        ? registerForm.errors.firstName
+                        : undefined
+                    }
+                    helperText='3-30 characters'
                     icon={User}
                     required
                     autoComplete='given-name'
@@ -412,13 +471,18 @@ const AuthPage: React.FC = () => {
                     type='text'
                     label='Last Name'
                     placeholder='Doe'
-                    value={registerData.lastName}
+                    value={registerForm.values.lastName}
                     onChange={(e) =>
-                      setRegisterData({
-                        ...registerData,
-                        lastName: e.target.value,
-                      })
+                      registerForm.handleChange('lastName', e.target.value)
                     }
+                    onBlur={() => registerForm.handleBlur('lastName')}
+                    error={
+                      registerForm.touched.lastName &&
+                      registerForm.values.lastName
+                        ? registerForm.errors.lastName
+                        : undefined
+                    }
+                    helperText='3-30 characters'
                     icon={User}
                     required
                     autoComplete='family-name'
@@ -429,12 +493,15 @@ const AuthPage: React.FC = () => {
                   type='email'
                   label='Email Address'
                   placeholder='john@example.com'
-                  value={registerData.email}
+                  value={registerForm.values.email}
                   onChange={(e) =>
-                    setRegisterData({
-                      ...registerData,
-                      email: e.target.value,
-                    })
+                    registerForm.handleChange('email', e.target.value)
+                  }
+                  onBlur={() => registerForm.handleBlur('email')}
+                  error={
+                    registerForm.touched.email && registerForm.values.email
+                      ? registerForm.errors.email
+                      : undefined
                   }
                   icon={Mail}
                   required
@@ -445,21 +512,25 @@ const AuthPage: React.FC = () => {
                   type='password'
                   label='Password'
                   placeholder='Create a strong password'
-                  value={registerData.password}
+                  value={registerForm.values.password}
                   onChange={(e) =>
-                    setRegisterData({
-                      ...registerData,
-                      password: e.target.value,
-                    })
+                    registerForm.handleChange('password', e.target.value)
+                  }
+                  onBlur={() => registerForm.handleBlur('password')}
+                  error={
+                    registerForm.touched.password &&
+                    registerForm.values.password
+                      ? registerForm.errors.password
+                      : undefined
                   }
                   icon={Lock}
                   required
                   autoComplete='new-password'
                 />
 
-                {registerData.password && (
+                {registerForm.values.password && (
                   <PasswordStrengthMeter
-                    password={registerData.password}
+                    password={registerForm.values.password}
                     onStrengthChange={setPasswordStrength}
                     className='mb-4'
                   />
@@ -469,12 +540,16 @@ const AuthPage: React.FC = () => {
                   type='password'
                   label='Confirm Password'
                   placeholder='Confirm your password'
-                  value={registerData.confirmPassword}
+                  value={registerForm.values.confirmPassword}
                   onChange={(e) =>
-                    setRegisterData({
-                      ...registerData,
-                      confirmPassword: e.target.value,
-                    })
+                    registerForm.handleChange('confirmPassword', e.target.value)
+                  }
+                  onBlur={() => registerForm.handleBlur('confirmPassword')}
+                  error={
+                    registerForm.touched.confirmPassword &&
+                    registerForm.values.confirmPassword
+                      ? registerForm.errors.confirmPassword
+                      : undefined
                   }
                   icon={Lock}
                   required
@@ -485,13 +560,14 @@ const AuthPage: React.FC = () => {
                   <label className='accent-primary-500 flex items-start gap-3 text-sm text-gray-600 dark:text-gray-400'>
                     <input
                       type='checkbox'
-                      checked={registerData.acceptTerms}
+                      checked={registerForm.values.acceptTerms}
                       onChange={(e) =>
-                        setRegisterData({
-                          ...registerData,
-                          acceptTerms: e.target.checked,
-                        })
+                        registerForm.handleChange(
+                          'acceptTerms',
+                          e.target.checked,
+                        )
                       }
+                      onBlur={() => registerForm.handleBlur('acceptTerms')}
                       className='text-primary-600 focus:ring-primary-500 mt-1 rounded border-gray-300'
                       required
                     />
@@ -516,13 +592,14 @@ const AuthPage: React.FC = () => {
                   <label className='accent-primary-500 flex items-center gap-2 text-sm text-gray-600 dark:text-gray-400'>
                     <input
                       type='checkbox'
-                      checked={registerData.rememberMe}
+                      checked={registerForm.values.rememberMe}
                       onChange={(e) =>
-                        setRegisterData({
-                          ...registerData,
-                          rememberMe: e.target.checked,
-                        })
+                        registerForm.handleChange(
+                          'rememberMe',
+                          e.target.checked,
+                        )
                       }
+                      onBlur={() => registerForm.handleBlur('rememberMe')}
                       className='text-primary-600 focus:ring-primary-500 rounded border-gray-300'
                     />
                     Stay logged in

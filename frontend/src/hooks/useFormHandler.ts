@@ -39,15 +39,17 @@ export function useFormHandler<T extends Record<string, any>>({
   const [isSubmitting, setIsSubmitting] = useState(false)
 
   const validateField = useCallback(
-    (field: string): boolean => {
+    (field: string, valueOverride?: any): boolean => {
       if (!validationSchema) return true
+
+      const valueToValidate = valueOverride ?? values[field]
 
       try {
         if (validationSchema instanceof z.ZodObject) {
           const shape = (validationSchema as z.ZodObject<any>).shape
           const fieldSchema = shape[field as keyof typeof shape]
           if (fieldSchema) {
-            fieldSchema.parse(values[field])
+            fieldSchema.parse(valueToValidate)
             setErrors((prev) => {
               const newErrors = { ...prev }
               delete newErrors[field]
@@ -90,26 +92,27 @@ export function useFormHandler<T extends Record<string, any>>({
     return false
   }, [values, validationSchema])
 
-  const handleChange = useCallback(
-    (field: string, value: any) => {
-      setValues((prev) => ({ ...prev, [field]: value }))
-
-      if (validateOnChange && touched[field]) {
-        setTimeout(() => validateField(field), 0)
-      }
-    },
-    [validateOnChange, touched, validateField],
-  )
-
   const handleBlur = useCallback(
     (field: string) => {
       setTouched((prev) => ({ ...prev, [field]: true }))
 
-      if (validateOnBlur) {
+      if (validateOnBlur && values[field] !== initialValues[field]) {
         validateField(field)
       }
     },
-    [validateOnBlur, validateField],
+    [validateOnBlur, validateField, values, initialValues],
+  )
+
+  const handleChange = useCallback(
+    (field: string, value: any) => {
+      setValues((prev) => ({ ...prev, [field]: value }))
+      setTouched((prev) => ({ ...prev, [field]: true }))
+
+      if (validateOnChange) {
+        validateField(field, value)
+      }
+    },
+    [validateOnChange, validateField],
   )
 
   const handleSubmit = useCallback(

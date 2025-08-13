@@ -1,4 +1,11 @@
-import { Fingerprint, Key, Mail, Shield, Smartphone } from 'lucide-react'
+import {
+  Fingerprint,
+  Key,
+  Mail,
+  Shield,
+  Smartphone,
+  RefreshCw,
+} from 'lucide-react'
 import type React from 'react'
 import { useEffect, useState } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
@@ -362,6 +369,7 @@ const TwoFactorPage: React.FC = () => {
                 ) : (
                   <PrimaryButton
                     variant='ghost'
+                    icon={RefreshCw}
                     onClick={handleResendCode}
                     loading={resendCodeState.loading}
                     disabled={resendCodeState.loading}

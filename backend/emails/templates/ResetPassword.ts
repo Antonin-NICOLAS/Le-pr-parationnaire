@@ -377,7 +377,7 @@ const ResetPassword = (t: TFunction, user: IUser, link: string) => {
                                         color: #ffffff;
                                         text-decoration: none;
                                       "
-                                      >><!--[if mso]>
+                                      ><!--[if mso]>
 <v:roundrect xmlns:v="urn:schemas-microsoft-com:vml" xmlns:w="urn:schemas-microsoft-com:office:word"  href="${link}"  style="height:42px;width:279px;v-text-anchor:middle;" arcsize="10%" fillcolor="#8fb4c9">
 <v:stroke dashstyle="Solid" weight="0px" color="#8fb4c9"/>
 <w:anchorlock/>
@@ -417,7 +417,7 @@ const ResetPassword = (t: TFunction, user: IUser, link: string) => {
                                           >🔒 Réinitialiser mon mot de
                                           passe</span
                                         ></span
-                                      >><!--[if mso]></center></v:textbox></v:roundrect><![endif]--></a</a
+                                      ><!--[if mso]></center></v:textbox></v:roundrect><![endif]--></a
                                     >
                                   </div>
                                 </td>

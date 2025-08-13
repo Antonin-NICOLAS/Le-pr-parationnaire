@@ -40,11 +40,11 @@ const EmailVerificationPage: React.FC = () => {
     }
   }, [code])
 
-  const handleVerification = async (verificationCode: string) => {
+  const handleVerification = async (token: string) => {
     emailVerificationState.resetError()
     resendVerificationEmailState.resetError()
 
-    const result = await emailVerification(verificationCode, email, rememberMe)
+    const result = await emailVerification({ token, email, rememberMe })
     if (result.success) {
       navigate('/home')
     }

@@ -77,8 +77,10 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
 
   const handleResendCode = async (method: 'config' | 'disable') => {
     resendCodeState.resetError()
-    await resendCode(user?.email, method)
-    setCanResend(false)
+    const result = await resendCode(user?.email, method)
+    if (result.success) {
+      setCanResend(false)
+    }
   }
 
   // Step 2: Verify Code
@@ -275,12 +277,48 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
           />
         )}
         {disableMethod === 'otp' ? (
-          <SixDigitCodeInput
-            value={disableCode}
-            onChange={setDisableCode}
-            disabled={disableEmailState.loading}
-            autoFocus
-          />
+          <div className='space-y-6'>
+            {enableEmailState.error && (
+              <ErrorMessage
+                message={enableEmailState.error}
+                type='error'
+                onClose={() => enableEmailState.resetError()}
+              />
+            )}
+            <div className='space-y-4'>
+              <SixDigitCodeInput
+                value={disableCode}
+                onChange={setDisableCode}
+                disabled={disableEmailState.loading}
+                error={!!disableEmailState.error}
+                autoFocus
+              />
+            </div>
+            {!canResend ? (
+              <div className='space-y-2 text-center'>
+                <CountdownTimer
+                  initialSeconds={60}
+                  onComplete={() => setCanResend(true)}
+                  className='justify-center'
+                />
+              </div>
+            ) : (
+              <div className='text-center text-sm text-gray-600 dark:text-gray-400'>
+                Vous n'avez pas reçu l'email ? Vérifiez votre dossier
+                Indésirables ou{' '}
+                <PrimaryButton
+                  variant='ghost'
+                  onClick={() => handleResendCode('config')}
+                  loading={resendCodeState.loading}
+                  disabled={!canResend || resendCodeState.loading}
+                  icon={RefreshCw}
+                  className='mt-2'
+                >
+                  Renvoyer un code
+                </PrimaryButton>
+              </div>
+            )}
+          </div>
         ) : (
           <CustomInput
             type='password'

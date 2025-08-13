@@ -1,4 +1,4 @@
-import { ArrowLeft, Mail } from 'lucide-react'
+import { ArrowLeft, Mail, RefreshCw } from 'lucide-react'
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
@@ -6,14 +6,13 @@ import CountdownTimer from '../../components/ui/CountdownTimer'
 import CustomInput from '../../components/ui/CustomInput'
 import PrimaryButton from '../../components/ui/PrimaryButton'
 import AuthLayout from '../../layouts/AuthLayout'
-import { validateEmail } from '../../utils/validation'
 import ErrorMessage from '../../components/ui/ErrorMessage'
 import useForgotPassword from '../../hooks/Auth/useForgotPassword'
+import { useFormHandler } from '../../hooks/useFormHandler'
+import { emailFormSchema } from '../../utils/validation'
 
 const ForgotPasswordPage: React.FC = () => {
   const navigate = useNavigate()
-  const [email, setEmail] = useState('')
-  const [error, setError] = useState<string | null>(null)
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [canResend, setCanResend] = useState(false)
   const {
@@ -24,16 +23,20 @@ const ForgotPasswordPage: React.FC = () => {
   } = useForgotPassword()
   const errorMessage =
     forgotPasswordState.error || resendForgotPasswordState.error
+  const form = useFormHandler({
+    initialValues: {
+      email: '',
+    },
+    validationSchema: emailFormSchema,
+    validateOnChange: true,
+    validateOnBlur: false,
+  })
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setError(null)
-    const emailError = validateEmail(email)
-    if (emailError) {
-      setError(emailError)
-      return
-    }
-    const result = await forgotPassword(email)
+  const handleSubmit = async (values: { email: string }) => {
+    if (!form.validateForm()) return
+    forgotPasswordState.resetError()
+    resendForgotPasswordState.resetError()
+    const result = await forgotPassword(values.email)
     if (result.success) {
       setIsSubmitted(true)
       setCanResend(false)
@@ -42,9 +45,10 @@ const ForgotPasswordPage: React.FC = () => {
 
   const handleResend = async (e: React.FormEvent) => {
     e.preventDefault()
-    setError(null)
+    if (!form.validateForm()) return
+    resendForgotPasswordState.resetError()
     if (!canResend) return
-    const result = await resendForgotPassword(email)
+    const result = await resendForgotPassword(form.values.email)
     if (result.success) {
       setCanResend(false)
     }
@@ -58,7 +62,7 @@ const ForgotPasswordPage: React.FC = () => {
     return (
       <AuthLayout
         title='Check Your Email'
-        subtitle={`We've sent password reset instructions to ${email}`}
+        subtitle={`We've sent password reset instructions to ${form.values.email}`}
         showBackButton
         onBack={handleBack}
       >
@@ -106,12 +110,14 @@ const ForgotPasswordPage: React.FC = () => {
               </div>
             ) : (
               <PrimaryButton
-                variant='outline'
+                variant='ghost'
                 onClick={handleResend}
                 loading={resendForgotPasswordState.loading}
                 disabled={!canResend || resendForgotPasswordState.loading}
+                icon={RefreshCw}
+                className='mt-2'
               >
-                Resend Email
+                Renvoyer un code
               </PrimaryButton>
             )}
           </div>
@@ -120,7 +126,7 @@ const ForgotPasswordPage: React.FC = () => {
           <div className='border-deg-gray-200 border-t pt-4'>
             <Link
               to='/auth/login'
-              className='text-primary-600 hover:text-primary-700 inline-flex items-center gap-2 text-sm transition-colors'
+              className='inline-flex items-center gap-2 text-primary-600 hover:text-primary-700 font-medium transition-colors'
             >
               <ArrowLeft size={16} />
               Back to Sign In
@@ -138,7 +144,7 @@ const ForgotPasswordPage: React.FC = () => {
       showBackButton
       onBack={handleBack}
     >
-      {errorMessage !== null && (
+      {errorMessage && (
         <ErrorMessage
           message={errorMessage}
           type='error'
@@ -148,19 +154,27 @@ const ForgotPasswordPage: React.FC = () => {
           }}
         />
       )}
-      <form onSubmit={handleSubmit} className='space-y-6'>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className='space-y-6'>
         <CustomInput
           id='forgot-email'
           type='email'
           label='Email Address'
           placeholder='Enter your email address'
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-          error={error ?? undefined}
+          value={form.values.email}
+          onChange={(e) => form.handleChange('email', e.target.value)}
+          error={
+            form.touched.email && form.values.email
+              ? form.errors.email
+              : undefined
+          }
           icon={Mail}
+          required
           autoComplete='email'
           autoFocus
-          required
+          disabled={
+            forgotPasswordState.loading || resendForgotPasswordState.loading
+          }
+          onBlur={() => form.handleBlur('email')}
         />
 
         <PrimaryButton
