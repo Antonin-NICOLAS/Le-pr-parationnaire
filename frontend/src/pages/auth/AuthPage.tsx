@@ -8,7 +8,6 @@ import PasswordStrengthMeter from '../../components/ui/PasswordStrengthMeter'
 import PrimaryButton from '../../components/ui/PrimaryButton'
 import { useAuth } from '../../context/Auth'
 import useWebAuthnTwoFactor from '../../hooks/TwoFactor/WebAuthn'
-import type { PasswordStrength } from '../../types/auth'
 import ErrorMessage from '../../components/ui/ErrorMessage'
 import useEmailTwoFactor from '../../hooks/TwoFactor/Email'
 import {
@@ -65,9 +64,6 @@ const AuthPage: React.FC = () => {
     validateOnBlur: true,
   })
   const [direction, setDirection] = useState(1)
-
-  const [passwordStrength, setPasswordStrength] =
-    useState<PasswordStrength | null>(null)
 
   const handleEmailSubmit = async () => {
     if (!loginForm.validateForm()) return
@@ -531,7 +527,7 @@ const AuthPage: React.FC = () => {
                 {registerForm.values.password && (
                   <PasswordStrengthMeter
                     password={registerForm.values.password}
-                    onStrengthChange={setPasswordStrength}
+                    onStrengthChange={() => {}}
                     className='mb-4'
                   />
                 )}

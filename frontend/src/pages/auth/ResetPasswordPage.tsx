@@ -10,14 +10,11 @@ import PasswordStrengthMeter from '../../components/ui/PasswordStrengthMeter'
 import PrimaryButton from '../../components/ui/PrimaryButton'
 import useForgotPassword from '../../hooks/Auth/useForgotPassword'
 import AuthLayout from '../../layouts/AuthLayout'
-import type { PasswordStrength } from '../../types/auth'
 
 const ResetPasswordPage: React.FC = () => {
   const navigate = useNavigate()
   const [isSuccess, setIsSuccess] = useState(false)
   const [tokenValid, setTokenValid] = useState<boolean | null>(true)
-  const [passwordStrength, setPasswordStrength] =
-    useState<PasswordStrength | null>(null)
   const { verifyToken, verifyTokenState, resetPassword, resetPasswordState } =
     useForgotPassword()
   const [searchParams] = useSearchParams()
@@ -181,7 +178,7 @@ const ResetPasswordPage: React.FC = () => {
           {form.values.newPassword && (
             <PasswordStrengthMeter
               password={form.values.newPassword}
-              onStrengthChange={setPasswordStrength}
+              onStrengthChange={() => {}}
             />
           )}
 
