@@ -6,6 +6,13 @@ export type BackupCode = {
   used: boolean
 }
 
+export type WebAuthnContainer = {
+  isEnabled: boolean
+  challenge?: string
+  expiration?: Date
+  credentials: WebAuthnCredential[]
+}
+
 export type WebAuthnCredential = {
   id: string
   publicKey: string
@@ -51,6 +58,12 @@ export interface IUser extends Document {
     token?: string
     expiration?: Date
   }
+  authMethods: {
+    password: {
+      isEnabled: boolean
+    }
+    webauthn: WebAuthnContainer
+  }
   twoFactor: {
     isEnabled: boolean
     email: {
@@ -62,12 +75,7 @@ export interface IUser extends Document {
       isEnabled: boolean
       secret?: string
     }
-    webauthn: {
-      isEnabled: boolean
-      challenge?: string
-      expiration?: Date
-      credentials: WebAuthnCredential[]
-    }
+    webauthn: WebAuthnContainer
     preferredMethod: 'email' | 'app' | 'webauthn' | 'none'
     backupCodes: BackupCode[]
     securityQuestions: {
@@ -120,6 +128,26 @@ const UserSchema = new Schema<IUser>({
   resetPassword: {
     token: { type: String, unique: true },
     expiration: Date,
+  },
+  authMethods: {
+    password: { isEnabled: true },
+    webauthn: {
+      isEnabled: { type: Boolean, default: false },
+      challenge: String,
+      expiration: Date,
+      credentials: [
+        {
+          id: String,
+          publicKey: String,
+          counter: Number,
+          deviceType: String,
+          deviceName: String,
+          transports: [String],
+          lastUsed: { type: Date, default: Date.now },
+          createdAt: { type: Date, default: Date.now },
+        },
+      ],
+    },
   },
   twoFactor: {
     isEnabled: { type: Boolean, default: false },

@@ -10,16 +10,19 @@ import { useAuth } from '../../context/Auth'
 import useWebAuthnTwoFactor from '../../hooks/TwoFactor/WebAuthn'
 import useEmailTwoFactor from '../../hooks/TwoFactor/Email'
 import { useNavigate } from 'react-router-dom'
+import { motion } from 'framer-motion'
 
 interface SecuritySwitchProps {
   type: '2fa' | 'webauthn-login'
   isEnabled: boolean
+  availableMethods?: ('email' | 'app' | 'webauthn')[]
   onStatusChange: () => void
 }
 
 const SecuritySwitch: React.FC<SecuritySwitchProps> = ({
   type,
   isEnabled,
+  availableMethods = ['email', 'app', 'webauthn'],
   onStatusChange,
 }) => {
   const navigate = useNavigate()
@@ -122,9 +125,14 @@ const SecuritySwitch: React.FC<SecuritySwitchProps> = ({
 
   return (
     <>
-      <div className='flex items-center justify-between rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800'>
+      <motion.div
+        className='flex items-center justify-between rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800'
+        whileHover={{ scale: 1.007 }}
+        whileTap={{ scale: 0.995 }}
+        transition={{ type: 'spring', stiffness: 600, damping: 13 }}
+      >
         <div className='flex items-center space-x-4'>
-          <div className='rounded-lg bg-primary-100 p-3 dark:bg-primary-900/20'>
+          <div className='rounded-lg bg-primary-100 p-3 dark:bg-primary-700/30'>
             <IconComponent className='h-6 w-6 text-primary-600 dark:text-primary-400' />
           </div>
           <div>
@@ -137,7 +145,7 @@ const SecuritySwitch: React.FC<SecuritySwitchProps> = ({
           </div>
         </div>
         <ToggleSwitch checked={isEnabled} onChange={handleToggle} size='lg' />
-      </div>
+      </motion.div>
 
       {/* Enable Modal */}
       <Modal

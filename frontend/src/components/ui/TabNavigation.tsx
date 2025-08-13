@@ -29,17 +29,15 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
   const measureRef = useRef<HTMLDivElement>(null)
   const dropdownRef = useRef<HTMLDivElement>(null)
 
-  // Mesure + observer
+  // Measure and observe
   useEffect(() => {
     const update = () => {
       const wrapper = wrapperRef.current
       const measure = measureRef.current
       if (!wrapper || !measure) return
 
-      // copier la largeur disponible dans l'élément de mesure
       measure.style.width = `${wrapper.clientWidth}px`
 
-      // mesurer au prochain frame pour être sûr que le navigateur a appliqué le style
       requestAnimationFrame(() => {
         const { scrollWidth, clientWidth } = measure
         setOverflowing(scrollWidth > clientWidth)
@@ -50,7 +48,6 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
 
     const ro = new ResizeObserver(update)
     if (wrapperRef.current) ro.observe(wrapperRef.current)
-    // fallback : window resize
     window.addEventListener('resize', update)
 
     return () => {
@@ -59,12 +56,10 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
     }
   }, [tabs])
 
-  // si on revient à "fits", fermer le dropdown (UX)
   useEffect(() => {
     if (!overflowing) setDropdownOpen(false)
   }, [overflowing])
 
-  // click outside pour fermer dropdown
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (
@@ -85,9 +80,6 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
       ref={wrapperRef}
       className={`relative border-gray-200 ${!overflowing && 'border-b'} dark:border-gray-700 ${className}`}
     >
-      {/* ---------------------------
-          CLONE HORS-ÉCRAN POUR MESURE
-         --------------------------- */}
       <div
         ref={measureRef}
         aria-hidden='true'
@@ -115,9 +107,7 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
         </nav>
       </div>
 
-      {/* ---------------------------
-          VERSION TABS (visible si ça rentre)
-         --------------------------- */}
+      {/* Normal tab view */}
       {!overflowing && (
         <div className='scrollbar-hide overflow-x-auto pb-1'>
           <nav className='-mb-px flex space-x-4 lg:space-x-8'>
@@ -125,46 +115,73 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
               const Icon = tab.icon
               const isActive = activeTab === tab.id
               return (
-                <button
+                <motion.button
                   key={tab.id}
                   onClick={() => onTabChange(tab.id)}
-                  className={`group inline-flex cursor-pointer items-center whitespace-nowrap border-b-2 px-1 py-3 text-sm font-medium transition-colors duration-200 ${
+                  className={`group relative inline-flex cursor-pointer items-center whitespace-nowrap border-transparent border-b-2 px-1 py-3 text-sm font-medium transition-colors duration-200 ${
                     isActive
-                      ? 'border-primary-500 text-primary-600 dark:text-primary-400'
-                      : 'border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
-                  } `}
+                      ? 'text-primary-600 dark:text-primary-400'
+                      : 'text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-400 dark:hover:text-gray-300'
+                  }`}
                   aria-current={isActive ? 'page' : undefined}
+                  whileHover={{ y: -1 }}
+                  whileTap={{ scale: 0.98 }}
                 >
+                  {isActive && (
+                    <motion.div
+                      layoutId='tabIndicator'
+                      className='absolute bottom-0 left-0 right-0 h-0.5 bg-primary-500'
+                      transition={{
+                        type: 'spring',
+                        stiffness: 300,
+                        damping: 20,
+                      }}
+                    />
+                  )}
                   {Icon && (
                     <Icon
                       size={20}
-                      className={`-ml-0.5 mr-2 ${isActive ? 'text-primary-500' : 'text-gray-400'}`}
+                      className={`-ml-0.5 mr-2 transition-colors ${
+                        isActive
+                          ? 'text-primary-500'
+                          : 'text-gray-400 group-hover:text-gray-600 dark:group-hover:text-gray-300'
+                      }`}
                     />
                   )}
-                  <span>{tab.label}</span>
+                  <motion.span
+                    layout='position'
+                    transition={{ type: 'spring', stiffness: 500 }}
+                  >
+                    {tab.label}
+                  </motion.span>
                   {tab.count !== undefined && (
-                    <span
-                      className={`ml-2 rounded-full px-2.5 py-0.5 text-xs font-medium ${isActive ? 'bg-primary-100 text-primary-600' : 'bg-gray-100 text-gray-900'}`}
+                    <motion.span
+                      className={`ml-2 rounded-full px-2.5 py-0.5 text-xs font-medium ${
+                        isActive
+                          ? 'bg-primary-100 text-primary-600 dark:bg-primary-900/20 dark:text-primary-400'
+                          : 'bg-gray-100 text-gray-900 dark:bg-gray-700/50 dark:text-gray-300'
+                      }`}
+                      whileHover={{ scale: 1.05 }}
                     >
                       {tab.count}
-                    </span>
+                    </motion.span>
                   )}
-                </button>
+                </motion.button>
               )
             })}
           </nav>
         </div>
       )}
 
-      {/* ---------------------------
-          VERSION DROPDOWN (visible si ça déborde)
-         --------------------------- */}
+      {/* Dropdown view */}
       {overflowing && (
         <div className='relative' ref={dropdownRef}>
-          <button
+          <motion.button
             className='flex w-full items-center justify-between rounded-lg border border-gray-300 bg-white px-4 py-3 dark:border-gray-600 dark:bg-gray-800'
             onClick={() => setDropdownOpen((s) => !s)}
             type='button'
+            whileHover={{ scale: 1.01 }}
+            whileTap={{ scale: 0.98 }}
           >
             <div className='flex items-center'>
               {activeTabData?.icon && (
@@ -182,48 +199,80 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
                 )}
               </span>
             </div>
-            <ChevronDown
-              className={`h-5 w-5 transform text-gray-400 transition-transform ${dropdownOpen ? 'rotate-180' : ''}`}
-            />
-          </button>
+            <motion.div
+              animate={{ rotate: dropdownOpen ? 180 : 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <ChevronDown className='h-5 w-5 text-gray-400' />
+            </motion.div>
+          </motion.button>
 
           <AnimatePresence>
             {dropdownOpen && (
               <motion.div
                 key='dropdown'
-                initial={{ opacity: 0, y: -5, height: 0 }}
-                animate={{ opacity: 1, y: 0, height: 'auto' }}
-                exit={{ opacity: 0, y: -5, height: 0 }}
-                transition={{ duration: 0.18, ease: 'easeOut' }}
+                initial={{ opacity: 0, y: -10, height: 0 }}
+                animate={{
+                  opacity: 1,
+                  y: 0,
+                  height: 'auto',
+                  transition: {
+                    opacity: { duration: 0.15 },
+                    y: { type: 'spring', stiffness: 300, damping: 25 },
+                    height: { duration: 0.2 },
+                  },
+                }}
+                exit={{
+                  opacity: 0,
+                  y: -10,
+                  height: 0,
+                  transition: {
+                    opacity: { duration: 0.1 },
+                    height: { duration: 0.15 },
+                  },
+                }}
                 className='absolute z-10 mt-1 w-full overflow-hidden rounded-md border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800'
               >
                 {tabs.map((tab) => {
                   const Icon = tab.icon
                   const isActive = activeTab === tab.id
                   return (
-                    <button
+                    <motion.button
                       key={tab.id}
                       onClick={() => {
                         onTabChange(tab.id)
                         setDropdownOpen(false)
                       }}
-                      className={`flex w-full items-center px-4 py-2 text-left text-sm ${isActive ? 'text-primary-600 dark:text-primary-400 bg-gray-100 dark:bg-gray-700' : 'text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700'}`}
+                      className={`flex w-full items-center px-4 py-2 text-left text-sm ${
+                        isActive
+                          ? 'text-primary-600 dark:text-primary-400 bg-gray-100 dark:bg-gray-700'
+                          : 'text-gray-700 hover:bg-gray-50 dark:text-gray-300 dark:hover:bg-gray-700'
+                      }`}
+                      whileHover={{ x: 2 }}
+                      transition={{ type: 'spring', stiffness: 300 }}
                     >
                       {Icon && (
                         <Icon
                           size={18}
-                          className={`mr-2 ${isActive ? 'text-primary-500' : 'text-gray-400'}`}
+                          className={`mr-2 ${
+                            isActive ? 'text-primary-500' : 'text-gray-400'
+                          }`}
                         />
                       )}
-                      {tab.label}
+                      <span>{tab.label}</span>
                       {tab.count !== undefined && (
-                        <span
-                          className={`ml-auto rounded-full px-2 py-0.5 text-xs ${isActive ? 'bg-primary-100 text-primary-600' : 'bg-gray-200 text-gray-700'}`}
+                        <motion.span
+                          className={`ml-auto rounded-full px-2 py-0.5 text-xs ${
+                            isActive
+                              ? 'bg-primary-100 text-primary-600 dark:bg-primary-900/20 dark:text-primary-400'
+                              : 'bg-gray-200 text-gray-700 dark:bg-gray-700/50 dark:text-gray-300'
+                          }`}
+                          whileHover={{ scale: 1.1 }}
                         >
                           {tab.count}
-                        </span>
+                        </motion.span>
                       )}
-                    </button>
+                    </motion.button>
                   )
                 })}
               </motion.div>
@@ -232,9 +281,14 @@ const TabNavigation: React.FC<TabNavigationProps> = ({
         </div>
       )}
 
-      {/* Indicateur visuel pour le défilement */}
+      {/* Gradient fade effect */}
       {overflowing && (
-        <div className='pointer-events-none absolute bottom-0 right-0 top-0 hidden w-8 bg-gradient-to-l from-white to-transparent md:block dark:from-gray-900' />
+        <motion.div
+          className='pointer-events-none absolute bottom-0 right-0 top-0 hidden w-8 bg-gradient-to-l from-white to-transparent md:block dark:from-gray-900'
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.3 }}
+        />
       )}
     </div>
   )

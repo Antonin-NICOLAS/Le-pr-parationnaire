@@ -163,23 +163,10 @@ export default function ResendSection({
               <PrimaryButton
                 variant='ghost'
                 onClick={handleResend}
-                loading={loading}
                 disabled={!canResend || loading}
-                icon={Icon}
+                icon={!loading ? Icon : undefined}
                 className='mt-2'
               >
-                <motion.span
-                  animate={{
-                    scale: [1, 1.05, 1], // Pulse effect
-                    transition: {
-                      repeat: Infinity,
-                      duration: 1.5,
-                      repeatDelay: 2,
-                    },
-                  }}
-                >
-                  {buttonText}
-                </motion.span>
                 {loading && (
                   <motion.span
                     animate={{
@@ -195,6 +182,18 @@ export default function ResendSection({
                     <Icon className='h-4 w-4' />
                   </motion.span>
                 )}
+                <motion.span
+                  animate={{
+                    scale: [1, 1.05, 1], // Pulse effect
+                    transition: {
+                      repeat: Infinity,
+                      duration: 1.5,
+                      repeatDelay: 2,
+                    },
+                  }}
+                >
+                  {buttonText}
+                </motion.span>
               </PrimaryButton>
             )}
           </motion.div>
@@ -204,7 +203,7 @@ export default function ResendSection({
       {/* Progress indicator during countdown */}
       <AnimatePresence>
         {!canResend && !resendSuccess && (
-          <div className='min-w-[200px] w-[30%] bg-gray-300 dark:bg-gray-500 rounded-full overflow-hidden'>
+          <div className='w-[50%] min-w-[250px] bg-gray-300 dark:bg-gray-500 rounded-full overflow-hidden'>
             <motion.div
               initial={{ width: 0 }}
               animate={{

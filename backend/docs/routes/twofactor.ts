@@ -23,6 +23,9 @@
  *                     isEnabled:
  *                       type: boolean
  *                       description: Indique si la 2FA est activée globalement
+ *                     loginWithWebAuthn:
+ *                       type: boolean
+ *                       description: Indique si la connexion avec WebAuthn est activée
  *                     email:
  *                       type: object
  *                       properties:

@@ -3,6 +3,7 @@ import React, { useState } from 'react'
 import { toast } from 'sonner'
 
 import PrimaryButton from '../ui/PrimaryButton'
+import ErrorMessage from '../ui/ErrorMessage'
 
 interface BackupCodesDisplayProps {
   codes: string[]
@@ -65,23 +66,18 @@ Ces codes vous permettront d'accéder à votre compte si vous perdez l'accès à
         </p>
       </div>
 
-      <div className='rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-800/30 dark:bg-yellow-900/10'>
-        <div className='mb-3 flex items-center space-x-2'>
-          <AlertTriangle
-            className='text-yellow-600 dark:text-yellow-400'
-            size={16}
-          />
-          <span className='text-sm font-medium text-yellow-800 dark:text-yellow-600'>
-            Important à retenir
-          </span>
-        </div>
-        <ul className='space-y-1 text-sm text-yellow-800 dark:text-yellow-600'>
-          <li>• Chaque code ne peut être utilisé qu'une seule fois</li>
-          <li>• Stockez-les dans un endroit sûr et accessible</li>
-          <li>• Ne les partagez avec personne</li>
-          <li>• Vous pouvez les régénérer si nécessaire</li>
-        </ul>
-      </div>
+      <ErrorMessage
+        title='Important à retenir'
+        message={
+          <ul className='space-y-1'>
+            <li>• Chaque code ne peut être utilisé qu'une seule fois</li>
+            <li>• Stockez-les dans un endroit sûr et accessible</li>
+            <li>• Ne les partagez avec personne</li>
+            <li>• Vous pouvez les régénérer si nécessaire</li>
+          </ul>
+        }
+        type='warning'
+      />
 
       <div className='space-y-4'>
         <div

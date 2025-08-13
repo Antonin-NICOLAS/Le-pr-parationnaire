@@ -42,6 +42,7 @@ export const getStatus = asyncHandler(async (req: Request, res: Response) => {
     preferredMethod: user.twoFactor.preferredMethod || 'none',
     backupCodes: user.twoFactor.backupCodes || [],
     credentials: user.twoFactor.webauthn.credentials || [],
+    loginWithWebAuthn: user.loginWithWebAuthn || false,
   })
 })
 

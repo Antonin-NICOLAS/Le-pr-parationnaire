@@ -3,7 +3,7 @@ import { AlertCircle, X, Info, CheckCircle } from 'lucide-react'
 
 interface ErrorMessageProps {
   title?: string
-  message: string
+  message: React.ReactNode
   type?: 'error' | 'warning' | 'info' | 'success'
   onClose?: () => void
   className?: string
@@ -28,7 +28,7 @@ const ErrorMessage: React.FC<ErrorMessageProps> = ({
       icon: AlertCircle,
       bgColor: 'bg-yellow-50 dark:bg-yellow-900/20',
       borderColor: 'border-yellow-200 dark:border-yellow-800',
-      textColor: 'text-yellow-800 dark:text-yellow-200',
+      textColor: 'text-yellow-700 dark:text-yellow-300',
       iconColor: 'text-yellow-500',
     },
     info: {

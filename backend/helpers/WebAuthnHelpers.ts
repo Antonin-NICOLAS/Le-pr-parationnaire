@@ -1,31 +1,31 @@
-import type { WebAuthnCredential, IUser } from '../models/User.js'
+import type { WebAuthnCredential, WebAuthnContainer } from '../models/User.js'
 
-export function setChallenge(user: IUser, challenge: string) {
-  user.twoFactor.webauthn.challenge = challenge
-  user.twoFactor.webauthn.expiration = new Date(Date.now() + 5 * 60 * 1000)
+export function setChallenge(container: WebAuthnContainer, challenge: string) {
+  container.challenge = challenge
+  container.expiration = new Date(Date.now() + 5 * 60 * 1000)
 }
 
-export function clearChallenge(user: IUser) {
-  user.twoFactor.webauthn.challenge = undefined
-  user.twoFactor.webauthn.expiration = undefined
+export function clearChallenge(container: WebAuthnContainer) {
+  container.challenge = undefined
+  container.expiration = undefined
 }
 
-export function findCredentialById(user: IUser, id: string) {
-  return user.twoFactor.webauthn.credentials.find((c) => c.id === id)
+export function findCredentialById(container: WebAuthnContainer, id: string) {
+  return container.credentials.find((c: WebAuthnCredential) => c.id === id)
 }
 
 export function updateCredentialCounter(
-  user: IUser,
+  container: WebAuthnContainer,
   id: string,
   newCounter: number,
 ) {
-  const credential = findCredentialById(user, id)
+  const credential = findCredentialById(container, id)
   if (credential) {
     credential.counter = newCounter
     credential.lastUsed = new Date()
   }
 }
 
-export function getActiveCredentials(user: IUser): WebAuthnCredential[] {
-  return user.twoFactor.webauthn.credentials ?? []
+export function getActiveCredentials(container: any): WebAuthnCredential[] {
+  return container.credentials ?? []
 }

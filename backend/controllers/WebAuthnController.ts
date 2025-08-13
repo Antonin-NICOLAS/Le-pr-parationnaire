@@ -26,15 +26,12 @@ import type {
 
 import {
   comparePassword,
-  generateTokensAndCookies,
   getDeviceInfo,
   findLocation,
 } from '../helpers/AuthHelpers.js'
 import {
   generateBackupCodes,
   rotateBackupCodes,
-  compareEmailCode,
-  verifyTwoFactorCode,
 } from '../helpers/2FAHelpers.js'
 import {
   setChallenge,
@@ -57,24 +54,41 @@ let origin =
 
 export const generateRegistrationOpt = asyncHandler(
   async (req: Request, res: Response) => {
+    const { context } = req.query
     const { t } = req
 
     // 1. Vérification de l'utilisateur
-    const user = await User.findById(req.user._id).select('+twoFactor.webauthn')
+    const user = await User.findById(req.user._id).select(
+      '+twoFactor.webauthn +authMethods.webauthn',
+    )
     if (!user) {
       return ApiResponse.error(res, t('auth:errors.user_not_found'), 404)
     }
+    const container =
+      context === 'primary'
+        ? user.authMethods.webauthn
+        : user.twoFactor.webauthn
 
     // 2. Récupération des clés existantes
-    const activeCredentials = getActiveCredentials(user)
+    const activeCredentials = getActiveCredentials(container)
 
-    if (activeCredentials.length >= 1 && !user.twoFactor.webauthn.isEnabled) {
-      if (!user.twoFactor.app.isEnabled && !user.twoFactor.email.isEnabled) {
+    if (activeCredentials.length >= 1 && !container.isEnabled) {
+      if (
+        context === 'secondary' &&
+        !user.twoFactor.app.isEnabled &&
+        !user.twoFactor.email.isEnabled
+      ) {
+        user.twoFactor.isEnabled = true
         user.twoFactor.backupCodes = generateBackupCodes(8)
       }
-      user.twoFactor.webauthn.isEnabled = true
+      container.isEnabled = true
       await user.save()
-      return ApiResponse.success(res, {})
+      return ApiResponse.success(
+        res,
+        {},
+        t('auth:success.webauthn.enabled'),
+        200,
+      )
     }
 
     // 3. Génération des options d'enregistrement
@@ -102,13 +116,13 @@ export const generateRegistrationOpt = asyncHandler(
     const options = await generateRegistrationOptions(opts)
 
     // 4. Stockage sécurisé du challenge
-    setChallenge(user, options.challenge)
+    setChallenge(container, options.challenge)
     await user.save()
 
     return ApiResponse.success(
       res,
       { options },
-      t('auth.success.webauthn.registration_options_generated'),
+      t('auth:success.webauthn.registration_options_generated'),
       200,
     )
   },
@@ -117,14 +131,21 @@ export const generateRegistrationOpt = asyncHandler(
 export const verifyRegistration = asyncHandler(
   async (req: Request, res: Response) => {
     const { t } = req
+    const { context } = req.query
     const attestationResponse: RegistrationResponseJSON =
       req.body.attestationResponse
 
     // 1. Vérification de l'utilisateur
-    const user = await User.findById(req.user._id).select('+twoFactor.webauthn')
+    const user = await User.findById(req.user._id).select(
+      '+twoFactor.webauthn +authMethods.webauthn',
+    )
     if (!user) {
       return ApiResponse.error(res, t('auth:errors.user_not_found'), 404)
     }
+    const container =
+      context === 'primary'
+        ? user.authMethods.webauthn
+        : user.twoFactor.webauthn
 
     // 2. Validation des données d'entrée
     if (!attestationResponse) {
@@ -140,7 +161,7 @@ export const verifyRegistration = asyncHandler(
     try {
       const opts: VerifyRegistrationResponseOpts = {
         response: attestationResponse,
-        expectedChallenge: user?.twoFactor.webauthn?.challenge ?? '',
+        expectedChallenge: container.challenge ?? '',
         expectedOrigin: origin,
         expectedRPID: rpID,
       }
@@ -159,7 +180,10 @@ export const verifyRegistration = asyncHandler(
     if (verified && registrationInfo) {
       const credential: WebAuthnCredential = registrationInfo.credential
       // 4. On vérifie si la clé est deja enregistrée
-      const existingCredential = await findCredentialById(user, credential.id)
+      const existingCredential = await findCredentialById(
+        container,
+        credential.id,
+      )
       if (existingCredential) {
         return ApiResponse.error(
           res,
@@ -183,29 +207,37 @@ export const verifyRegistration = asyncHandler(
       }
 
       // 6. Mise à jour de l'utilisateur
-      user.twoFactor.webauthn.credentials.push(newCredential)
-      clearChallenge(user)
+      container.credentials.push(newCredential)
+      clearChallenge(container)
 
-      user.twoFactor.webauthn.isEnabled = true
-      user.twoFactor.isEnabled = true
-
-      rotateBackupCodes(user)
+      container.isEnabled = true
 
       // Définition de la méthode préférée si aucune n'est définie
-      if (user.twoFactor.preferredMethod === 'none') {
-        user.twoFactor!.preferredMethod = 'webauthn'
+      if (context === 'secondary') {
+        user.twoFactor.isEnabled = true
+        if (user.twoFactor.preferredMethod === 'none') {
+          user.twoFactor!.preferredMethod = 'webauthn'
+        }
+        rotateBackupCodes(user)
       }
 
       await user.save()
 
+      const basePayload = {
+        credentialId: newCredential.id,
+        credentials: container.credentials,
+      }
+      const secondaryPayload =
+        context === 'secondary'
+          ? {
+              preferredMethod: user.twoFactor.preferredMethod,
+              backupCodes: user.twoFactor.backupCodes,
+            }
+          : {}
+
       return ApiResponse.success(
         res,
-        {
-          credentialId: newCredential.id,
-          credentials: user.twoFactor.webauthn.credentials,
-          preferredMethod: user.twoFactor.preferredMethod,
-          backupCodes: user.twoFactor.backupCodes,
-        },
+        { ...basePayload, ...secondaryPayload },
         t('auth:success.webauthn.registration_response_successful'),
         200,
       )
@@ -222,26 +254,30 @@ export const verifyRegistration = asyncHandler(
 export const generateAuthenticationOpt = asyncHandler(
   async (req: Request, res: Response) => {
     const { email } = req.query
+    const { context } = req.query
     const { t } = req
 
     // 1. Récupération de l'utilisateur
-    const user = await User.findOne({ email }).select('+twoFactor.webauthn')
+    const user = await User.findOne({ email }).select(
+      '+twoFactor.webauthn +authMethods.webauthn',
+    )
     if (!user) {
       return ApiResponse.error(res, t('auth:errors.user_not_found'), 404)
     }
+    const container =
+      context === 'primary'
+        ? user.authMethods.webauthn
+        : user.twoFactor.webauthn
 
     // 2. Vérification que WebAuthn est activé
-    if (
-      !user.twoFactor.webauthn.isEnabled ||
-      user.twoFactor.webauthn.credentials.length === 0
-    ) {
+    if (!container.isEnabled || container.credentials.length === 0) {
       return ApiResponse.error(res, t('auth:errors.webauthn.not_enabled'), 400)
     }
 
     // 3. Génération des options d'authentification
     const opts: GenerateAuthenticationOptionsOpts = {
       rpID,
-      allowCredentials: user.twoFactor.webauthn.credentials
+      allowCredentials: container.credentials
         .filter((cred) => typeof cred.id === 'string')
         .map((cred) => ({
           id: cred.id,
@@ -254,7 +290,7 @@ export const generateAuthenticationOpt = asyncHandler(
     const options = await generateAuthenticationOptions(opts)
 
     // 4. Stockage du challenge
-    setChallenge(user, options.challenge)
+    setChallenge(container, options.challenge)
     await user.save()
 
     return ApiResponse.success(res, { options })
@@ -264,6 +300,7 @@ export const generateAuthenticationOpt = asyncHandler(
 export const verifyAuthentication = asyncHandler(
   async (req: Request, res: Response) => {
     const { email, rememberMe } = req.body
+    const { context } = req.query
     const assertionResponse: AuthenticationResponseJSON =
       req.body.assertionResponse
     const { t } = req
@@ -279,14 +316,20 @@ export const verifyAuthentication = asyncHandler(
 
     // 2. Trouver l'utilisateur
     const credentialId = assertionResponse.rawId || assertionResponse.id
-    const user = await User.findOne({ email }).select('+twoFactor.webauthn')
+    const user = await User.findOne({ email }).select(
+      '+twoFactor.webauthn +authMethods.webauthn',
+    )
 
     if (!user) {
       return ApiResponse.error(res, t('auth:errors.user_not_found'), 404)
     }
+    const container =
+      context === 'primary'
+        ? user.authMethods.webauthn
+        : user.twoFactor.webauthn
 
-    // 4. Récupération du credential
-    const dbCredential = findCredentialById(user, credentialId)
+    // 3. Récupération du credential
+    const dbCredential = findCredentialById(container, credentialId)
     if (!dbCredential) {
       console.error('FindCredentialById : Credential not found')
       return ApiResponse.error(
@@ -296,12 +339,12 @@ export const verifyAuthentication = asyncHandler(
       )
     }
 
-    // 5. Vérification de la réponse d'authentification
+    // 4. Vérification de la réponse d'authentification
     let verification: VerifiedAuthenticationResponse
     try {
       const opts: VerifyAuthenticationResponseOpts = {
         response: assertionResponse,
-        expectedChallenge: user?.twoFactor.webauthn?.challenge || '',
+        expectedChallenge: container.challenge || '',
         expectedOrigin: origin,
         expectedRPID: rpID,
         credential: {
@@ -321,15 +364,33 @@ export const verifyAuthentication = asyncHandler(
       )
     }
 
-    // 6. Si vérification réussie
+    // 5. Si vérification réussie
     if (verification.verified) {
       // Mise à jour du compteur et dernière utilisation
       updateCredentialCounter(
-        user,
+        container,
         credentialId,
         verification.authenticationInfo.newCounter,
       )
-      clearChallenge(user)
+      clearChallenge(container)
+
+      // 6. Vérification de la nécessité de l'authentification à deux facteurs
+      if (user.twoFactor.isEnabled) {
+        return ApiResponse.info(
+          res,
+          {
+            requiresTwoFactor: true,
+            twoFactor: {
+              email: user.twoFactor.email.isEnabled,
+              app: user.twoFactor.app.isEnabled,
+              webauthn: user.twoFactor.webauthn.isEnabled,
+              preferredMethod: user.twoFactor.preferredMethod,
+            },
+          },
+          t('auth:errors.two_factor_required'),
+          202,
+        )
+      }
 
       const { accessToken, refreshToken, session } =
         await SessionService.createSessionWithTokens(user, req, res, rememberMe)
@@ -357,125 +418,8 @@ export const verifyAuthentication = asyncHandler(
     } else {
       return ApiResponse.error(
         res,
-        t('auth.errors.webauthn.authentication'),
+        t('auth:errors.webauthn.authentication'),
         400,
-      )
-    }
-  },
-)
-
-// Activer/désactiver l'authentification par clé d'accès
-export const switchLoginWithWebAuthn = asyncHandler(
-  async (req: Request, res: Response) => {
-    const { t } = req
-    const { enabled, method, value } = req.body
-
-    if (enabled === undefined) {
-      return ApiResponse.error(res, t('auth:errors.missing_fields'), 400)
-    }
-
-    // 1. Vérifier si l'utilisateur existe
-    const user = await User.findById(req.user._id)
-    if (!user) {
-      return ApiResponse.error(res, t('auth:errors.user_not_found'), 404)
-    }
-
-    // Si on veut activer l'authentification par clé d'accès
-    if (enabled) {
-      // Vérifier qu'au moins une clé d'accès est configurée
-      if (
-        !user.twoFactor.webauthn.credentials ||
-        user.twoFactor.webauthn.credentials.length === 0
-      ) {
-        return ApiResponse.info(
-          res,
-          { RequiresConfiguration: true },
-          t('auth:errors.webauthn.no_credentials'),
-          100,
-        )
-      }
-
-      user.loginWithWebAuthn = true
-      await user.save()
-
-      return ApiResponse.success(
-        res,
-        { loginWithWebAuthn: user.loginWithWebAuthn },
-        t('auth:success.webauthn.login_enabled'),
-        200,
-      )
-    }
-    // Si on veut désactiver l'authentification par clé d'accès
-    else {
-      // Vérifier l'authentification
-      if (method && value) {
-        let isValid = false
-
-        try {
-          if (method === 'password') {
-            isValid = await comparePassword(value, user.password)
-          } else if (method === 'app' && user.twoFactor.app.isEnabled) {
-            if (!user.twoFactor.app.secret) {
-              return ApiResponse.error(
-                res,
-                t('auth:errors.2fa.setup_required'),
-                400,
-              )
-            }
-            isValid = verifyTwoFactorCode(user.twoFactor.app.secret, value)
-          } else if (method === 'email' && user.twoFactor.email.isEnabled) {
-            if (
-              !user.twoFactor.email.token ||
-              !user.twoFactor.email.expiration
-            ) {
-              return ApiResponse.error(
-                res,
-                t('auth:errors.2fa.setup_required'),
-                400,
-              )
-            }
-
-            // Vérifier l'expiration
-            if (user.twoFactor.email.expiration < new Date()) {
-              return ApiResponse.error(
-                res,
-                t('auth:errors.2fa.code_expired'),
-                400,
-              )
-            }
-
-            isValid = await compareEmailCode(user.twoFactor.email.token, value)
-          } else {
-            return ApiResponse.error(
-              res,
-              t('auth:errors.2fa.invalid_method'),
-              400,
-            )
-          }
-
-          if (!isValid) {
-            return ApiResponse.error(
-              res,
-              method === 'password'
-                ? t('auth:errors.password_incorrect')
-                : t('auth:errors.2fa.invalid_code'),
-              400,
-            )
-          }
-        } catch (error) {
-          console.error('Erreur lors de la vérification:', error)
-          return ApiResponse.error(res, t('common:errors.server_error'), 500)
-        }
-      }
-
-      user.loginWithWebAuthn = false
-      await user.save()
-
-      return ApiResponse.success(
-        res,
-        { loginWithWebAuthn: user.loginWithWebAuthn },
-        t('auth:success.webauthn.login_disabled'),
-        200,
       )
     }
   },
@@ -485,6 +429,7 @@ export const switchLoginWithWebAuthn = asyncHandler(
 export const nameWebAuthnCredential = asyncHandler(
   async (req: Request, res: Response) => {
     const { t } = req
+    const { context } = req.query
     const { id: credentialId } = req.body
 
     // 1. Vérifier si l'utilisateur existe
@@ -492,9 +437,13 @@ export const nameWebAuthnCredential = asyncHandler(
     if (!user) {
       return ApiResponse.error(res, t('auth:errors.user_not_found'), 404)
     }
+    const container =
+      context === 'primary'
+        ? user.authMethods.webauthn
+        : user.twoFactor.webauthn
 
     // 2. Vérifier si la clé demandée existe
-    const credential = user.twoFactor.webauthn.credentials.find(
+    const credential = container.credentials.find(
       (cred) => cred.id === credentialId,
     )
     if (!credential) {
@@ -525,6 +474,7 @@ export const nameWebAuthnCredential = asyncHandler(
 export const removeWebAuthnCredential = asyncHandler(
   async (req: Request, res: Response) => {
     const { id: credentialId } = req.params
+    const { context } = req.query
     const { t } = req
 
     // 1. Vérifier si l'utilisateur existe
@@ -532,9 +482,13 @@ export const removeWebAuthnCredential = asyncHandler(
     if (!user) {
       return ApiResponse.error(res, t('auth:errors.user_not_found'), 404)
     }
+    const container =
+      context === 'primary'
+        ? user.authMethods.webauthn
+        : user.twoFactor.webauthn
 
     // 2. Vérifier si la clé demandée existe
-    const credentialIndex = user.twoFactor.webauthn.credentials.findIndex(
+    const credentialIndex = container.credentials.findIndex(
       (cred) => cred.id === credentialId,
     )
 
@@ -547,11 +501,11 @@ export const removeWebAuthnCredential = asyncHandler(
     }
 
     // 4. Supprimer la clé
-    user.twoFactor.webauthn.credentials.splice(credentialIndex, 1)
+    container.credentials.splice(credentialIndex, 1)
 
     // 5. Si aucune clé WebAuthn n'est restante, on désactive WebAuthn
-    if (user.twoFactor.webauthn.credentials.length === 0) {
-      user.twoFactor.webauthn.isEnabled = false
+    if (container.credentials.length === 0) {
+      container.isEnabled = false
       user.twoFactor.isEnabled =
         user.twoFactor.app.isEnabled || user.twoFactor.email.isEnabled
 
@@ -571,15 +525,22 @@ export const removeWebAuthnCredential = asyncHandler(
       }
     }
 
+    const basePayload = {
+      credentials: container.credentials,
+    }
+    const secondaryPayload =
+      context === 'secondary'
+        ? {
+            preferredMethod: user.twoFactor.preferredMethod,
+            backupCodes: user.twoFactor.backupCodes,
+          }
+        : {}
+
     await user.save()
 
     return ApiResponse.success(
       res,
-      {
-        credentials: user.twoFactor.webauthn.credentials,
-        preferredMethod: user.twoFactor.preferredMethod,
-        backupCodes: user.twoFactor.backupCodes,
-      },
+      { ...basePayload, ...secondaryPayload },
       t('auth:success.webauthn.credential_removed'),
       200,
     )
@@ -589,6 +550,7 @@ export const removeWebAuthnCredential = asyncHandler(
 export const getWebAuthnDevices = asyncHandler(
   async (req: Request, res: Response) => {
     const { t } = req
+    const { context } = req.query
 
     // 1. Vérifier si l'utilisateur existe
     const user = await User.findById(req.user._id)
@@ -596,8 +558,13 @@ export const getWebAuthnDevices = asyncHandler(
       return ApiResponse.error(res, t('auth:errors.user_not_found'), 404)
     }
 
+    const container =
+      context === 'primary'
+        ? user.authMethods.webauthn
+        : user.twoFactor.webauthn
+
     return ApiResponse.success(res, {
-      credentials: user.twoFactor.webauthn.credentials || [],
+      credentials: container.credentials || [],
     })
   },
 )
@@ -606,6 +573,7 @@ export const disableWebAuthn = asyncHandler(
   async (req: Request, res: Response) => {
     const { t } = req
     const { method, value } = req.body
+    const { context } = req.query
     if (!method || !value) {
       return ApiResponse.error(res, t('auth:errors.missing_fields'), 400)
     }
@@ -615,8 +583,12 @@ export const disableWebAuthn = asyncHandler(
     if (!user) {
       return ApiResponse.error(res, t('auth:errors.user_not_found'), 404)
     }
+    const container =
+      context === 'primary'
+        ? user.authMethods.webauthn
+        : user.twoFactor.webauthn
     // 2. Vérifier si webauthn est activé
-    if (!user.twoFactor.webauthn.isEnabled) {
+    if (!container.isEnabled) {
       return ApiResponse.error(res, t('auth:errors.webauthn.not_enabled'), 400)
     }
 
@@ -626,7 +598,7 @@ export const disableWebAuthn = asyncHandler(
       if (method === 'password') {
         // Vérification du mot de passe
         isValid = await comparePassword(value, user.password)
-      } else if (method === 'webauthn' && user.twoFactor.webauthn.isEnabled) {
+      } else if (method === 'webauthn' && container.isEnabled) {
         // Vérification de la réponse WebAuthn
         if (!value || typeof value !== 'object') {
           return ApiResponse.error(
@@ -646,7 +618,7 @@ export const disableWebAuthn = asyncHandler(
         }
 
         // Récupération de l'ID du credential correspondant
-        const dbCredential = findCredentialById(user, credentialId)
+        const dbCredential = findCredentialById(container, credentialId)
         if (!dbCredential) {
           return ApiResponse.error(
             res,
@@ -660,13 +632,13 @@ export const disableWebAuthn = asyncHandler(
         try {
           const opts: VerifyAuthenticationResponseOpts = {
             response: value,
-            expectedChallenge: user?.twoFactor.webauthn.challenge || '',
+            expectedChallenge: container.challenge || '',
             expectedOrigin: origin,
             expectedRPID: rpID,
             credential: {
               id: dbCredential.id,
               publicKey: isoBase64URL.toBuffer(dbCredential.publicKey),
-              counter: dbCredential.counter,
+              counter: Number(dbCredential.counter),
               transports: dbCredential.transports || [],
             },
           }
@@ -693,27 +665,29 @@ export const disableWebAuthn = asyncHandler(
         res,
         method === 'password'
           ? t('auth:errors.password_incorrect')
-          : t('auth.errors.webauthn.authentication'),
+          : t('auth:errors.webauthn.authentication'),
         400,
       )
     }
 
     // 4. Désactiver WebAuthn
-    user.twoFactor.webauthn.isEnabled = false
-    user.twoFactor.isEnabled =
-      user.twoFactor.app.isEnabled || user.twoFactor.email.isEnabled
+    container.isEnabled = false
+    if (context === 'secondary') {
+      user.twoFactor.isEnabled =
+        user.twoFactor.app.isEnabled || user.twoFactor.email.isEnabled
 
-    if (user.twoFactor.preferredMethod === 'webauthn') {
-      user.twoFactor.preferredMethod = user.twoFactor.app.isEnabled
-        ? 'app'
-        : user.twoFactor.email.isEnabled
-        ? 'email'
-        : 'none'
-    }
+      if (user.twoFactor.preferredMethod === 'webauthn') {
+        user.twoFactor.preferredMethod = user.twoFactor.app.isEnabled
+          ? 'app'
+          : user.twoFactor.email.isEnabled
+          ? 'email'
+          : 'none'
+      }
 
-    if (!user.twoFactor.app.isEnabled && !user.twoFactor.email.isEnabled) {
-      user.twoFactor.backupCodes = []
-      user.twoFactor.preferredMethod = 'none'
+      if (!user.twoFactor.app.isEnabled && !user.twoFactor.email.isEnabled) {
+        user.twoFactor.backupCodes = []
+        user.twoFactor.preferredMethod = 'none'
+      }
     }
 
     await user.save()
@@ -727,5 +701,50 @@ export const disableWebAuthn = asyncHandler(
       t('auth:success.webauthn.disabled'),
       200,
     )
+  },
+)
+
+export const transferWebAuthnCredentials = asyncHandler(
+  async (req: Request, res: Response) => {
+    const { t } = req
+    const { from, to } = req.body
+
+    if (
+      !['primary', 'secondary'].includes(from) ||
+      !['primary', 'secondary'].includes(to)
+    )
+      return ApiResponse.error(res, t('common:errors.bad_request'), 400)
+
+    if (from === to)
+      return ApiResponse.error(res, 'Cannot transfer to same context', 400)
+
+    const user = await User.findById(req.user._id).select(
+      '+twoFactor.webauthn +authMethods.webauthn',
+    )
+    if (!user) return ApiResponse.error(res, 'User not found', 404)
+
+    const source =
+      from === 'primary' ? user.authMethods.webauthn : user.twoFactor.webauthn
+    const target =
+      to === 'primary' ? user.authMethods.webauthn : user.twoFactor.webauthn
+
+    const toAdd = source.credentials.filter(
+      (cred) => !target.credentials.some((c) => c.id === cred.id),
+    )
+    target.credentials.push(...toAdd)
+    target.isEnabled = target.credentials.length > 0
+
+    if (to === 'secondary') {
+      if (!user.twoFactor.isEnabled) user.twoFactor.isEnabled = true
+      if (user.twoFactor.preferredMethod === 'none')
+        user.twoFactor.preferredMethod = 'webauthn'
+      rotateBackupCodes(user)
+    } else if (to === 'primary') {
+      if (!user.authMethods.webauthn.isEnabled)
+        user.authMethods.webauthn.isEnabled = true
+    }
+
+    await user.save()
+    return ApiResponse.success(res, { credentials: target.credentials })
   },
 )

@@ -1,4 +1,5 @@
 import React from 'react'
+import { motion } from 'framer-motion'
 
 interface ToggleSwitchProps {
   checked: boolean
@@ -37,38 +38,45 @@ const ToggleSwitch: React.FC<ToggleSwitchProps> = ({
     lg: 'mt-[2px]',
   }
 
-  const translateClasses = {
-    sm: checked ? 'translate-x-4' : 'translate-x-0',
-    md: checked ? 'translate-x-5' : 'translate-x-0',
-    lg: checked ? 'translate-x-6' : 'translate-x-0',
-  }
-
   return (
     <div className={`flex items-center ${className}`}>
       <div className='flex flex-1 flex-col pr-4'>
         {label && (
-          <span className='text-sm font-medium text-gray-900 dark:text-gray-100'>
+          <motion.span
+            className='text-sm font-medium text-gray-900 dark:text-gray-100'
+            whileHover={{ x: 2 }}
+          >
             {label}
-          </span>
+          </motion.span>
         )}
         {description && (
-          <span className='text-xs text-gray-500 dark:text-gray-400'>
+          <motion.span
+            className='text-xs text-gray-500 dark:text-gray-400'
+            whileHover={{ x: 2 }}
+          >
             {description}
-          </span>
+          </motion.span>
         )}
       </div>
-      <button
+      <motion.button
         type='button'
-        className={`focus:ring-primary-500 relative inline-flex flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 ${sizeClasses[size]} ${checked ? 'bg-primary-500' : 'bg-gray-200 dark:bg-gray-700'} ${disabled ? 'cursor-not-allowed opacity-50' : ''} `}
+        className={`focus:ring-primary-500 relative inline-flex flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus:ring-2 focus:ring-offset-2 ${sizeClasses[size]} ${checked ? 'bg-primary-500' : 'bg-gray-200 dark:bg-gray-700'} ${disabled ? 'cursor-not-allowed opacity-50' : ''}`}
         role='switch'
         aria-checked={checked}
         disabled={disabled}
         onClick={() => !disabled && onChange(!checked)}
+        whileHover={{ scale: disabled ? 1 : 1.03 }}
+        whileTap={{ scale: disabled ? 1 : 0.97 }}
       >
-        <span
-          className={` ${thumbSizeClasses[size]} ${marginSizeClasses[size]} ${translateClasses[size]} pointer-events-none inline-block transform rounded-full bg-white shadow ring-0 transition duration-200 ease-in-out`}
+        <motion.span
+          className={`${thumbSizeClasses[size]} ${marginSizeClasses[size]} pointer-events-none inline-block rounded-full bg-white shadow`}
+          initial={false}
+          animate={{
+            x: checked ? (size === 'sm' ? 16 : size === 'md' ? 20 : 26) : 0,
+          }}
+          transition={{ type: 'spring', stiffness: 700, damping: 20 }}
         />
-      </button>
+      </motion.button>
     </div>
   )
 }

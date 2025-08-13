@@ -3,6 +3,7 @@ import {
   Bell,
   Calendar,
   Download,
+  CloudDownload,
   Globe,
   Key,
   LogOut,
@@ -11,11 +12,15 @@ import {
   Monitor,
   Shield,
   Trash2,
+  CircleX,
   RefreshCw,
+  Lock,
+  KeyRound,
 } from 'lucide-react'
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
+import { motion } from 'framer-motion'
 
 import AppTwoFactor from '../components/TwoFactor/AppTwoFactor'
 import BackupCodesDisplay from '../components/TwoFactor/BackupCodesDisplay'
@@ -34,12 +39,11 @@ import useTwoFactorAuth from '../hooks/TwoFactor/Main'
 import SecuritySwitch from '../components/ui/SecuritySwitch'
 import useUserSettings from '../hooks/useUserSettings'
 import { useUrlModal } from '../routes/UseUrlModal'
-import type { ChangePassword, PasswordStrength } from '../types/auth'
 import type { LoginHistory } from '../types/user'
 import useSessions from '../hooks/Auth/useSessions'
 import ResendAction from '../components/ui/ResendAction'
 import { useFormHandler } from '../hooks/useFormHandler'
-import { changeEmailSchema } from '../utils/validation'
+import { changeEmailSchema, changePasswordSchema } from '../utils/validation'
 
 const SettingsPage: React.FC = () => {
   const { tab = 'security' } = useParams()
@@ -78,16 +82,8 @@ const SettingsPage: React.FC = () => {
   // 2FA state
   const { getTwoFactorStatus, getTwoFactorStatusState } = useTwoFactorAuth()
 
-  // Password change state
-  const [passwordForm, setPasswordForm] = useState<ChangePassword>({
-    currentPassword: '',
-    newPassword: '',
-    confirmPassword: '',
-  })
-  const [passwordStrength, setPasswordStrength] =
-    useState<PasswordStrength | null>(null)
-
-  // Email change state
+  // Email/password change states
+  const [showPasswordForm, setShowPasswordForm] = useState(false)
   const [emailChangeStep, setEmailChangeStep] = useState<
     'verify-current' | 'new-email' | 'verify-new' | null
   >(null)
@@ -113,6 +109,41 @@ const SettingsPage: React.FC = () => {
     validateOnChange: true,
     validateOnBlur: false,
   })
+  const changePasswordForm = useFormHandler({
+    initialValues: {
+      currentPassword: '',
+      newPassword: '',
+      confirmPassword: '',
+    },
+    validationSchema: changePasswordSchema,
+    validateOnChange: true,
+    validateOnBlur: false,
+  })
+
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    show: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.05,
+        when: 'beforeChildren',
+        duration: 0.1,
+      },
+    },
+  }
+
+  const itemVariants = {
+    hidden: { opacity: 0, y: 5 },
+    show: {
+      opacity: 1,
+      y: 0,
+      transition: {
+        type: 'tween' as const,
+        ease: 'easeOut' as const,
+        duration: 0.2,
+      },
+    },
+  }
 
   const fetch2FAStatus = async () => {
     await getTwoFactorStatus()
@@ -126,29 +157,16 @@ const SettingsPage: React.FC = () => {
     fetch2FAStatus()
   }, [])
 
-  const handlePasswordChange = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (
-      !passwordForm.currentPassword ||
-      !passwordForm.newPassword ||
-      !passwordForm.confirmPassword
-    ) {
-      toast.error('Veuillez remplir tous les champs')
-      return
+  const handlePasswordChange = async () => {
+    const result = await changePassword(changePasswordForm.values)
+    if (result.success) {
+      changePasswordForm.reset()
     }
-    if (passwordForm.newPassword !== passwordForm.confirmPassword) {
-      toast.error('Les mots de passe ne correspondent pas')
-      return
-    }
-    if (passwordStrength && passwordStrength.score < 70) {
-      toast.error('Veuillez choisir un mot de passe plus fort')
-      return
-    }
-
-    await changePassword(passwordForm)
   }
 
   const handleEmailChangeStart = async () => {
+    changeEmailStep1State.resetError()
+    changeEmailForm.clearErrors()
     const result = await changeEmailStep1()
     if (result.success) {
       setEmailChangeStep('verify-current')
@@ -156,6 +174,8 @@ const SettingsPage: React.FC = () => {
   }
 
   const handleCurrentEmailVerification = async () => {
+    changeEmailStep2State.resetError()
+    changeEmailForm.clearErrors()
     const result = await changeEmailStep2(
       changeEmailForm.values.currentEmailCode.join(''),
     )
@@ -165,6 +185,8 @@ const SettingsPage: React.FC = () => {
   }
 
   const handleNewEmailSubmit = async () => {
+    changeEmailStep3State.resetError()
+    changeEmailForm.clearErrors()
     const result = await changeEmailStep3(changeEmailForm.values.newEmail)
     if (result.success) {
       setEmailChangeStep('verify-new')
@@ -172,6 +194,8 @@ const SettingsPage: React.FC = () => {
   }
 
   const handleNewEmailVerification = async () => {
+    changeEmailStep4State.resetError()
+    changeEmailForm.clearErrors()
     const result = await changeEmailStep4(
       changeEmailForm.values.newEmailCode.join(''),
     )
@@ -209,42 +233,28 @@ const SettingsPage: React.FC = () => {
 
   const renderSecurityTab = () => (
     <div className='space-y-6'>
-      {/* Security Switches */}
-      <SettingsCard
-        title='Paramètres de sécurité'
-        description='Configurez vos options de sécurité avancées'
-        icon={Shield}
-      >
-        <div className='space-y-4'>
-          <SecuritySwitch
-            type='2fa'
-            isEnabled={getTwoFactorStatusState.data?.isEnabled || false}
-            onStatusChange={() => fetch2FAStatus()}
-          />
-          <SecuritySwitch
-            type='webauthn-login'
-            isEnabled={
-              getTwoFactorStatusState.data?.webauthn?.isEnabled || false
-            }
-            onStatusChange={() => fetch2FAStatus()}
-          />
-        </div>
-      </SettingsCard>
-
       {/* Sessions actives */}
       <SettingsCard
         title='Sessions actives'
         description='Gérez vos sessions de connexion'
         icon={Monitor}
       >
-        <div className='space-y-4'>
+        <motion.div
+          className='space-y-4'
+          variants={containerVariants}
+          initial='hidden'
+          animate='show'
+        >
           {!checkActiveSessionsState.loading &&
           checkActiveSessionsState.data?.sessions?.length ? (
             checkActiveSessionsState.data.sessions.map(
               (session: LoginHistory) => (
-                <div
+                <motion.div
                   key={session.sessionId}
+                  variants={itemVariants}
                   className='flex items-center justify-between rounded-lg bg-gray-50 p-4 dark:bg-gray-700/50'
+                  whileHover={{ scale: 1.005 }}
+                  transition={{ type: 'spring', stiffness: 500 }}
                 >
                   <div className='flex flex-1 items-center space-x-3'>
                     <div className='flex-shrink-0'>
@@ -288,6 +298,10 @@ const SettingsPage: React.FC = () => {
                       variant='outline'
                       size='sm'
                       onClick={() => handleRevokeSession(session.sessionId)}
+                      disabled={
+                        revokeSessionState.loading ||
+                        revokeAllSessionsState.loading
+                      }
                       loading={
                         revokeSessionState.loading ||
                         revokeAllSessionsState.loading
@@ -296,16 +310,32 @@ const SettingsPage: React.FC = () => {
                       Révoquer
                     </PrimaryButton>
                   )}
-                </div>
+                </motion.div>
               ),
             )
           ) : (
             <div className='rounded-lg bg-gray-50 p-4 dark:bg-gray-700/50'>
-              <p className='text-gray-500 dark:text-gray-400'>
-                {checkActiveSessionsState.loading
-                  ? 'Chargement des sessions...'
-                  : 'Aucune session active trouvée'}
-              </p>
+              {checkActiveSessionsState.loading ? (
+                <motion.div
+                  className='space-y-4'
+                  initial={{ opacity: 0.5 }}
+                  animate={{ opacity: 1 }}
+                  transition={{
+                    repeat: Infinity,
+                    repeatType: 'reverse',
+                    duration: 1,
+                  }}
+                >
+                  {[1, 2, 3].map((i) => (
+                    <div
+                      key={i}
+                      className='h-20 rounded-lg bg-gray-100 dark:bg-gray-700/50 animate-pulse'
+                    />
+                  ))}
+                </motion.div>
+              ) : (
+                'Aucune session active trouvée'
+              )}
             </div>
           )}
           {!checkActiveSessionsState.loading &&
@@ -314,6 +344,9 @@ const SettingsPage: React.FC = () => {
               <PrimaryButton
                 variant='secondary'
                 onClick={handleRevokeAllSessions}
+                disabled={
+                  revokeSessionState.loading || revokeAllSessionsState.loading
+                }
                 loading={
                   revokeSessionState.loading || revokeAllSessionsState.loading
                 }
@@ -322,429 +355,673 @@ const SettingsPage: React.FC = () => {
                 Déconnecter toutes les sessions
               </PrimaryButton>
             )}
-        </div>
+        </motion.div>
       </SettingsCard>
 
-      {/* Changer le mot de passe */}
-      <SettingsCard
-        title='Changer le mot de passe'
-        description='Modifiez votre mot de passe actuel'
-        icon={Key}
+      <motion.div
+        className='flex gap-6 min-[1000px]:flex-row flex-col'
+        initial='hidden'
+        animate='show'
+        variants={containerVariants}
+        style={{
+          gridTemplateColumns: 'minmax(35%, 1fr) minmax(45%, 1.5fr)',
+        }}
       >
-        <form onSubmit={handlePasswordChange} className='space-y-4'>
-          <CustomInput
-            type='password'
-            label='Mot de passe actuel'
-            value={passwordForm.currentPassword}
-            onChange={(e) =>
-              setPasswordForm((prev) => ({
-                ...prev,
-                currentPassword: e.target.value,
-              }))
-            }
-            required
-          />
-          <CustomInput
-            type='password'
-            label='Nouveau mot de passe'
-            value={passwordForm.newPassword}
-            onChange={(e) =>
-              setPasswordForm((prev) => ({
-                ...prev,
-                newPassword: e.target.value,
-              }))
-            }
-            required
-          />
-          {passwordForm.newPassword && (
-            <PasswordStrengthMeter
-              password={passwordForm.newPassword}
-              onStrengthChange={setPasswordStrength}
-            />
-          )}
-          <CustomInput
-            type='password'
-            label='Confirmer le nouveau mot de passe'
-            value={passwordForm.confirmPassword}
-            onChange={(e) =>
-              setPasswordForm((prev) => ({
-                ...prev,
-                confirmPassword: e.target.value,
-              }))
-            }
-            required
-          />
-          <PrimaryButton
-            type='submit'
-            loading={changePasswordState.loading}
-            disabled={
-              !passwordForm.currentPassword ||
-              !passwordForm.newPassword ||
-              !passwordForm.confirmPassword
-            }
+        <motion.div
+          variants={itemVariants}
+          className='min-w-0 flex-1'
+          style={{
+            flex: '1 1 35%',
+            minWidth: 'min(100%, 400px)',
+          }}
+        >
+          <SettingsCard
+            title='Changer le mot de passe'
+            description='Modifiez votre mot de passe actuel'
+            icon={Key}
+            className='min-w-[calc(50%-0.75rem)]'
           >
-            Modifier le mot de passe
-          </PrimaryButton>
-        </form>
-      </SettingsCard>
-
-      {/* Changer l'email */}
-      <SettingsCard
-        title="Changer d'adresse email"
-        description='Modifiez votre adresse email de connexion'
-        icon={Mail}
-      >
-        {!emailChangeStep ? (
-          <div className='flex flex-col min-[540px]:flex-row space-y-3 min-[540px]:space-y-0 items-center justify-between'>
-            <div>
-              <p className='text-sm text-gray-600 dark:text-gray-400'>
-                Email actuel: <span className='font-medium'>{user?.email}</span>
-              </p>
-            </div>
-            <PrimaryButton
-              onClick={handleEmailChangeStart}
-              disabled={changeEmailStep1State.loading}
-            >
-              Modifier l'email
-            </PrimaryButton>
-          </div>
-        ) : (
-          <div className='space-y-4'>
-            {emailChangeStep === 'verify-current' && (
-              <>
+            {showPasswordForm ? (
+              <motion.form
+                onSubmit={handlePasswordChange}
+                className='space-y-4'
+                initial='hidden'
+                animate='show'
+                variants={containerVariants}
+              >
+                <motion.div variants={itemVariants}>
+                  <CustomInput
+                    type='password'
+                    label='Mot de passe actuel'
+                    placeholder='Entrez votre mot de passe actuel'
+                    value={changePasswordForm.values.currentPassword}
+                    onChange={(e) =>
+                      changePasswordForm.handleChange(
+                        'currentPassword',
+                        e.target.value,
+                      )
+                    }
+                    error={
+                      changePasswordForm.touched.currentPassword &&
+                      changePasswordForm.values.currentPassword
+                        ? changePasswordForm.errors.currentPassword
+                        : undefined
+                    }
+                    icon={Lock}
+                    required
+                    autoComplete='current-password'
+                    disabled={changePasswordState.loading}
+                    onBlur={() =>
+                      changePasswordForm.handleBlur('currentPassword')
+                    }
+                  />
+                </motion.div>
+                <motion.div variants={itemVariants}>
+                  <CustomInput
+                    type='password'
+                    label='Nouveau mot de passe'
+                    placeholder='Entrez votre nouveau mot de passe'
+                    value={changePasswordForm.values.newPassword}
+                    onChange={(e) =>
+                      changePasswordForm.handleChange(
+                        'newPassword',
+                        e.target.value,
+                      )
+                    }
+                    icon={KeyRound}
+                    error={
+                      changePasswordForm.touched.newPassword &&
+                      changePasswordForm.values.newPassword
+                        ? changePasswordForm.errors.newPassword
+                        : undefined
+                    }
+                    required
+                    autoComplete='new-password'
+                    disabled={changePasswordState.loading}
+                    onBlur={() => changePasswordForm.handleBlur('newPassword')}
+                  />
+                </motion.div>
+                {changePasswordForm.values.newPassword && (
+                  <PasswordStrengthMeter
+                    password={changePasswordForm.values.newPassword}
+                    onStrengthChange={() => {}}
+                  />
+                )}
+                <motion.div variants={itemVariants}>
+                  <CustomInput
+                    type='password'
+                    label='Confirmer le nouveau mot de passe'
+                    placeholder='Confirmez votre nouveau mot de passe'
+                    value={changePasswordForm.values.confirmPassword}
+                    onChange={(e) =>
+                      changePasswordForm.handleChange(
+                        'confirmPassword',
+                        e.target.value,
+                      )
+                    }
+                    icon={KeyRound}
+                    error={
+                      changePasswordForm.touched.confirmPassword &&
+                      changePasswordForm.values.confirmPassword
+                        ? changePasswordForm.errors.confirmPassword
+                        : undefined
+                    }
+                    required
+                    autoComplete='new-password'
+                    disabled={changePasswordState.loading}
+                    onBlur={() =>
+                      changePasswordForm.handleBlur('confirmPassword')
+                    }
+                  />
+                </motion.div>
+                <motion.div variants={itemVariants} className='flex space-x-3'>
+                  <PrimaryButton
+                    type='submit'
+                    loading={changePasswordState.loading}
+                    disabled={
+                      !changePasswordForm.values.currentPassword ||
+                      !changePasswordForm.values.newPassword ||
+                      !changePasswordForm.values.confirmPassword
+                    }
+                  >
+                    Modifier le mot de passe
+                  </PrimaryButton>
+                  <PrimaryButton
+                    variant='outline'
+                    onClick={() => setShowPasswordForm(false)}
+                  >
+                    Annuler
+                  </PrimaryButton>
+                </motion.div>
+              </motion.form>
+            ) : (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className={`flex ${
+                  user?.email &&
+                  (user.email.length > 25
+                    ? 'max-[540px]:flex-col min-[540px]:flex-row'
+                    : user.email.length > 15
+                      ? 'max-[460px]:flex-col flex-row'
+                      : 'flex-row')
+                } gap-3 items-center justify-between`}
+              >
                 <p className='text-sm text-gray-600 dark:text-gray-400'>
-                  Entrez le code de vérification envoyé à votre email actuel
+                  Cliquez pour modifier votre mot de passe
                 </p>
-                <SixDigitCodeInput
-                  value={changeEmailForm.values.currentEmailCode}
-                  onChange={(value) =>
-                    changeEmailForm.handleChange('currentEmailCode', value)
-                  }
-                  onComplete={() => handleCurrentEmailVerification()}
-                  error={!!changeEmailForm.errors.currentEmailCode}
-                  autoFocus
-                />
-                <ResendAction
-                  onResend={handleEmailChangeStart}
+                <PrimaryButton onClick={() => setShowPasswordForm(true)}>
+                  Modifier
+                </PrimaryButton>
+              </motion.div>
+            )}
+          </SettingsCard>
+        </motion.div>
+
+        {/* Changer l'email */}
+        <motion.div
+          variants={itemVariants}
+          className='min-w-0 flex-1'
+          style={{
+            flex: '1.5 1 45%',
+            minWidth: 'min(100%, 500px)',
+          }}
+        >
+          <SettingsCard
+            title="Changer d'adresse email"
+            description='Modifiez votre adresse email de connexion'
+            icon={Mail}
+            className='min-w-[calc(50%-0.75rem)]'
+          >
+            {!emailChangeStep ? (
+              <motion.div
+                className={`flex ${
+                  user?.email &&
+                  (user.email.length > 25
+                    ? 'max-[540px]:flex-col min-[540px]:flex-row'
+                    : user.email.length > 15
+                      ? 'max-[460px]:flex-col flex-row'
+                      : 'flex-row')
+                } gap-3 items-center justify-between`}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+              >
+                <div className='min-w-0'>
+                  {' '}
+                  {/* Prevents text overflow */}
+                  <p className='text-sm text-gray-600 dark:text-gray-400 truncate'>
+                    Email actuel:{' '}
+                    <span className='font-medium'>{user?.email}</span>
+                  </p>
+                </div>
+                <PrimaryButton
+                  onClick={handleEmailChangeStart}
+                  disabled={changeEmailStep1State.loading}
                   loading={changeEmailStep1State.loading}
-                  countdownSeconds={60}
-                  icon={RefreshCw}
-                  variant='block'
-                  align='center'
-                />
-                <div className='flex space-x-3'>
-                  <PrimaryButton
-                    onClick={handleCurrentEmailVerification}
-                    loading={changeEmailStep2State.loading}
-                    disabled={
-                      changeEmailForm.values.currentEmailCode.join('')
-                        .length !== 6 || changeEmailStep2State.loading
-                    }
-                  >
-                    Vérifier
-                  </PrimaryButton>
-                  <PrimaryButton
-                    variant='outline'
-                    onClick={() => setEmailChangeStep(null)}
-                  >
-                    Annuler
-                  </PrimaryButton>
-                </div>
-              </>
-            )}
+                  className='flex-shrink-0'
+                >
+                  Modifier
+                </PrimaryButton>
+              </motion.div>
+            ) : (
+              <motion.div
+                initial='hidden'
+                animate='show'
+                variants={containerVariants}
+              >
+                {emailChangeStep === 'verify-current' && (
+                  <motion.div variants={itemVariants} className='space-y-4'>
+                    <p className='text-sm text-gray-600 dark:text-gray-400'>
+                      Entrez le code de vérification envoyé à votre email actuel
+                    </p>
+                    <SixDigitCodeInput
+                      value={changeEmailForm.values.currentEmailCode}
+                      onChange={(value) =>
+                        changeEmailForm.handleChange('currentEmailCode', value)
+                      }
+                      onComplete={() => handleCurrentEmailVerification()}
+                      error={!!changeEmailForm.errors.currentEmailCode}
+                      autoFocus
+                    />
+                    <ResendAction
+                      onResend={handleEmailChangeStart}
+                      loading={changeEmailStep1State.loading}
+                      countdownSeconds={60}
+                      icon={RefreshCw}
+                      variant='block'
+                      align='center'
+                    />
+                    <div className='flex space-x-3'>
+                      <PrimaryButton
+                        onClick={handleCurrentEmailVerification}
+                        loading={changeEmailStep2State.loading}
+                        disabled={
+                          changeEmailForm.values.currentEmailCode.join('')
+                            .length !== 6 || changeEmailStep2State.loading
+                        }
+                      >
+                        Vérifier
+                      </PrimaryButton>
+                      <PrimaryButton
+                        variant='outline'
+                        onClick={() => setEmailChangeStep(null)}
+                      >
+                        Annuler
+                      </PrimaryButton>
+                    </div>
+                  </motion.div>
+                )}
 
-            {emailChangeStep === 'new-email' && (
-              <>
-                <CustomInput
-                  id='new-email'
-                  name='newEmail'
-                  type='email'
-                  label='Nouvel email'
-                  placeholder='Entrer votre nouvel email'
-                  value={changeEmailForm.values.newEmail}
-                  onChange={(value) =>
-                    changeEmailForm.handleChange('newEmail', value)
-                  }
-                  error={
-                    changeEmailForm.touched.newEmail &&
-                    changeEmailForm.values.newEmail
-                      ? changeEmailForm.errors.newEmail
-                      : undefined
-                  }
-                  icon={Mail}
-                  required
-                  autoFocus
-                  disabled={changeEmailStep3State.loading}
-                  onBlur={() => changeEmailForm.handleBlur('newEmail')}
-                />
-                <div className='flex space-x-3'>
-                  <PrimaryButton
-                    onClick={handleNewEmailSubmit}
-                    loading={changeEmailStep3State.loading}
-                    disabled={!changeEmailForm.values.newEmail}
-                  >
-                    Envoyer le code
-                  </PrimaryButton>
-                  <PrimaryButton
-                    variant='outline'
-                    onClick={() => setEmailChangeStep(null)}
-                  >
-                    Annuler
-                  </PrimaryButton>
-                </div>
-              </>
-            )}
+                {emailChangeStep === 'new-email' && (
+                  <motion.div variants={itemVariants} className='space-y-4'>
+                    <CustomInput
+                      id='new-email'
+                      name='newEmail'
+                      type='email'
+                      label='Nouvel email'
+                      placeholder='Entrer votre nouvel email'
+                      value={changeEmailForm.values.newEmail}
+                      onChange={(value) =>
+                        changeEmailForm.handleChange('newEmail', value)
+                      }
+                      error={
+                        changeEmailForm.touched.newEmail &&
+                        changeEmailForm.values.newEmail
+                          ? changeEmailForm.errors.newEmail
+                          : undefined
+                      }
+                      icon={Mail}
+                      required
+                      autoFocus
+                      disabled={changeEmailStep3State.loading}
+                      onBlur={() => changeEmailForm.handleBlur('newEmail')}
+                    />
+                    <div className='flex space-x-3'>
+                      <PrimaryButton
+                        onClick={handleNewEmailSubmit}
+                        loading={changeEmailStep3State.loading}
+                        disabled={!changeEmailForm.values.newEmail}
+                      >
+                        Envoyer le code
+                      </PrimaryButton>
+                      <PrimaryButton
+                        variant='outline'
+                        onClick={() => setEmailChangeStep(null)}
+                      >
+                        Annuler
+                      </PrimaryButton>
+                    </div>
+                  </motion.div>
+                )}
 
-            {emailChangeStep === 'verify-new' && (
-              <>
-                <p className='text-sm text-gray-600 dark:text-gray-400'>
-                  Entrez le code de vérification envoyé à{' '}
-                  {changeEmailForm.values.newEmail}
-                </p>
-                <SixDigitCodeInput
-                  value={changeEmailForm.values.newEmailCode}
-                  onChange={(value) =>
-                    changeEmailForm.handleChange('newEmailCode', value)
-                  }
-                  error={!!changeEmailForm.errors.newEmailCode}
-                  onComplete={() => handleNewEmailVerification()}
-                  autoFocus
-                />
-                <ResendAction
-                  onResend={handleNewEmailSubmit}
-                  loading={changeEmailStep3State.loading}
-                  countdownSeconds={60}
-                  icon={RefreshCw}
-                  variant='block'
-                  align='center'
-                />
-                <div className='flex space-x-3'>
-                  <PrimaryButton
-                    onClick={handleNewEmailVerification}
-                    loading={changeEmailStep4State.loading}
-                    disabled={
-                      changeEmailForm.values.newEmailCode.join('').length !== 6
-                    }
-                  >
-                    Confirmer
-                  </PrimaryButton>
-                  <PrimaryButton
-                    variant='outline'
-                    onClick={() => setEmailChangeStep(null)}
-                  >
-                    Annuler
-                  </PrimaryButton>
-                </div>
-              </>
+                {emailChangeStep === 'verify-new' && (
+                  <motion.div variants={itemVariants} className='space-y-4'>
+                    <p className='text-sm text-gray-600 dark:text-gray-400'>
+                      Entrez le code de vérification envoyé à{' '}
+                      {changeEmailForm.values.newEmail}
+                    </p>
+                    <SixDigitCodeInput
+                      value={changeEmailForm.values.newEmailCode}
+                      onChange={(value) =>
+                        changeEmailForm.handleChange('newEmailCode', value)
+                      }
+                      error={!!changeEmailForm.errors.newEmailCode}
+                      onComplete={() => handleNewEmailVerification()}
+                      autoFocus
+                    />
+                    <ResendAction
+                      onResend={handleNewEmailSubmit}
+                      loading={changeEmailStep3State.loading}
+                      countdownSeconds={60}
+                      icon={RefreshCw}
+                      variant='block'
+                      align='center'
+                    />
+                    <div className='flex space-x-3'>
+                      <PrimaryButton
+                        onClick={handleNewEmailVerification}
+                        loading={changeEmailStep4State.loading}
+                        disabled={
+                          changeEmailForm.values.newEmailCode.join('')
+                            .length !== 6
+                        }
+                      >
+                        Confirmer
+                      </PrimaryButton>
+                      <PrimaryButton
+                        variant='outline'
+                        onClick={() => setEmailChangeStep(null)}
+                      >
+                        Annuler
+                      </PrimaryButton>
+                    </div>
+                  </motion.div>
+                )}
+              </motion.div>
             )}
-          </div>
-        )}
+          </SettingsCard>
+        </motion.div>
+      </motion.div>
+
+      {/* Security Switches */}
+      <SettingsCard
+        title='Paramètres de sécurité'
+        description='Configurez vos options de sécurité avancées'
+        icon={Shield}
+      >
+        <motion.div
+          variants={containerVariants}
+          initial='hidden'
+          animate='show'
+          className='space-y-4'
+        >
+          <motion.div variants={itemVariants}>
+            <SecuritySwitch
+              type='2fa'
+              isEnabled={getTwoFactorStatusState.data?.isEnabled || false}
+              onStatusChange={() => fetch2FAStatus()}
+            />
+          </motion.div>
+          <motion.div variants={itemVariants}>
+            <SecuritySwitch
+              type='webauthn-login'
+              isEnabled={
+                getTwoFactorStatusState.data?.loginWithWebAuthn || false
+              }
+              onStatusChange={() => fetch2FAStatus()}
+            />
+          </motion.div>
+        </motion.div>
       </SettingsCard>
     </div>
   )
 
   const renderNotificationsTab = () => (
-    <div className='space-y-6'>
-      <SettingsCard
-        title='Préférences de notifications'
-        description='Choisissez les notifications que vous souhaitez recevoir'
-        icon={Bell}
-      >
-        <div className='space-y-4'>
-          <ToggleSwitch
-            checked={notifications.accountActivity}
-            onChange={(checked) =>
-              setNotifications((prev) => ({
-                ...prev,
-                accountActivity: checked,
-              }))
-            }
-            label='Activité du compte'
-            description='Notifications de connexion, modifications de profil, etc.'
-          />
-          <ToggleSwitch
-            checked={notifications.blogNews}
-            onChange={(checked) =>
-              setNotifications((prev) => ({ ...prev, blogNews: checked }))
-            }
-            label='Actualités du blog'
-            description='Nouveaux articles, mises à jour importantes'
-          />
-          <ToggleSwitch
-            checked={notifications.securityAlerts}
-            onChange={(checked) =>
-              setNotifications((prev) => ({ ...prev, securityAlerts: checked }))
-            }
-            label='Alertes de sécurité'
-            description='Tentatives de connexion suspectes, modifications de sécurité'
-          />
-          <ToggleSwitch
-            checked={notifications.emailDigest}
-            onChange={(checked) =>
-              setNotifications((prev) => ({ ...prev, emailDigest: checked }))
-            }
-            label='Résumé hebdomadaire'
-            description='Résumé de votre activité envoyé chaque semaine'
-          />
-        </div>
-      </SettingsCard>
-    </div>
+    <motion.div
+      className='space-y-6'
+      variants={containerVariants}
+      initial='hidden'
+      animate='show'
+    >
+      <motion.div variants={itemVariants}>
+        <SettingsCard
+          title='Préférences de notifications'
+          description='Choisissez les notifications que vous souhaitez recevoir'
+          icon={Bell}
+        >
+          <motion.div className='space-y-4' variants={containerVariants}>
+            <motion.div variants={itemVariants}>
+              <ToggleSwitch
+                checked={notifications.accountActivity}
+                onChange={(checked) =>
+                  setNotifications((prev) => ({
+                    ...prev,
+                    accountActivity: checked,
+                  }))
+                }
+                label='Activité du compte'
+                description='Notifications de connexion, modifications de profil, etc.'
+              />
+            </motion.div>
+
+            <motion.div variants={itemVariants}>
+              <ToggleSwitch
+                checked={notifications.blogNews}
+                onChange={(checked) =>
+                  setNotifications((prev) => ({ ...prev, blogNews: checked }))
+                }
+                label='Actualités du blog'
+                description='Nouveaux articles, mises à jour importantes'
+              />
+            </motion.div>
+
+            <motion.div variants={itemVariants}>
+              <ToggleSwitch
+                checked={notifications.securityAlerts}
+                onChange={(checked) =>
+                  setNotifications((prev) => ({
+                    ...prev,
+                    securityAlerts: checked,
+                  }))
+                }
+                label='Alertes de sécurité'
+                description='Tentatives de connexion suspectes, modifications de sécurité'
+              />
+            </motion.div>
+
+            <motion.div variants={itemVariants}>
+              <ToggleSwitch
+                checked={notifications.emailDigest}
+                onChange={(checked) =>
+                  setNotifications((prev) => ({
+                    ...prev,
+                    emailDigest: checked,
+                  }))
+                }
+                label='Résumé hebdomadaire'
+                description='Résumé de votre activité envoyé chaque semaine'
+              />
+            </motion.div>
+          </motion.div>
+        </SettingsCard>
+      </motion.div>
+    </motion.div>
   )
 
   const render2FATab = () => (
-    <div className='space-y-6'>
-      {/* Header avec statistiques */}
-      <div className='bg-primary-50 dark:bg-primary-900/20 rounded-lg p-6'>
-        <div className='mb-4 flex items-center space-x-3'>
-          <Shield
-            className='text-primary-600 dark:text-primary-400'
-            size={24}
+    <motion.div
+      className='space-y-6'
+      variants={containerVariants}
+      initial='hidden'
+      animate='show'
+    >
+      {/* Header with statistics */}
+      <motion.div variants={itemVariants}>
+        <div className='bg-primary-50 dark:bg-primary-900/20 rounded-lg p-6'>
+          <motion.div
+            className='mb-4 flex items-center space-x-3'
+            variants={containerVariants}
+          >
+            <motion.div variants={itemVariants}>
+              <Shield
+                className='text-primary-600 dark:text-primary-400'
+                size={24}
+              />
+            </motion.div>
+            <motion.div variants={itemVariants}>
+              <h3 className='text-primary-900 dark:text-primary-100 text-lg font-semibold'>
+                Configuration de la double authentification
+              </h3>
+            </motion.div>
+          </motion.div>
+
+          <motion.p
+            className='text-primary-700 dark:text-primary-300 mb-4 text-sm'
+            variants={itemVariants}
+          >
+            La double authentification ajoute une couche de sécurité
+            supplémentaire à votre compte.
+          </motion.p>
+
+          <motion.div
+            className='grid grid-cols-[repeat(auto-fit,_minmax(130px,_1fr))] gap-4 text-center'
+            variants={containerVariants}
+          >
+            <motion.div variants={itemVariants}>
+              <div className='text-primary-600 dark:text-primary-400 text-2xl font-bold'>
+                {!getTwoFactorStatusState.loading &&
+                  getTwoFactorStatusState.data !== null &&
+                  Object.entries(getTwoFactorStatusState.data).filter(
+                    ([key, value]) =>
+                      key !== 'preferredMethod' &&
+                      key !== 'backupCodes' &&
+                      key !== 'credentials' &&
+                      (value as { isEnabled?: boolean }).isEnabled,
+                  ).length}
+                /3
+              </div>
+              <div className='text-primary-700 dark:text-primary-300 text-sm'>
+                méthodes activées
+              </div>
+            </motion.div>
+
+            <motion.div variants={itemVariants}>
+              <div className='text-primary-600 dark:text-primary-400 text-2xl font-bold'>
+                {!getTwoFactorStatusState.loading
+                  ? getTwoFactorStatusState.data?.preferredMethod === 'webauthn'
+                    ? 'Clé de sécurité'
+                    : getTwoFactorStatusState.data?.preferredMethod === 'app'
+                      ? 'Application'
+                      : getTwoFactorStatusState.data?.preferredMethod ===
+                          'email'
+                        ? 'Email'
+                        : 'Aucune'
+                  : '...'}
+              </div>
+              <div className='text-primary-700 dark:text-primary-300 text-sm'>
+                méthode préférée
+              </div>
+            </motion.div>
+
+            <motion.div
+              className='col-span-1 min-[364px]:col-span-2 min-[510px]:col-span-1'
+              variants={itemVariants}
+            >
+              <div className='text-primary-600 dark:text-primary-400 text-2xl font-bold'>
+                {!getTwoFactorStatusState.loading &&
+                getTwoFactorStatusState.data?.backupCodes?.length
+                  ? getTwoFactorStatusState.data.backupCodes.length
+                  : '...'}
+              </div>
+              <div className='text-primary-700 dark:text-primary-300 text-sm'>
+                codes de secours
+              </div>
+            </motion.div>
+          </motion.div>
+        </div>
+      </motion.div>
+
+      {/* 2FA Methods */}
+      <motion.div
+        className='grid min-[320px]:grid-cols-[repeat(auto-fit,_minmax(280px,_1fr))] grid-cols-[repeat(auto-fit,_minmax(220px,_1fr))] gap-6'
+        variants={containerVariants}
+      >
+        <motion.div variants={itemVariants}>
+          <EmailTwoFactor
+            isEnabled={getTwoFactorStatusState.data?.email?.isEnabled}
+            isPreferredMethod={
+              getTwoFactorStatusState.data?.preferredMethod === 'email'
+            }
+            onStatusChange={() => fetch2FAStatus()}
           />
-          <h3 className='text-primary-900 dark:text-primary-100 text-lg font-semibold'>
-            Configuration de la double authentification
-          </h3>
-        </div>
-        <p className='text-primary-700 dark:text-primary-300 mb-4 text-sm'>
-          La double authentification ajoute une couche de sécurité
-          supplémentaire à votre compte.
-        </p>
-        <div className='grid grid-cols-[repeat(auto-fit,_minmax(130px,_1fr))] gap-4 text-center'>
-          <div>
-            <div className='text-primary-600 dark:text-primary-400 text-2xl font-bold'>
-              {!getTwoFactorStatusState.loading &&
-                getTwoFactorStatusState.data !== null &&
-                Object.entries(getTwoFactorStatusState.data).filter(
-                  ([key, value]) =>
-                    key !== 'preferredMethod' &&
-                    key !== 'backupCodes' &&
-                    key !== 'credentials' &&
-                    (value as { isEnabled?: boolean }).isEnabled,
-                ).length}
-              /3
-            </div>
-            <div className='text-primary-700 dark:text-primary-300 text-sm'>
-              méthodes activées
-            </div>
-          </div>
-          <div>
-            <div className='text-primary-600 dark:text-primary-400 text-2xl font-bold'>
-              {!getTwoFactorStatusState.loading
-                ? getTwoFactorStatusState.data?.preferredMethod === 'webauthn'
-                  ? 'Clé de sécurité'
-                  : getTwoFactorStatusState.data?.preferredMethod === 'app'
-                    ? 'Application'
-                    : getTwoFactorStatusState.data?.preferredMethod === 'email'
-                      ? 'Email'
-                      : 'Aucune'
-                : '...'}
-            </div>
-            <div className='text-primary-700 dark:text-primary-300 text-sm'>
-              méthode préférée
-            </div>
-          </div>
-          <div className='col-span-1 min-[364px]:col-span-2 min-[510px]:col-span-1'>
-            <div className='text-primary-600 dark:text-primary-400 text-2xl font-bold'>
-              {!getTwoFactorStatusState.loading &&
-              getTwoFactorStatusState.data?.backupCodes?.length
-                ? getTwoFactorStatusState.data.backupCodes.length
-                : '...'}
-            </div>
-            <div className='text-primary-700 dark:text-primary-300 text-sm'>
-              codes de secours
-            </div>
-          </div>
-        </div>
-      </div>
+        </motion.div>
 
-      {/* Méthodes 2FA */}
-      <div className='grid min-[320px]:grid-cols-[repeat(auto-fit,_minmax(280px,_1fr))] grid-cols-[repeat(auto-fit,_minmax(220px,_1fr))] gap-6'>
-        <EmailTwoFactor
-          isEnabled={getTwoFactorStatusState.data?.email?.isEnabled}
-          isPreferredMethod={
-            getTwoFactorStatusState.data?.preferredMethod === 'email'
-          }
-          onStatusChange={() => fetch2FAStatus()}
-        />
+        <motion.div variants={itemVariants}>
+          <AppTwoFactor
+            isEnabled={getTwoFactorStatusState.data?.app?.isEnabled}
+            isPreferredMethod={
+              getTwoFactorStatusState.data?.preferredMethod === 'app'
+            }
+            onStatusChange={() => fetch2FAStatus()}
+          />
+        </motion.div>
 
-        <AppTwoFactor
-          isEnabled={getTwoFactorStatusState.data?.app?.isEnabled}
-          isPreferredMethod={
-            getTwoFactorStatusState.data?.preferredMethod === 'app'
-          }
-          onStatusChange={() => fetch2FAStatus()}
-        />
+        <motion.div variants={itemVariants}>
+          <WebAuthnTwoFactor
+            isEnabled={getTwoFactorStatusState.data?.webauthn?.isEnabled}
+            isPreferredMethod={
+              getTwoFactorStatusState.data?.preferredMethod === 'webauthn'
+            }
+            credentials={getTwoFactorStatusState.data?.credentials || []}
+            onStatusChange={() => fetch2FAStatus()}
+          />
+        </motion.div>
+      </motion.div>
 
-        <WebAuthnTwoFactor
-          isEnabled={getTwoFactorStatusState.data?.webauthn?.isEnabled}
-          isPreferredMethod={
-            getTwoFactorStatusState.data?.preferredMethod === 'webauthn'
-          }
-          credentials={getTwoFactorStatusState.data?.credentials || []}
-          onStatusChange={() => fetch2FAStatus()}
-        />
-      </div>
-
-      {/* Codes de secours */}
+      {/* Backup Codes */}
       {!getTwoFactorStatusState.loading &&
-        getTwoFactorStatusState.data?.backupCodes?.length &&
         getTwoFactorStatusState.data.backupCodes.length > 0 && (
-          <BackupCodesDisplay
-            codes={getTwoFactorStatusState.data.backupCodes.map(
-              (code: any) => code.code,
-            )}
-            onContinue={() => {}}
-            onSkip={() => {}}
-            isModal={false}
-          />
+          <motion.div variants={itemVariants}>
+            <BackupCodesDisplay
+              codes={getTwoFactorStatusState.data.backupCodes.map(
+                (code: any) => code.code,
+              )}
+              onContinue={() => {}}
+              onSkip={() => {}}
+              isModal={false}
+            />
+          </motion.div>
         )}
-    </div>
+    </motion.div>
   )
 
   const renderAccountTab = () => (
-    <div className='space-y-6'>
-      {/* Téléchargement des données */}
-      <SettingsCard
-        title='Télécharger mes données'
-        description='Obtenez une copie de toutes vos données (conforme RGPD)'
-        icon={Download}
-      >
-        <PrimaryButton icon={Download}>Télécharger mes données</PrimaryButton>
-      </SettingsCard>
+    <motion.div
+      className='space-y-6'
+      variants={containerVariants}
+      initial='hidden'
+      animate='show'
+    >
+      {/* Data Download */}
+      <motion.div variants={itemVariants}>
+        <SettingsCard
+          title='Télécharger mes données'
+          description='Obtenez une copie de toutes vos données (conforme RGPD)'
+          icon={Download}
+        >
+          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+            <PrimaryButton icon={CloudDownload}>
+              Télécharger mes données
+            </PrimaryButton>
+          </motion.div>
+        </SettingsCard>
+      </motion.div>
 
-      {/* Suppression du compte */}
-      <SettingsCard
-        title='Supprimer mon compte'
-        description='Supprimez définitivement votre compte et toutes vos données'
-        icon={Trash2}
-        variant='danger'
-      >
-        <div className='space-y-4'>
-          <div className='rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800/30 dark:bg-red-900/10'>
-            <div className='mb-2 flex items-center space-x-2'>
-              <AlertTriangle
-                className='text-red-600 dark:text-red-400'
-                size={16}
-              />
-              <span className='font-medium text-red-800 dark:text-red-200'>
-                Attention : Cette action est irréversible
-              </span>
-            </div>
-            <p className='text-sm text-red-700 dark:text-red-300'>
-              Toutes vos données seront définitivement supprimées et ne pourront
-              pas être récupérées.
-            </p>
-          </div>
-          <PrimaryButton
-            variant='danger'
-            size='md'
-            loading={deleteAccountState.loading}
-            onClick={open}
-          >
-            Supprimer mon compte
-          </PrimaryButton>
-        </div>
-      </SettingsCard>
-    </div>
+      {/* Account Deletion */}
+      <motion.div variants={itemVariants}>
+        <SettingsCard
+          title='Supprimer mon compte'
+          description='Supprimez définitivement votre compte et toutes vos données'
+          icon={Trash2}
+          variant='danger'
+        >
+          <motion.div className='space-y-4' variants={containerVariants}>
+            <motion.div
+              variants={itemVariants}
+              className='rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800/30 dark:bg-red-900/10'
+              whileHover={{ x: 2 }}
+            >
+              <div className='mb-2 flex items-center space-x-2'>
+                <AlertTriangle
+                  className='text-red-600 dark:text-red-400'
+                  size={16}
+                />
+                <span className='font-medium text-red-800 dark:text-red-200'>
+                  Attention : Cette action est irréversible
+                </span>
+              </div>
+              <p className='text-sm text-red-700 dark:text-red-300'>
+                Toutes vos données seront définitivement supprimées et ne
+                pourront pas être récupérées.
+              </p>
+            </motion.div>
+
+            <motion.div variants={itemVariants}>
+              <PrimaryButton
+                variant='danger'
+                size='md'
+                icon={CircleX}
+                disabled={deleteAccountState.loading}
+                loading={deleteAccountState.loading}
+                onClick={open}
+              >
+                Supprimer mon compte
+              </PrimaryButton>
+            </motion.div>
+          </motion.div>
+        </SettingsCard>
+      </motion.div>
+    </motion.div>
   )
 
   return (
@@ -821,7 +1098,8 @@ const SettingsPage: React.FC = () => {
               disabled={
                 (deleteConfirmation.toLocaleUpperCase() !== 'SUPPRIMER' &&
                   deleteConfirmation.toLocaleLowerCase() !== user?.email) ||
-                !deletePassword
+                !deletePassword ||
+                deleteAccountState.loading
               }
               className='bg-red-600 text-white hover:bg-red-700'
             >
