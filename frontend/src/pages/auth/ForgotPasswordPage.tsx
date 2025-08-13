@@ -2,7 +2,7 @@ import { ArrowLeft, Mail, RefreshCw } from 'lucide-react'
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
-import CountdownTimer from '../../components/ui/CountdownTimer'
+import ResendAction from '../../components/ui/ResendAction'
 import CustomInput from '../../components/ui/CustomInput'
 import PrimaryButton from '../../components/ui/PrimaryButton'
 import AuthLayout from '../../layouts/AuthLayout'
@@ -43,8 +43,7 @@ const ForgotPasswordPage: React.FC = () => {
     }
   }
 
-  const handleResend = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleResend = async () => {
     if (!form.validateForm()) return
     resendForgotPasswordState.resetError()
     if (!canResend) return
@@ -91,36 +90,14 @@ const ForgotPasswordPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Resend section */}
-          <div className='space-y-3'>
-            <p className='text-deg-gray-600 text-sm'>
-              Didn't receive the email?
-            </p>
-
-            {!canResend ? (
-              <div className='flex items-center justify-center gap-2'>
-                <span className='text-deg-gray-500 text-sm'>
-                  Resend available in
-                </span>
-                <CountdownTimer
-                  initialSeconds={60}
-                  onComplete={() => setCanResend(true)}
-                  showIcon={false}
-                />
-              </div>
-            ) : (
-              <PrimaryButton
-                variant='ghost'
-                onClick={handleResend}
-                loading={resendForgotPasswordState.loading}
-                disabled={!canResend || resendForgotPasswordState.loading}
-                icon={RefreshCw}
-                className='mt-2'
-              >
-                Renvoyer un code
-              </PrimaryButton>
-            )}
-          </div>
+          <ResendAction
+            countdownSeconds={60}
+            icon={RefreshCw}
+            onResend={handleResend}
+            loading={resendForgotPasswordState.loading}
+            variant='block'
+            align='center'
+          />
 
           {/* Back to login */}
           <div className='border-deg-gray-200 border-t pt-4'>

@@ -92,8 +92,7 @@ export const nameSchema = z
   .max(30, 'Name must be less than 30 characters')
 
 export const verificationCodeSchema = z
-  .string()
-  .regex(/^\d+$/, 'Verification code must contain only numbers')
+  .array(z.string().regex(/^\d$/, 'Must be a single digit'))
   .length(6, 'Verification code must be 6 digits')
 
 export const backupCodeSchema = z
@@ -162,3 +161,9 @@ export const resetPasswordSchema = z
     message: 'Passwords do not match',
     path: ['confirmPassword'],
   })
+
+export const changeEmailSchema = z.object({
+  currentEmailCode: verificationCodeSchema,
+  newEmail: emailSchema,
+  newEmailCode: verificationCodeSchema,
+})

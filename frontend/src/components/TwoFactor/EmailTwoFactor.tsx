@@ -1,5 +1,5 @@
 import { AlertCircle, Mail, RefreshCw, Shield, Star } from 'lucide-react'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 
 import { useAuth } from '../../context/Auth'
 import useEmailTwoFactor from '../../hooks/TwoFactor/Email'
@@ -36,6 +36,7 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
     'config' | 'verify' | 'backup' | 'security'
   >('config')
   const [canResend, setCanResend] = useState(false)
+  const lastCodeRef = useRef<string>('')
   const [verificationCode, setVerificationCode] = useState<string[]>(
     Array(6).fill(''),
   )
@@ -60,10 +61,27 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
   useEffect(() => {
     // Auto-submit when code is complete
     const codeValue = verificationCode.join('')
-    if (codeValue.length === 6 && !enableEmailState.loading) {
+    if (
+      codeValue.length === 6 &&
+      !enableEmailState.loading &&
+      codeValue !== lastCodeRef.current
+    ) {
+      lastCodeRef.current = codeValue
       handleVerifyCode()
     }
   }, [verificationCode])
+  useEffect(() => {
+    // Auto-submit when code is complete
+    const codeValue = disableCode.join('')
+    if (
+      codeValue.length === 6 &&
+      !disableEmailState.loading &&
+      codeValue !== lastCodeRef.current
+    ) {
+      lastCodeRef.current = codeValue
+      handleDisable()
+    }
+  }, [disableCode])
 
   // Step 1: Send Verification code
   const handleEnable = async () => {
@@ -86,11 +104,9 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
   // Step 2: Verify Code
   const handleVerifyCode = async () => {
     enableEmailState.resetError()
-    const code = verificationCode.join('')
-    if (code.length !== 6) return
-
-    const result = await enableEmail(code)
+    const result = await enableEmail(verificationCode.join(''))
     if (result.success) {
+      lastCodeRef.current = ''
       setCurrentStep('backup')
     }
   }
@@ -102,6 +118,7 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
       disableMethod === 'otp' ? disableCode.join('') : disablePassword
     const result = await disableEmail(disableMethod, value)
     if (result.success) {
+      lastCodeRef.current = ''
       closeDisableFlow()
       onStatusChange()
     }
@@ -156,29 +173,30 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
                 autoFocus
               />
             </div>
-            <div className='space-y-2 text-center'>
-              {!canResend && (
+            {!canResend ? (
+              <div className='space-y-2 text-center'>
                 <CountdownTimer
                   initialSeconds={60}
                   onComplete={() => setCanResend(true)}
                   className='justify-center'
                 />
-              )}
-            </div>
-            <div className='text-center text-sm text-gray-600 dark:text-gray-400'>
-              Vous n'avez pas reçu l'email ? Vérifiez votre dossier Indésirables
-              ou{' '}
-              <PrimaryButton
-                variant='ghost'
-                onClick={() => handleResendCode('config')}
-                loading={resendCodeState.loading}
-                disabled={!canResend || resendCodeState.loading}
-                icon={RefreshCw}
-                className='mt-2'
-              >
-                Renvoyer un code
-              </PrimaryButton>
-            </div>
+              </div>
+            ) : (
+              <div className='text-center text-sm text-gray-600 dark:text-gray-400'>
+                Vous n'avez pas reçu l'email ? Vérifiez votre dossier
+                Indésirables ou{' '}
+                <PrimaryButton
+                  variant='ghost'
+                  onClick={() => handleResendCode('config')}
+                  loading={resendCodeState.loading}
+                  disabled={!canResend || resendCodeState.loading}
+                  icon={RefreshCw}
+                  className='mt-2'
+                >
+                  Renvoyer un code
+                </PrimaryButton>
+              </div>
+            )}
 
             <div className='flex space-x-3'>
               <PrimaryButton

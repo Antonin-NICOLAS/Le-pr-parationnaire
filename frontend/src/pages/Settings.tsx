@@ -11,8 +11,9 @@ import {
   Monitor,
   Shield,
   Trash2,
+  RefreshCw,
 } from 'lucide-react'
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useState, useRef } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 
@@ -36,6 +37,9 @@ import { useUrlModal } from '../routes/UseUrlModal'
 import type { ChangePassword, PasswordStrength } from '../types/auth'
 import type { LoginHistory } from '../types/user'
 import useSessions from '../hooks/Auth/useSessions'
+import ResendAction from '../components/ui/ResendAction'
+import { useFormHandler } from '../hooks/useFormHandler'
+import { changeEmailSchema } from '../utils/validation'
 
 const SettingsPage: React.FC = () => {
   const { tab = 'security' } = useParams()
@@ -87,11 +91,6 @@ const SettingsPage: React.FC = () => {
   const [emailChangeStep, setEmailChangeStep] = useState<
     'verify-current' | 'new-email' | 'verify-new' | null
   >(null)
-  const [emailForm, setEmailForm] = useState({
-    currentEmailCode: Array(6).fill(''),
-    newEmail: '',
-    newEmailCode: Array(6).fill(''),
-  })
   // Notification preferences
   const [notifications, setNotifications] = useState({
     accountActivity: true,
@@ -104,6 +103,17 @@ const SettingsPage: React.FC = () => {
   const { open, close } = useUrlModal('delete-account')
   const [deleteConfirmation, setDeleteConfirmation] = useState('')
   const [deletePassword, setDeletePassword] = useState('')
+  const lastCodeRef = useRef<string>('')
+  const changeEmailForm = useFormHandler({
+    initialValues: {
+      currentEmailCode: Array(6).fill(''),
+      newEmail: '',
+      newEmailCode: Array(6).fill(''),
+    },
+    validationSchema: changeEmailSchema,
+    validateOnChange: true,
+    validateOnBlur: false,
+  })
 
   const fetch2FAStatus = async () => {
     await getTwoFactorStatus()
@@ -119,19 +129,29 @@ const SettingsPage: React.FC = () => {
 
   useEffect(() => {
     // Auto-submit when code is complete
-    const codeValue = emailForm.currentEmailCode.join('')
-    if (codeValue.length === 6 && !changeEmailStep2State.loading) {
+    const codeValue = changeEmailForm.values.currentEmailCode.join('')
+    if (
+      codeValue.length === 6 &&
+      !changeEmailStep2State.loading &&
+      codeValue !== lastCodeRef.current
+    ) {
+      lastCodeRef.current = codeValue
       handleCurrentEmailVerification()
     }
-  }, [emailForm.currentEmailCode])
+  }, [changeEmailForm.values.currentEmailCode])
 
   useEffect(() => {
     // Auto-submit when code is complete
-    const codeValue = emailForm.newEmailCode.join('')
-    if (codeValue.length === 6 && !changeEmailStep4State.loading) {
+    const codeValue = changeEmailForm.values.newEmailCode.join('')
+    if (
+      codeValue.length === 6 &&
+      !changeEmailStep4State.loading &&
+      codeValue !== lastCodeRef.current
+    ) {
+      lastCodeRef.current = codeValue
       handleNewEmailVerification()
     }
-  }, [emailForm.newEmailCode])
+  }, [changeEmailForm.values.newEmailCode])
 
   const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -156,36 +176,36 @@ const SettingsPage: React.FC = () => {
   }
 
   const handleEmailChangeStart = async () => {
-    await changeEmailStep1(() => {
+    const result = await changeEmailStep1()
+    if (result.success) {
       setEmailChangeStep('verify-current')
-    })
+    }
   }
 
   const handleCurrentEmailVerification = async () => {
-    if (emailForm.currentEmailCode.join('').length !== 6) {
-      return
-    }
-    const result = await changeEmailStep2(emailForm.currentEmailCode.join(''))
+    const result = await changeEmailStep2(
+      changeEmailForm.values.currentEmailCode.join(''),
+    )
     if (result.success) {
+      lastCodeRef.current = ''
       setEmailChangeStep('new-email')
     }
   }
 
   const handleNewEmailSubmit = async () => {
-    const result = await changeEmailStep3(emailForm.newEmail)
+    const result = await changeEmailStep3(changeEmailForm.values.newEmail)
     if (result.success) {
       setEmailChangeStep('verify-new')
     }
   }
 
   const handleNewEmailVerification = async () => {
-    const result = await changeEmailStep4(emailForm.newEmailCode.join(''))
+    const result = await changeEmailStep4(
+      changeEmailForm.values.newEmailCode.join(''),
+    )
     if (result.success) {
-      setEmailForm({
-        currentEmailCode: Array(6).fill(''),
-        newEmail: '',
-        newEmailCode: Array(6).fill(''),
-      })
+      lastCodeRef.current = ''
+      changeEmailForm.reset()
       setEmailChangeStep(null)
     }
   }
@@ -425,22 +445,28 @@ const SettingsPage: React.FC = () => {
                   Entrez le code de vérification envoyé à votre email actuel
                 </p>
                 <SixDigitCodeInput
-                  value={emailForm.currentEmailCode}
+                  value={changeEmailForm.values.currentEmailCode}
                   onChange={(value) =>
-                    setEmailForm((prev) => ({
-                      ...prev,
-                      currentEmailCode: value,
-                    }))
+                    changeEmailForm.handleChange('currentEmailCode', value)
                   }
+                  error={!!changeEmailForm.errors.currentEmailCode}
                   autoFocus
+                />
+                <ResendAction
+                  onResend={handleEmailChangeStart}
+                  loading={changeEmailStep1State.loading}
+                  countdownSeconds={60}
+                  icon={RefreshCw}
+                  variant='block'
+                  align='center'
                 />
                 <div className='flex space-x-3'>
                   <PrimaryButton
                     onClick={handleCurrentEmailVerification}
                     loading={changeEmailStep2State.loading}
                     disabled={
-                      emailForm.currentEmailCode.join('').length !== 6 ||
-                      changeEmailStep2State.loading
+                      changeEmailForm.values.currentEmailCode.join('')
+                        .length !== 6 || changeEmailStep2State.loading
                     }
                   >
                     Vérifier
@@ -458,22 +484,32 @@ const SettingsPage: React.FC = () => {
             {emailChangeStep === 'new-email' && (
               <>
                 <CustomInput
+                  id='new-email'
+                  name='newEmail'
                   type='email'
                   label='Nouvel email'
-                  value={emailForm.newEmail}
-                  onChange={(e) =>
-                    setEmailForm((prev) => ({
-                      ...prev,
-                      newEmail: e.target.value,
-                    }))
+                  placeholder='Entrer votre nouvel email'
+                  value={changeEmailForm.values.newEmail}
+                  onChange={(value) =>
+                    changeEmailForm.handleChange('newEmail', value)
                   }
+                  error={
+                    changeEmailForm.touched.newEmail &&
+                    changeEmailForm.values.newEmail
+                      ? changeEmailForm.errors.newEmail
+                      : undefined
+                  }
+                  icon={Mail}
                   required
+                  autoFocus
+                  disabled={changeEmailStep3State.loading}
+                  onBlur={() => changeEmailForm.handleBlur('newEmail')}
                 />
                 <div className='flex space-x-3'>
                   <PrimaryButton
                     onClick={handleNewEmailSubmit}
                     loading={changeEmailStep3State.loading}
-                    disabled={!emailForm.newEmail}
+                    disabled={!changeEmailForm.values.newEmail}
                   >
                     Envoyer le code
                   </PrimaryButton>
@@ -490,19 +526,32 @@ const SettingsPage: React.FC = () => {
             {emailChangeStep === 'verify-new' && (
               <>
                 <p className='text-sm text-gray-600 dark:text-gray-400'>
-                  Entrez le code de vérification envoyé à {emailForm.newEmail}
+                  Entrez le code de vérification envoyé à{' '}
+                  {changeEmailForm.values.newEmail}
                 </p>
                 <SixDigitCodeInput
-                  value={emailForm.newEmailCode}
+                  value={changeEmailForm.values.newEmailCode}
                   onChange={(value) =>
-                    setEmailForm((prev) => ({ ...prev, newEmailCode: value }))
+                    changeEmailForm.handleChange('newEmailCode', value)
                   }
+                  error={!!changeEmailForm.errors.newEmailCode}
+                  autoFocus
+                />
+                <ResendAction
+                  onResend={handleNewEmailSubmit}
+                  loading={changeEmailStep3State.loading}
+                  countdownSeconds={60}
+                  icon={RefreshCw}
+                  variant='block'
+                  align='center'
                 />
                 <div className='flex space-x-3'>
                   <PrimaryButton
                     onClick={handleNewEmailVerification}
                     loading={changeEmailStep4State.loading}
-                    disabled={emailForm.newEmailCode.join('').length !== 6}
+                    disabled={
+                      changeEmailForm.values.newEmailCode.join('').length !== 6
+                    }
                   >
                     Confirmer
                   </PrimaryButton>

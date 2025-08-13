@@ -51,7 +51,7 @@ const PrimaryButton: React.FC<PrimaryButtonProps> = ({
     `,
     ghost: `
       text-primary-600 dark:text-primary-400 
-      hover:bg-primary-50 dark:hover:bg-primary-900/20 focus:ring-primary-500
+      hover:bg-primary-50 dark:hover:bg-primary-400/20 focus:ring-primary-500
     `,
   }
 

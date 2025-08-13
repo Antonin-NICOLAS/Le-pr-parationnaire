@@ -7,7 +7,7 @@ import {
   RefreshCw,
 } from 'lucide-react'
 import type React from 'react'
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useLocation, useNavigate, useParams } from 'react-router-dom'
 
 import CountdownTimer from '../../components/ui/CountdownTimer'
@@ -32,6 +32,7 @@ const TwoFactorPage: React.FC = () => {
     app2FA = false,
     webauthn2FA = false,
   } = location.state || {}
+  const lastCodeRef = useRef<string>('')
   const [code, setCode] = useState<string[]>(Array(6).fill(''))
   const { method } = useParams<{ method: string }>()
   const [currentMethod, setCurrentMethod] = useState<
@@ -68,7 +69,12 @@ const TwoFactorPage: React.FC = () => {
   useEffect(() => {
     // Auto-submit when code is complete
     const codeValue = code.join('')
-    if (codeValue.length === 6 && !twoFactorLoginState.loading) {
+    if (
+      codeValue.length === 6 &&
+      !twoFactorLoginState.loading &&
+      codeValue !== lastCodeRef.current
+    ) {
+      lastCodeRef.current = codeValue
       handleVerification(codeValue)
     }
   }, [code])
