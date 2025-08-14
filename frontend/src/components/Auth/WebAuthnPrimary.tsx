@@ -8,6 +8,7 @@ import {
   AlertTriangle,
   ChevronLeft,
   RefreshCw,
+  Settings2,
 } from 'lucide-react'
 import TransferCredentialCard from '../TwoFactor/TransferCredentialCard'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -626,6 +627,7 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
               <PrimaryButton
                 variant='outline'
                 size='sm'
+                icon={Settings2}
                 onClick={openCredentialsList}
               >
                 Gérer les clés ({primaryCredentials.length})

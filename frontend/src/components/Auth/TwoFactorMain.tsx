@@ -13,6 +13,7 @@ import {
   ChevronLeft,
   Lock,
   CheckCircle,
+  UserCheck,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import ResendSection from '../ui/ResendSection'
@@ -1018,6 +1019,7 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
                   handleResendCode('disable')
                 }
               }}
+              icon={UserCheck}
               fullWidth
             >
               Vérifier mon identité

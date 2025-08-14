@@ -80,6 +80,7 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
     const result = await enableEmail(verificationCode.join(''))
     if (result.success) {
       setCurrentStep('backup')
+      onStatusChange()
     }
   }
 

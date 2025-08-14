@@ -16,6 +16,7 @@ import {
   RefreshCw,
   Lock,
   KeyRound,
+  Pen,
 } from 'lucide-react'
 import React, { useEffect, useState } from 'react'
 import { useNavigate, useParams } from 'react-router-dom'
@@ -480,6 +481,7 @@ const SettingsPage: React.FC = () => {
                   <PrimaryButton
                     type='submit'
                     loading={changePasswordState.loading}
+                    icon={Pen}
                     disabled={
                       !changePasswordForm.values.currentPassword ||
                       !changePasswordForm.values.newPassword ||
@@ -512,7 +514,10 @@ const SettingsPage: React.FC = () => {
                 <p className='text-sm text-gray-600 dark:text-gray-400'>
                   Cliquez pour modifier votre mot de passe
                 </p>
-                <PrimaryButton onClick={() => setShowPasswordForm(true)}>
+                <PrimaryButton
+                  onClick={() => setShowPasswordForm(true)}
+                  icon={Pen}
+                >
                   Modifier
                 </PrimaryButton>
               </motion.div>
@@ -558,6 +563,7 @@ const SettingsPage: React.FC = () => {
                 </div>
                 <PrimaryButton
                   onClick={handleEmailChangeStart}
+                  icon={Pen}
                   disabled={changeEmailStep1State.loading}
                   loading={changeEmailStep1State.loading}
                   className='flex-shrink-0'

@@ -1,5 +1,3 @@
-'use client'
-
 import {
   AlertCircle,
   Fingerprint,
@@ -8,6 +6,7 @@ import {
   Shield,
   Trash2,
   ChevronLeft,
+  Settings2,
 } from 'lucide-react'
 import type React from 'react'
 import { useState } from 'react'
@@ -440,9 +439,13 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
 
       <div className='space-y-3'>
         {credentials.map((credential) => (
-          <div
+          <motion.div
             key={credential.id}
             className='flex items-center justify-between rounded-lg bg-gray-50 p-4 dark:bg-gray-700/50'
+            whileHover={{ y: -2 }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: 'spring', stiffness: 300 }}
           >
             <div className='flex items-center space-x-3'>
               <div className='rounded-lg bg-purple-100 p-2 dark:bg-purple-900/20'>
@@ -468,17 +471,21 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
             >
               Supprimer
             </PrimaryButton>
-          </div>
+          </motion.div>
         ))}
       </div>
 
       {credentials.length === 0 && (
-        <div className='py-8 text-center'>
+        <motion.div
+          className='py-8 text-center'
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+        >
           <Key className='mx-auto mb-4 h-12 w-12 text-gray-400' />
           <p className='text-gray-500 dark:text-gray-400'>
             Aucune clé de sécurité enregistrée
           </p>
-        </div>
+        </motion.div>
       )}
     </div>
   )
@@ -574,6 +581,7 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
           <PrimaryButton
             variant='outline'
             size='sm'
+            icon={Settings2}
             fullWidth
             onClick={openCredentialsList}
           >
@@ -624,7 +632,7 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
 
       <Modal
         onClose={closeCredentialsList}
-        title='Clés de sécurité'
+        title='Clés de sécurité secondaires'
         size='lg'
         urlName='webauthn-credentials'
       >
@@ -633,7 +641,7 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
 
       <Modal
         onClose={closeDisableFlow}
-        title='Désactiver WebAuthn'
+        title="Désactiver la 2FA par clé d'accès"
         size='md'
         urlName='disable-webauthn'
       >

@@ -71,7 +71,12 @@ app.use('/auth/webauthn', WebAuthnRoutes)
 app.use('/user', UserRoutes)
 
 mongoose
-  .connect(process.env.MONGO_URI || '')
+  .connect(process.env.MONGO_URI || '', {
+    retryWrites: true,
+    retryReads: true,
+    waitQueueTimeoutMS: 30000,
+    socketTimeoutMS: 45000,
+  })
   .then(() => {
     console.log('mongoDB connected')
 

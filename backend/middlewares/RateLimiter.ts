@@ -3,14 +3,22 @@ import { RateLimiterMemory } from 'rate-limiter-flexible'
 
 // Rate limiter configuration (5 requests per IP per minute)
 const rateLimiter = new RateLimiterMemory({
+  keyPrefix: 'rate_limiter',
   points: 5,
-  duration: 120,
+  duration: 60,
   blockDuration: 60 * 15,
 })
 
 const strictRateLimiter = new RateLimiterMemory({
+  keyPrefix: 'strict_rate_limiter',
   points: 1,
   duration: 60,
+})
+
+const refreshTokenRateLimiter = new RateLimiterMemory({
+  keyPrefix: 'refresh_token_rate_limiter',
+  points: 1,
+  duration: 5,
 })
 
 // Middleware to apply rate limiting
@@ -77,4 +85,26 @@ const strictRateLimiterMiddleware = (
     })
 }
 
-export { rateLimiterMiddleware, strictRateLimiterMiddleware }
+const refreshTokenRateLimiterMiddleware = (
+  req: Request,
+  res: Response,
+  next: NextFunction,
+) => {
+  const { t } = req
+  refreshTokenRateLimiter
+    .consume(req.ip ?? '')
+    .then(() => {
+      next()
+    })
+    .catch(() => {
+      res.status(429).json({
+        success: false,
+      })
+    })
+}
+
+export {
+  rateLimiterMiddleware,
+  strictRateLimiterMiddleware,
+  refreshTokenRateLimiterMiddleware,
+}

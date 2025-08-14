@@ -1,5 +1,6 @@
 import User from '../models/User.js'
 import type { LoginHistory } from '../models/User.js'
+import mongoose from 'mongoose'
 import { asyncHandler } from '../helpers/AsyncHandler.js'
 import { ApiResponse } from '../helpers/ApiResponse.js'
 import { SessionService } from '../services/SessionService.js'
@@ -17,7 +18,6 @@ import {
   validatePassword,
   getDeviceInfo,
   findLocation,
-  generateTokensAndCookies,
   generateResetToken,
 } from '../helpers/AuthHelpers.js'
 // Emails
@@ -39,44 +39,97 @@ export const refreshToken = asyncHandler(
       return ApiResponse.error(res, t('auth:errors.unauthorized'), 401)
     }
 
-    // 1. Trouver l'utilisateur via la session
-    const user = await User.findOne({
-      'loginHistory.refreshToken': { $exists: true },
-      'loginHistory.sessionId': req.cookies?.sessionId,
-    })
+    console.log('Raw refresh token:', rawRefreshToken)
 
-    if (!user) {
-      return ApiResponse.error(res, t('auth:errors.session_not_found'), 404)
+    const session = await mongoose.startSession()
+    session.startTransaction()
+
+    try {
+      const user = await User.findOne({
+        'loginHistory.sessionId': sessionId,
+      }).session(session)
+
+      if (!user) {
+        await session.abortTransaction()
+        return ApiResponse.error(res, t('auth:errors.session_not_found'), 404)
+      }
+
+      const userSession = user.loginHistory.find(
+        (s) => s.sessionId === sessionId,
+      )
+      console.log('userSession', userSession)
+
+      if (!userSession || !userSession.refreshToken) {
+        await session.abortTransaction()
+        return ApiResponse.error(res, t('auth:errors.session_expired'), 401)
+      }
+
+      console.log('Refresh token :', userSession.refreshToken)
+
+      // 3. Vérifier l'expiration
+      if (userSession.expiresAt.getTime() < Date.now()) {
+        await session.abortTransaction()
+        return ApiResponse.error(res, t('auth:errors.session_expired'), 401)
+      }
+
+      console.log(
+        'Session expirée à :',
+        userSession.expiresAt,
+        userSession.expiresAt.getTime() < Date.now(),
+      )
+
+      // 4. Vérifier le token
+      const isValid = await TokenService.compareTokens(
+        rawRefreshToken,
+        userSession.refreshToken,
+      )
+
+      if (!isValid) {
+        await User.updateOne(
+          { _id: user._id },
+          { $pull: { loginHistory: { sessionId } } },
+        ).session(session)
+        await session.commitTransaction()
+        return ApiResponse.error(res, t('auth:errors.token_invalid'), 401)
+      }
+
+      // 5. Mettre à jour lastActive AVANT la génération des tokens
+      userSession.lastActive = new Date()
+      await user.save({ session })
+
+      // 6. Générer nouveaux tokens
+      const rememberMe = userSession.expiresAt.getTime() > Date.now() + ms('1d')
+      const { accessToken } = await SessionService.createSessionWithTokens(
+        user,
+        req,
+        res,
+        rememberMe,
+        sessionId,
+      )
+
+      await session.commitTransaction()
+      return ApiResponse.success(res, { accessToken }, '', 200)
+    } catch (error: any) {
+      await session.abortTransaction()
+      console.error('[RefreshToken] Error:', {
+        sessionId,
+        error: error instanceof Error ? error.message : 'Unknown error',
+        stack: error instanceof Error ? error.stack : undefined,
+      })
+
+      // Gestion spécifique des conflits
+      if (error.message.includes('Write conflict')) {
+        return ApiResponse.error(
+          res,
+          t('common:errors.concurrent_request'),
+          429,
+        )
+      }
+
+      return ApiResponse.error(res, t('common:errors.server_error'), 500)
+    } finally {
+      session.endSession()
     }
-
-    // 2. Trouver la session spécifique
-    const session = user.loginHistory.find(
-      (s) => s.sessionId === req.cookies?.sessionId,
-    )
-
-    if (!session || !session.refreshToken || session.expiresAt < new Date()) {
-      return ApiResponse.error(res, t('auth:errors.session_expired'), 401)
-    }
-
-    // 3. Vérifier le refresh token
-    const isValid = await TokenService.compareTokens(
-      rawRefreshToken,
-      session.refreshToken,
-    )
-    if (!isValid) {
-      return ApiResponse.error(res, t('common:errors.server_error'), 401)
-    }
-
-    // 5. Générer de nouveaux tokens
-    const rememberMe = session.expiresAt > new Date(Date.now() + ms('1d'))
-    const { accessToken } = await SessionService.createSessionWithTokens(
-      user,
-      req,
-      res,
-      rememberMe,
-    )
-
-    return ApiResponse.success(res, { accessToken }, '', 200)
   },
 )
 
@@ -209,6 +262,8 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     )
   }
 
+  await SessionService.cleanupExpiredSessions(user)
+
   //5 bis. Check if user has 2FA enabled
   if (user.twoFactor.isEnabled) {
     return ApiResponse.info(
@@ -228,35 +283,58 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   }
 
   // 6. Update last login and login history, génération des cookies avec le sessionId
-  const { accessToken, refreshToken, session } =
-    await SessionService.createSessionWithTokens(user, req, res, rememberMe)
-  user.lastLogin = new Date()
-  await user.save()
+  const session = await mongoose.startSession()
+  session.startTransaction()
 
-  const deviceInfo = getDeviceInfo(session.userAgent)
-  const localisation = await findLocation(t, i18next.language, session.ip)
+  try {
+    const {
+      accessToken,
+      refreshToken,
+      session: userSession,
+    } = await SessionService.createSessionWithTokens(user, req, res, rememberMe)
 
-  // 7. Send login email notification
-  await sendLoginEmail(
-    t as TFunction,
-    user,
-    session.ip,
-    deviceInfo,
-    localisation,
-  )
+    user.lastLogin = new Date()
+    await user.save({ session })
+    await session.commitTransaction()
 
-  return ApiResponse.success(
-    res,
-    { accessToken, refreshToken },
-    t('auth:success.logged_in'),
-    200,
-  )
+    const deviceInfo = getDeviceInfo(userSession.userAgent)
+    const localisation = await findLocation(t, i18next.language, userSession.ip)
+
+    // 7. Send login email notification
+    await sendLoginEmail(
+      t as TFunction,
+      user,
+      userSession.ip,
+      deviceInfo,
+      localisation,
+    )
+
+    return ApiResponse.success(
+      res,
+      { accessToken, refreshToken },
+      t('auth:success.logged_in'),
+      200,
+    )
+  } catch (error) {
+    await session.abortTransaction()
+    throw error
+  } finally {
+    session.endSession()
+  }
 })
 
 export const logout = asyncHandler(async (req: Request, res: Response) => {
   const { t } = req
   const sessionId = req.cookies?.sessionId
-  const user = await User.findById(req.user._id)
+
+  // Find user with sessionId and delete the session
+  const user = await User.findOne({ 'loginHistory.sessionId': sessionId })
+  if (user) {
+    user.loginHistory = user.loginHistory.filter(
+      (session) => session.sessionId !== sessionId,
+    )
+    await user.save()
+  }
 
   // Clear cookies
   res.clearCookie('accessToken', {
@@ -280,12 +358,6 @@ export const logout = asyncHandler(async (req: Request, res: Response) => {
         ? process.env.FRONTEND_SERVER
         : undefined,
   })
-
-  // Remove current session from user's login history if exists
-  if (user && sessionId) {
-    SessionService.revokeSession(user, sessionId)
-    await user.save()
-  }
 
   return ApiResponse.success(res, {}, t('auth:success.logged_out'), 200)
 })
@@ -553,20 +625,34 @@ export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
   await user.save()
 
   // 6. On génère le cookie de session
-  const { accessToken, refreshToken } =
-    await SessionService.createSessionWithTokens(user, req, res, rememberMe)
-  user.lastLogin = new Date()
-  await user.save()
+  const session = await mongoose.startSession()
+  session.startTransaction()
+  try {
+    const {
+      accessToken,
+      refreshToken,
+      session: userSession,
+    } = await SessionService.createSessionWithTokens(user, req, res, rememberMe)
 
-  // 7. Envoyer un email de bienvenue
-  // TODO: envoyer un email de bienvenue
+    user.lastLogin = new Date()
+    await user.save({ session })
+    await session.commitTransaction()
 
-  return ApiResponse.success(
-    res,
-    { accessToken, refreshToken },
-    t('auth:success.email_verified'),
-    200,
-  )
+    // 7. Send login email notification
+    // TODO: implement welcome email sending
+
+    return ApiResponse.success(
+      res,
+      { accessToken, refreshToken },
+      t('auth:success.logged_in'),
+      200,
+    )
+  } catch (error) {
+    await session.abortTransaction()
+    throw error
+  } finally {
+    session.endSession()
+  }
 })
 
 export const resendVerificationEmail = asyncHandler(

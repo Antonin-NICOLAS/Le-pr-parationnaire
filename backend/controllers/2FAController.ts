@@ -1,4 +1,5 @@
 import User from '../models/User.js'
+import mongoose from 'mongoose'
 import { asyncHandler } from '../helpers/AsyncHandler.js'
 import { ApiResponse } from '../helpers/ApiResponse.js'
 import { SessionService } from '../services/SessionService.js'
@@ -636,29 +637,53 @@ export const twoFactorLogin = asyncHandler(
     }
 
     // 4. Créer une nouvelle session et connecter
-    const { accessToken, refreshToken, session } =
-      await SessionService.createSessionWithTokens(user, req, res, rememberMe)
-    user.lastLogin = new Date()
-    await user.save()
+    const session = await mongoose.startSession()
+    session.startTransaction()
 
-    const deviceInfo = getDeviceInfo(session.userAgent)
-    const localisation = await findLocation(t, i18next.language, session.ip)
+    try {
+      const {
+        accessToken,
+        refreshToken,
+        session: userSession,
+      } = await SessionService.createSessionWithTokens(
+        user,
+        req,
+        res,
+        rememberMe,
+      )
 
-    // 5. Send login email notification
-    await sendLoginEmail(
-      t as TFunction,
-      user,
-      session.ip,
-      deviceInfo,
-      localisation,
-    )
+      user.lastLogin = new Date()
+      await user.save({ session })
+      await session.commitTransaction()
 
-    return ApiResponse.success(
-      res,
-      { accessToken, refreshToken },
-      t('auth:success.logged_in'),
-      200,
-    )
+      const deviceInfo = getDeviceInfo(userSession.userAgent)
+      const localisation = await findLocation(
+        t,
+        i18next.language,
+        userSession.ip,
+      )
+
+      // 7. Send login email notification
+      await sendLoginEmail(
+        t as TFunction,
+        user,
+        userSession.ip,
+        deviceInfo,
+        localisation,
+      )
+
+      return ApiResponse.success(
+        res,
+        { accessToken, refreshToken },
+        t('auth:success.logged_in'),
+        200,
+      )
+    } catch (error) {
+      await session.abortTransaction()
+      throw error
+    } finally {
+      session.endSession()
+    }
   },
 )
 

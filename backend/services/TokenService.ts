@@ -1,8 +1,7 @@
-// src/services/TokenService.ts
 import jwt from 'jsonwebtoken'
 import bcrypt from 'bcrypt'
 import { v4 as uuidv4 } from 'uuid'
-import ms, { StringValue } from 'ms'
+import { StringValue } from 'ms'
 
 export class TokenService {
   static async generateRefreshToken() {
@@ -18,10 +17,17 @@ export class TokenService {
     return await bcrypt.compare(token, hashedToken)
   }
 
+  static generateRefreshTokenPayload(sessionId: string, version: number) {
+    return jwt.sign({ sessionId, version }, process.env.JWT_SECRET as string, {
+      expiresIn: '7d',
+    })
+  }
+
   static generateAccessToken(
     user: any,
     duration: StringValue,
     sessionId: string,
+    refreshTokenVersion?: number,
   ) {
     const payload = {
       jti: sessionId,
@@ -29,10 +35,11 @@ export class TokenService {
       email: user.email,
       role: user.role,
       tokenVersion: user.tokenVersion,
+      rtv: refreshTokenVersion,
     }
 
     return jwt.sign(payload, process.env.JWT_SECRET as string, {
-      expiresIn: ms(duration),
+      expiresIn: duration,
       algorithm: 'HS256',
     })
   }

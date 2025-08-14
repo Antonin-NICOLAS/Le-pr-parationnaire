@@ -11,6 +11,7 @@ export class SessionService {
     req: Request,
     res: Response,
     rememberMe: boolean,
+    existingSessionId?: string,
   ) {
     const ip =
       req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress
@@ -25,7 +26,9 @@ export class SessionService {
 
     // Chercher une session existante
     let session = user.loginHistory.find((s) =>
-      req.cookies?.sessionId
+      existingSessionId
+        ? s.sessionId === existingSessionId
+        : req.cookies?.sessionId
         ? s.sessionId === req.cookies.sessionId
         : s.expiresAt! > new Date() &&
           this.isSimilarDevice(s.userAgent, userAgent) &&
@@ -55,14 +58,24 @@ export class SessionService {
       user,
       accessTokenDuration,
       session.sessionId,
+      session.refreshTokenVersion,
     )
-    const rawRefreshToken = await TokenService.generateRefreshToken()
-    session.refreshToken = await TokenService.hashToken(rawRefreshToken)
 
-    // Nettoyer sessions expirées
-    user.loginHistory = user.loginHistory.filter(
-      (s) => s.expiresAt > new Date(),
+    const refreshTokenVersion = (session.refreshTokenVersion || 0) + 1
+    const rawRefreshToken = TokenService.generateRefreshTokenPayload(
+      session.sessionId,
+      refreshTokenVersion,
     )
+    session.refreshToken = await TokenService.hashToken(rawRefreshToken)
+    session.refreshTokenVersion = refreshTokenVersion
+
+    console.log('Refresh token :', session.refreshToken)
+    console.log('Raw refresh token :', rawRefreshToken)
+    console.log('Session :', session)
+
+    if (existingSessionId) {
+      session.refreshTokenVersion = (session.refreshTokenVersion || 0) + 1
+    }
 
     await user.save()
 
@@ -107,6 +120,13 @@ export class SessionService {
       d1.os.name === d2.os.name &&
       d1.device.type === d2.device.type
     )
+  }
+
+  static async cleanupExpiredSessions(user: IUser) {
+    user.loginHistory = user.loginHistory.filter(
+      (s) => s.expiresAt > new Date(),
+    )
+    await user.save()
   }
 
   static async revokeSession(user: IUser, sessionId: string) {

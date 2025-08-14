@@ -24,7 +24,10 @@ import {
 
 // Middlewares
 import { authenticate } from '../middlewares/VerifyAuth.js'
-import { rateLimiterMiddleware } from '../middlewares/RateLimiter.js'
+import {
+  refreshTokenRateLimiterMiddleware,
+  rateLimiterMiddleware,
+} from '../middlewares/RateLimiter.js'
 
 // Router
 const router = express.Router()
@@ -39,12 +42,12 @@ router.use(
 
 // Routes
 router.get('/profile', authenticate, checkSession)
-router.post('/refresh', refreshToken)
+router.post('/refresh', refreshTokenRateLimiterMiddleware, refreshToken)
 
 // Authentication Flow
 router.get('/status', rateLimiterMiddleware, checkAuthStatus)
 router.post('/login', rateLimiterMiddleware, login)
-router.post('/logout', authenticate, logout)
+router.post('/logout', logout)
 
 // Registration Flow
 router.post('/register', rateLimiterMiddleware, register)

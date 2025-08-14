@@ -79,60 +79,6 @@ export async function findLocation(
   return location
 }
 
-export async function generateTokensAndCookies(
-  res: Response,
-  user: IUser,
-  stayLoggedIn = false,
-  sessionId: string,
-) {
-  const accessTokenDuration = process.env.ACCESS_TOKEN_DURATION as StringValue
-
-  const refreshTokenDuration = stayLoggedIn
-    ? (process.env.REFRESH_TOKEN_DURATION_LONG as StringValue)
-    : (process.env.REFRESH_TOKEN_DURATION_SHORT as StringValue)
-
-  const accessToken = TokenService.generateAccessToken(
-    user,
-    accessTokenDuration,
-    sessionId,
-  )
-
-  // Refresh token
-  const refreshToken = await TokenService.generateRefreshToken()
-  const hashedRefreshToken = await TokenService.hashToken(refreshToken)
-
-  // Mettre à jour la session
-  const session = user.loginHistory.find((s) => s.sessionId === sessionId)
-  if (session) {
-    session.refreshToken = hashedRefreshToken
-    session.expiresAt = new Date(Date.now() + ms(refreshTokenDuration))
-  }
-
-  const options = {
-    secure: process.env.NODE_ENV === 'production',
-    httpOnly: true,
-    sameSite: 'strict' as const,
-    maxAge: ms(accessTokenDuration),
-    path: '/',
-    ...(process.env.NODE_ENV === 'production' && {
-      domain: process.env.DOMAIN || undefined,
-    }),
-  }
-
-  res.cookie('accessToken', accessToken, options)
-  res.cookie('refreshToken', refreshToken, {
-    ...options,
-    maxAge: ms(refreshTokenDuration),
-  })
-  res.cookie('sessionId', sessionId, {
-    ...options,
-    httpOnly: false,
-    maxAge: ms(refreshTokenDuration),
-  })
-
-  return { accessToken, refreshToken, sessionId }
-}
-
 export function generateResetToken(): string {
   return CryptoJS.lib.WordArray.random(32).toString()
 }

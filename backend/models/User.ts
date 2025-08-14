@@ -35,6 +35,7 @@ export type LoginHistory = {
   lastActive: Date
   expiresAt: Date
   refreshToken?: string
+  refreshTokenVersion?: number
 }
 
 export interface IUser extends Document {
@@ -108,6 +109,7 @@ const UserSchema = new Schema<IUser>({
     {
       sessionId: { type: String, unique: true },
       refreshToken: { type: String, unique: true },
+      refreshTokenVersion: { type: Number, default: 0 },
       ip: String,
       userAgent: String,
       location: String,
@@ -222,3 +224,11 @@ const UserSchema = new Schema<IUser>({
 })
 
 export default mongoose.model<IUser>('User', UserSchema)
+
+UserSchema.index(
+  { 'loginHistory.expiresAt': 1 },
+  {
+    expireAfterSeconds: 0,
+    partialFilterExpression: { 'loginHistory.expiresAt': { $exists: true } },
+  },
+)
