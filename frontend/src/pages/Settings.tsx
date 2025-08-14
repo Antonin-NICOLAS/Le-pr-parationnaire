@@ -36,14 +36,15 @@ import TabNavigation from '../components/ui/TabNavigation'
 import ToggleSwitch from '../components/ui/ToggleSwitch'
 import { useAuth } from '../context/Auth'
 import useTwoFactorAuth from '../hooks/TwoFactor/Main'
-import SecuritySwitch from '../components/ui/SecuritySwitch'
 import useUserSettings from '../hooks/useUserSettings'
 import { useUrlModal } from '../routes/UseUrlModal'
 import type { LoginHistory } from '../types/user'
 import useSessions from '../hooks/Auth/useSessions'
-import ResendAction from '../components/ui/ResendAction'
+import ResendSection from '../components/ui/ResendSection'
 import { useFormHandler } from '../hooks/useFormHandler'
 import { changeEmailSchema, changePasswordSchema } from '../utils/validation'
+import WebAuthnPrimary from '../components/Auth/WebAuthnPrimary'
+import TwoFactorMain from '../components/Auth/TwoFactorMain'
 
 const SettingsPage: React.FC = () => {
   const { tab = 'security' } = useParams()
@@ -583,7 +584,7 @@ const SettingsPage: React.FC = () => {
                       error={!!changeEmailForm.errors.currentEmailCode}
                       autoFocus
                     />
-                    <ResendAction
+                    <ResendSection
                       onResend={handleEmailChangeStart}
                       loading={changeEmailStep1State.loading}
                       countdownSeconds={60}
@@ -669,7 +670,7 @@ const SettingsPage: React.FC = () => {
                       onComplete={() => handleNewEmailVerification()}
                       autoFocus
                     />
-                    <ResendAction
+                    <ResendSection
                       onResend={handleNewEmailSubmit}
                       loading={changeEmailStep3State.loading}
                       countdownSeconds={60}
@@ -716,17 +717,31 @@ const SettingsPage: React.FC = () => {
           className='space-y-4'
         >
           <motion.div variants={itemVariants}>
-            <SecuritySwitch
-              type='2fa'
+            <TwoFactorMain
               isEnabled={getTwoFactorStatusState.data?.isEnabled || false}
+              availableMethods={Object.entries(getTwoFactorStatusState.data)
+                .filter(
+                  ([key, value]) =>
+                    (key === 'email' || key === 'app' || key === 'webauthn') &&
+                    (value as { isEnabled?: boolean }).isEnabled,
+                )
+                .map(([key]) => key as 'email' | 'app' | 'webauthn')}
+              primaryCredentials={
+                getTwoFactorStatusState.data?.primaryCredentials || []
+              }
               onStatusChange={() => fetch2FAStatus()}
             />
           </motion.div>
           <motion.div variants={itemVariants}>
-            <SecuritySwitch
-              type='webauthn-login'
+            <WebAuthnPrimary
               isEnabled={
                 getTwoFactorStatusState.data?.loginWithWebAuthn || false
+              }
+              primaryCredentials={
+                getTwoFactorStatusState.data?.primaryCredentials || []
+              }
+              secondaryCredentials={
+                getTwoFactorStatusState.data?.secondaryCredentials || []
               }
               onStatusChange={() => fetch2FAStatus()}
             />
@@ -855,7 +870,9 @@ const SettingsPage: React.FC = () => {
                     ([key, value]) =>
                       key !== 'preferredMethod' &&
                       key !== 'backupCodes' &&
-                      key !== 'credentials' &&
+                      key !== 'primaryCredentials' &&
+                      key !== 'secondaryCredentials' &&
+                      key !== 'loginWithWebAuthn' &&
                       (value as { isEnabled?: boolean }).isEnabled,
                   ).length}
                 /3
@@ -932,7 +949,9 @@ const SettingsPage: React.FC = () => {
             isPreferredMethod={
               getTwoFactorStatusState.data?.preferredMethod === 'webauthn'
             }
-            credentials={getTwoFactorStatusState.data?.credentials || []}
+            credentials={
+              getTwoFactorStatusState.data?.secondaryCredentials || []
+            }
             onStatusChange={() => fetch2FAStatus()}
           />
         </motion.div>
@@ -940,7 +959,7 @@ const SettingsPage: React.FC = () => {
 
       {/* Backup Codes */}
       {!getTwoFactorStatusState.loading &&
-        getTwoFactorStatusState.data.backupCodes.length > 0 && (
+        getTwoFactorStatusState.data?.backupCodes?.length > 0 && (
           <motion.div variants={itemVariants}>
             <BackupCodesDisplay
               codes={getTwoFactorStatusState.data.backupCodes.map(
@@ -969,11 +988,9 @@ const SettingsPage: React.FC = () => {
           description='Obtenez une copie de toutes vos données (conforme RGPD)'
           icon={Download}
         >
-          <motion.div whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-            <PrimaryButton icon={CloudDownload}>
-              Télécharger mes données
-            </PrimaryButton>
-          </motion.div>
+          <PrimaryButton icon={CloudDownload}>
+            Télécharger mes données
+          </PrimaryButton>
         </SettingsCard>
       </motion.div>
 

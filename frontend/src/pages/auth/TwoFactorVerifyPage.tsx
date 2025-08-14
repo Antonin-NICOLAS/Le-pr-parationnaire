@@ -115,7 +115,7 @@ const TwoFactorPage: React.FC = () => {
     authenticateState.resetError()
     if (!email) return
     console.log(email)
-    const result = await authenticate(email, rememberMe)
+    const result = await authenticate('secondary', email, rememberMe)
 
     if (result.success) {
       navigate('/home')

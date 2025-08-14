@@ -33,35 +33,64 @@ export function useWebAuthnApiCall<T = any>(
   }, config)
 }
 
-const getRegistrationOptionsApi = () =>
-  axios.get(`${VITE_WEB_AUTHN}/generate-registration`, {
-    withCredentials: true,
-  })
-
-const verifyRegistrationApi = (attestationResponse: RegistrationResponseJSON) =>
-  axios.post(
-    `${VITE_WEB_AUTHN}/verify-registration`,
-    { attestationResponse },
-    { withCredentials: true },
-  )
-
-const setCredentialNameApi = (id: string, deviceName: string) =>
+const setCredentialNameApi = (
+  context: 'primary' | 'secondary',
+  id: string,
+  deviceName: string,
+) =>
   axios.post(
     `${VITE_WEB_AUTHN}/set-name`,
     { id, deviceName },
+    {
+      params: { context },
+      withCredentials: true,
+    },
+  )
+
+const deleteCredentialApi = (context: 'primary' | 'secondary', id: string) =>
+  axios.delete(`${VITE_WEB_AUTHN}/credential/${id}`, {
+    params: { context },
+    withCredentials: true,
+  })
+
+const transferCredentialApi = (
+  fromContext: 'primary' | 'secondary',
+  toContext: 'primary' | 'secondary',
+  credentialId: string,
+) =>
+  axios.post(
+    `${VITE_WEB_AUTHN}/transfer`,
+    { fromContext, toContext, credentialId },
     { withCredentials: true },
   )
 
-const deleteCredentialApi = (id: string) =>
-  axios.delete(`${VITE_WEB_AUTHN}/credential/${id}`, { withCredentials: true })
+const getRegistrationOptionsApi = (context: 'primary' | 'secondary') =>
+  axios.get(`${VITE_WEB_AUTHN}/generate-registration`, {
+    params: { context },
+    withCredentials: true,
+  })
 
-const getAuthenticationOptionsApi = (email: string) =>
+const verifyRegistrationApi = (
+  context: 'primary' | 'secondary',
+  attestationResponse: RegistrationResponseJSON,
+) =>
+  axios.post(
+    `${VITE_WEB_AUTHN}/verify-registration`,
+    { attestationResponse },
+    { params: { context }, withCredentials: true },
+  )
+
+const getAuthenticationOptionsApi = (
+  context: 'primary' | 'secondary',
+  email: string,
+) =>
   axios.get(`${VITE_WEB_AUTHN}/generate-authentication`, {
-    params: { email },
+    params: { email, context },
     withCredentials: true,
   })
 
 const verifyAuthenticationApi = (
+  context: 'primary' | 'secondary',
   assertionResponse: AuthenticationResponseJSON,
   email: string,
   rememberMe: boolean,
@@ -69,14 +98,18 @@ const verifyAuthenticationApi = (
   axios.post(
     `${VITE_WEB_AUTHN}/verify-authentication`,
     { assertionResponse, email, rememberMe },
-    { withCredentials: true },
+    { params: { context }, withCredentials: true },
   )
 
-const disableWebAuthnApi = (method: 'password' | 'webauthn', value?: any) =>
+const disableWebAuthnApi = (
+  context: 'primary' | 'secondary',
+  method: 'password' | 'webauthn',
+  value?: any,
+) =>
   axios.post(
     `${VITE_WEB_AUTHN}/disable`,
     { method, value },
-    { withCredentials: true },
+    { params: { context }, withCredentials: true },
   )
 
 // ---------------------------
@@ -95,11 +128,16 @@ const useWebAuthnTwoFactor = () => {
     errorMessage: 'Erreur lors de la suppression',
   })
 
+  const transferCredential = useApiCall(transferCredentialApi, {
+    successMessage: 'Clé transférée avec succès',
+    errorMessage: 'Erreur lors du transfert',
+  })
+
   // Flows complexes
   const registerDevice = useWebAuthnApiCall(
-    async () => {
+    async (context: 'primary' | 'secondary') => {
       // 1. Récupérer options
-      const optionsRes = await getRegistrationOptionsApi()
+      const optionsRes = await getRegistrationOptionsApi(context)
       if (!optionsRes.data?.success || !optionsRes.data?.options) {
         return optionsRes.data
       }
@@ -111,7 +149,10 @@ const useWebAuthnTwoFactor = () => {
         })
 
       // 3. Vérifier côté serveur
-      const verifyRes = await verifyRegistrationApi(attestationResponse)
+      const verifyRes = await verifyRegistrationApi(
+        context,
+        attestationResponse,
+      )
       return verifyRes.data
     },
     {
@@ -121,9 +162,13 @@ const useWebAuthnTwoFactor = () => {
   )
 
   const authenticate = useWebAuthnApiCall(
-    async (email: string, rememberMe: boolean) => {
+    async (
+      context: 'primary' | 'secondary',
+      email: string,
+      rememberMe: boolean,
+    ) => {
       // 1. Récupérer options
-      const optionsRes = await getAuthenticationOptionsApi(email)
+      const optionsRes = await getAuthenticationOptionsApi(context, email)
       if (!optionsRes.data?.success || !optionsRes.data?.options) {
         return optionsRes.data
       }
@@ -136,6 +181,7 @@ const useWebAuthnTwoFactor = () => {
 
       // 3. Vérifier côté serveur
       const verifyRes = await verifyAuthenticationApi(
+        context,
         assertionResponse,
         email,
         rememberMe,
@@ -153,14 +199,15 @@ const useWebAuthnTwoFactor = () => {
 
   const disableWebAuthn = useWebAuthnApiCall(
     async (
+      context: 'primary' | 'secondary',
       email: string,
       method: 'password' | 'webauthn',
       password?: string,
     ) => {
       if (method === 'password') {
-        return (await disableWebAuthnApi('password', password)).data
+        return (await disableWebAuthnApi(context, 'password', password)).data
       } else {
-        const optionsRes = await getAuthenticationOptionsApi(email)
+        const optionsRes = await getAuthenticationOptionsApi(context, email)
         if (!optionsRes.data?.success || !optionsRes.data?.options) {
           return optionsRes.data
         }
@@ -170,7 +217,9 @@ const useWebAuthnTwoFactor = () => {
             optionsJSON: optionsRes.data.options,
           })
 
-        return (await disableWebAuthnApi('webauthn', assertionResponse)).data
+        return (
+          await disableWebAuthnApi(context, 'webauthn', assertionResponse)
+        ).data
       }
     },
     {
@@ -194,6 +243,9 @@ const useWebAuthnTwoFactor = () => {
 
     deleteCredential: deleteCredential.execute,
     deleteCredentialState: deleteCredential,
+
+    transferCredential: transferCredential.execute,
+    transferCredentialState: transferCredential,
   }
 }
 

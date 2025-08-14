@@ -62,13 +62,17 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
   const { user } = useAuth()
 
   const handleEnable = async () => {
-    const result = await registerDevice()
+    const result = await registerDevice('secondary')
 
     if (result.success) {
       onStatusChange()
       closeCredentialsList()
       openEnableFlow()
-      setCurrentStep('name')
+      if (result.RequiresSetName) {
+        setCurrentStep('name')
+      } else {
+        setCurrentStep('backup')
+      }
     }
   }
 
@@ -76,6 +80,7 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
     if (!deviceName.trim()) return
 
     const result = await setCredentialName(
+      'secondary',
       registerDeviceState.data.credentialId,
       deviceName,
     )
@@ -96,7 +101,7 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
         'Êtes-vous sûr de vouloir supprimer cette clé de sécurité ?',
       )
     ) {
-      const success = await deleteCredential(id)
+      const success = await deleteCredential('secondary', id)
       if (success) {
         onStatusChange()
         if (credentials.length === 0) {
@@ -108,6 +113,7 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
 
   const handleDisable = async () => {
     const result = await disableWebAuthn(
+      'secondary',
       user?.email || '',
       disableMethod,
       disablePassword,

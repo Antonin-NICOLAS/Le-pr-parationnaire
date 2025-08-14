@@ -130,7 +130,7 @@ const UserSchema = new Schema<IUser>({
     expiration: Date,
   },
   authMethods: {
-    password: { isEnabled: true },
+    password: { isEnabled: { type: Boolean, default: true } },
     webauthn: {
       isEnabled: { type: Boolean, default: false },
       challenge: String,

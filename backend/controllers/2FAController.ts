@@ -41,8 +41,9 @@ export const getStatus = asyncHandler(async (req: Request, res: Response) => {
     webauthn: { isEnabled: user.twoFactor.webauthn.isEnabled || false },
     preferredMethod: user.twoFactor.preferredMethod || 'none',
     backupCodes: user.twoFactor.backupCodes || [],
-    credentials: user.twoFactor.webauthn.credentials || [],
-    loginWithWebAuthn: user.loginWithWebAuthn || false,
+    primaryCredentials: user.authMethods.webauthn.credentials || [],
+    secondaryCredentials: user.twoFactor.webauthn.credentials || [],
+    loginWithWebAuthn: user.authMethods.webauthn.isEnabled || false,
   })
 })
 
@@ -196,7 +197,7 @@ export const resendEmailCode = asyncHandler(
     type ValidContext = (typeof validContexts)[number]
 
     if (!context || !validContexts.includes(context as ValidContext)) {
-      return ApiResponse.error(res, t('common:errors.invalid_context'), 400)
+      return ApiResponse.error(res, t('common:errors.bad_request'), 400)
     }
 
     // 2. Récupération de l'utilisateur selon le contexte

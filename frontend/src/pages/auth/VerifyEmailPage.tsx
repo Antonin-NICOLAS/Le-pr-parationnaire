@@ -3,9 +3,8 @@ import type React from 'react'
 import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
-import CountdownTimer from '../../components/ui/CountdownTimer'
+import ResendSection from '../../components/ui/ResendSection'
 import ErrorMessage from '../../components/ui/ErrorMessage'
-import PrimaryButton from '../../components/ui/PrimaryButton'
 import SixDigitCodeInput from '../../components/ui/SixDigitCodeInput'
 import { useAuth } from '../../context/Auth'
 import AuthLayout from '../../layouts/AuthLayout'
@@ -38,7 +37,7 @@ const EmailVerificationPage: React.FC = () => {
   const handleResendCode = async () => {
     emailVerificationState.resetError()
     resendVerificationEmailState.resetError()
-
+    if (!canResend) return
     const result = await resendVerificationEmail(email)
     if (result.success) {
       setCanResend(false)
@@ -93,28 +92,14 @@ const EmailVerificationPage: React.FC = () => {
             Entrez le code à 6 chiffres envoyé à votre adresse email
           </div>
         </div>
-        <div className='space-y-2 text-center'>
-          {!canResend && (
-            <CountdownTimer
-              initialSeconds={60}
-              onComplete={() => setCanResend(true)}
-              className='justify-center'
-            />
-          )}
-        </div>
-        <div className='text-center text-sm text-gray-600 dark:text-gray-400'>
-          Vous n'avez pas reçu l'email ? Vérifiez votre dossier Indésirables ou{' '}
-          <PrimaryButton
-            variant='ghost'
-            onClick={handleResendCode}
-            loading={resendVerificationEmailState.loading}
-            disabled={!canResend || resendVerificationEmailState.loading}
-            icon={RefreshCw}
-            className='mt-2'
-          >
-            Resend Code
-          </PrimaryButton>
-        </div>
+        <ResendSection
+          onResend={() => handleResendCode()}
+          loading={resendVerificationEmailState.loading}
+          countdownSeconds={60}
+          icon={RefreshCw}
+          variant='block'
+          align='center'
+        />
       </div>
     </AuthLayout>
   )

@@ -1,5 +1,14 @@
 /**
  * @swagger
+ * tags:
+ *   - name: WebAuthn Authentication
+ *     description: Endpoints pour l'authentification WebAuthn
+ *   - name: WebAuthn Management
+ *     description: Gestion des clés d'accès WebAuthn
+ */
+
+/**
+ * @swagger
  * /auth/webauthn/generate-registration:
  *   get:
  *     tags: [WebAuthn Authentication]
@@ -274,13 +283,12 @@
 
 /**
  * @swagger
- * /auth/webauthn/switch:
+ * /auth/webauthn/transfer:
  *   post:
  *     tags: [WebAuthn Management]
- *     summary: Activer/désactiver l'authentification par clé d'accès
+ *     summary: Transférer des clés entre contextes
  *     description: |
- *       Cette route permet d'activer ou désactiver l'authentification par clé d'accès WebAuthn.
- *       Nécessite une authentification valide.
+ *       Copie des clés WebAuthn d'un contexte à un autre (primary ↔ secondary).
  *     security:
  *       - cookieAuth: []
  *     requestBody:
@@ -290,83 +298,27 @@
  *           schema:
  *             type: object
  *             required:
- *               - enabled
+ *               - from
+ *               - to
  *             properties:
- *               enabled:
- *                 type: boolean
- *                 description: |
- *                   true pour activer, false pour désactiver
- *               method:
+ *               from:
  *                 type: string
- *                 enum: [password, app, email]
- *                 description: |
- *                   Méthode de vérification pour la désactivation
- *                   Requis seulement si enabled = false
- *               value:
+ *                 enum: [primary, secondary]
+ *               to:
  *                 type: string
- *                 description: |
- *                   Valeur de vérification selon la méthode :
- *                   - Mot de passe pour 'password'
- *                   - Code OTP pour 'app' ou 'email'
- *                   Requis seulement si enabled = false
+ *                 enum: [primary, secondary]
  *     responses:
- *       100:
- *         description: Aucune clé d'accès n'est configurée
- *         content:
- *           application/json:
- *             schema:
- *               allOf:
- *                 - $ref: '#/components/schemas/InfoResponse'
- *                 - type: object
- *                   properties:
- *                     RequiresConfiguration:
- *                       type: boolean
- *                       description: Nouveau statut de l'authentification par clé d'accès
- *             example:
- *               success: false
- *               message: "Aucune clé d'accès n'est configurée."
- *               RequiresConfiguration: true
  *       200:
- *         description: Statut d'authentification par clé d'accès modifié avec succès
+ *         description: Clés transférées
  *         content:
  *           application/json:
  *             schema:
- *               allOf:
- *                 - $ref: '#/components/schemas/SuccessResponse'
- *                 - type: object
- *                   properties:
- *                     loginWithWebAuthn:
- *                       type: boolean
- *                       description: Nouveau statut de l'authentification par clé d'accès
- *       400:
- *         description: Requête invalide
- *         content:
- *           application/json:
- *             schema:
- *               $ref: '#/components/schemas/ErrorResponse'
- *             examples:
- *               missing_fields:
- *                 value:
- *                   success: false
- *                   error: "Tous les champs sont requis."
- *               invalid_method:
- *                 value:
- *                   success: false
- *                   error: "La méthode fournie est invalide."
- *               invalid_code:
- *                 value:
- *                   success: false
- *                   error: "Le code est incorrect."
- *               password_incorrect:
- *                 value:
- *                   success: false
- *                   error: "Le mot de passe est incorrect."
- *       401:
- *         $ref: '#/components/responses/Unauthorized'
- *       404:
- *         $ref: '#/components/responses/UserNotFound'
- *       500:
- *         $ref: '#/components/responses/ServerError'
+ *               type: object
+ *               properties:
+ *                 credentials:
+ *                   type: array
+ *                   items:
+ *                     $ref: '#/components/schemas/WebAuthnCredential'
  */
 
 /**

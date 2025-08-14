@@ -107,6 +107,7 @@ const AuthPage: React.FC = () => {
 
   const handleWebAuthnLogin = async () => {
     const result = await authenticate(
+      'primary',
       loginForm.values.email,
       loginForm.values.rememberMe,
     )

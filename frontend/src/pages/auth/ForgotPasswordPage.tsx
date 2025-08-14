@@ -2,7 +2,6 @@ import { ArrowLeft, Mail, RefreshCw } from 'lucide-react'
 import React, { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 
-import ResendAction from '../../components/ui/ResendAction'
 import CustomInput from '../../components/ui/CustomInput'
 import PrimaryButton from '../../components/ui/PrimaryButton'
 import AuthLayout from '../../layouts/AuthLayout'
@@ -10,6 +9,7 @@ import ErrorMessage from '../../components/ui/ErrorMessage'
 import useForgotPassword from '../../hooks/Auth/useForgotPassword'
 import { useFormHandler } from '../../hooks/useFormHandler'
 import { emailFormSchema } from '../../utils/validation'
+import ResendSection from '../../components/ui/ResendSection'
 
 const ForgotPasswordPage: React.FC = () => {
   const navigate = useNavigate()
@@ -90,7 +90,7 @@ const ForgotPasswordPage: React.FC = () => {
             </div>
           </div>
 
-          <ResendAction
+          <ResendSection
             countdownSeconds={60}
             icon={RefreshCw}
             onResend={handleResend}

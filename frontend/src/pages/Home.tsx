@@ -1,7 +1,7 @@
 import { RefreshCwIcon } from 'lucide-react'
 import { useState } from 'react'
 import PrimaryButton from '../components/ui/PrimaryButton'
-import ResendSection from '../components/ui/ResendAction'
+import ResendSection from '../components/ui/ResendSection'
 import { useTheme } from '../context/Theme'
 import SixDigitCodeInput from '../components/ui/SixDigitCodeInput'
 
