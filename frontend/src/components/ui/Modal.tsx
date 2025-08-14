@@ -1,6 +1,8 @@
-import React, { useEffect, useState, useCallback } from 'react'
+import type React from 'react'
+import { useEffect, useCallback } from 'react'
 import { X } from 'lucide-react'
 import clsx from 'clsx'
+import { motion, AnimatePresence } from 'framer-motion'
 import { useUrlModal } from '../../routes/UseUrlModal'
 
 interface ModalProps {
@@ -26,10 +28,7 @@ const Modal: React.FC<ModalProps> = ({
   isOpen: controlledIsOpen,
   onClose: controlledOnClose,
 }) => {
-  // Gestion ouverture via URL
   const urlModal = urlName ? useUrlModal(urlName) : null
-
-  // On choisit la source (URL ou props)
   const isOpen = urlName ? urlModal!.isOpen : (controlledIsOpen ?? false)
   const onClose = urlName ? urlModal!.close : (controlledOnClose ?? (() => {}))
 
@@ -40,21 +39,8 @@ const Modal: React.FC<ModalProps> = ({
     xl: 'max-w-4xl',
   }
 
-  const [isVisible, setIsVisible] = useState(false)
-  const [isMounted, setIsMounted] = useState(false)
-
   useEffect(() => {
     if (isOpen) {
-      setIsMounted(true)
-      setTimeout(() => setIsVisible(true), 10)
-    } else {
-      setIsVisible(false)
-      setTimeout(() => setIsMounted(false), 200)
-    }
-  }, [isOpen])
-
-  useEffect(() => {
-    if (isVisible) {
       document.body.style.overflow = 'hidden'
     } else {
       document.body.style.overflow = 'unset'
@@ -62,13 +48,10 @@ const Modal: React.FC<ModalProps> = ({
     return () => {
       document.body.style.overflow = 'unset'
     }
-  }, [isVisible])
+  }, [isOpen])
 
   const handleClose = useCallback(() => {
-    setIsVisible(false)
-    setTimeout(() => {
-      onClose()
-    }, 200)
+    onClose()
   }, [onClose])
 
   useEffect(() => {
@@ -80,61 +63,66 @@ const Modal: React.FC<ModalProps> = ({
     return () => document.removeEventListener('keydown', handleKeyDown)
   }, [handleClose])
 
-  if (!isMounted) return null
-
   return (
-    <div className='fixed inset-0 z-50 overflow-y-auto'>
-      <div className='flex min-h-screen items-center justify-center p-4'>
-        {/* Overlay */}
-        <div
-          className={clsx(
-            'fixed inset-0 bg-gray-900 transition-opacity duration-200',
-            {
-              'opacity-30': isVisible,
-              'opacity-0': !isVisible,
-            },
-          )}
-          onClick={closeOnOverlayClick ? handleClose : undefined}
-        />
+    <AnimatePresence>
+      {isOpen && (
+        <div className='fixed inset-0 z-50 overflow-y-auto'>
+          <div className='flex min-h-screen items-center justify-center p-4'>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.2 }}
+              className='fixed inset-0 bg-gray-900/50 backdrop-blur-sm'
+              onClick={closeOnOverlayClick ? handleClose : undefined}
+            />
 
-        {/* Modal */}
-        <div
-          role='dialog'
-          aria-modal='true'
-          aria-labelledby='modal-title'
-          aria-describedby='modal-desc'
-          className={clsx(
-            `relative w-full ${sizeClasses[size]} mt-[4.25rem] max-h-[80vh] transform overflow-y-auto rounded-lg bg-white shadow-xl transition-all duration-200 dark:bg-gray-800`,
-            {
-              'scale-100 opacity-100': isVisible,
-              'scale-95 opacity-0': !isVisible,
-            },
-            className,
-          )}
-        >
-          {/* Header */}
-          <div className='flex items-center justify-between border-b border-gray-200 px-6 py-4 dark:border-gray-700'>
-            <h3
-              className='text-lg font-semibold text-gray-900 dark:text-gray-100'
-              id='modal-title'
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              transition={{
+                type: 'spring',
+                stiffness: 300,
+                damping: 30,
+                duration: 0.3,
+              }}
+              role='dialog'
+              aria-modal='true'
+              aria-labelledby='modal-title'
+              aria-describedby='modal-desc'
+              className={clsx(
+                `relative w-full ${sizeClasses[size]} mt-[4.25rem] max-h-[85vh] transform overflow-hidden rounded-xl bg-white shadow-2xl dark:bg-gray-800 border border-gray-200 dark:border-gray-700`,
+                className,
+              )}
             >
-              {title}
-            </h3>
-            {showCloseButton && (
-              <button
-                onClick={handleClose}
-                className='cursor-pointer rounded-md p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-500 dark:hover:bg-gray-700 dark:hover:text-gray-300'
-              >
-                <X size={20} />
-              </button>
-            )}
-          </div>
+              <div className='sticky top-0 z-10 flex items-center justify-between border-b border-gray-200 bg-white/95 backdrop-blur-sm px-6 py-4 dark:border-gray-700 dark:bg-gray-800/95 shadow-sm'>
+                <h3
+                  className='text-lg font-semibold text-gray-900 dark:text-gray-100'
+                  id='modal-title'
+                >
+                  {title}
+                </h3>
+                {showCloseButton && (
+                  <motion.button
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                    onClick={handleClose}
+                    className='cursor-pointer rounded-lg p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-500 dark:hover:bg-gray-700 dark:hover:text-gray-300 transition-colors'
+                  >
+                    <X size={20} />
+                  </motion.button>
+                )}
+              </div>
 
-          {/* Content */}
-          <div className='px-6 py-4'>{children}</div>
+              <div className='overflow-y-auto px-6 py-6 max-h-[calc(85vh-80px)]'>
+                {children}
+              </div>
+            </motion.div>
+          </div>
         </div>
-      </div>
-    </div>
+      )}
+    </AnimatePresence>
   )
 }
 

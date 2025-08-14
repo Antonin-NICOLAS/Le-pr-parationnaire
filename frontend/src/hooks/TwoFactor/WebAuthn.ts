@@ -63,14 +63,14 @@ const deleteCredentialApi = (context: 'primary' | 'secondary', id: string) =>
     withCredentials: true,
   })
 
-const transferCredentialApi = (
+const transferCredentialsApi = (
   fromContext: 'primary' | 'secondary',
   toContext: 'primary' | 'secondary',
-  credentialId: string,
+  credentialIds: string[],
 ) =>
   axios.post(
     `${VITE_WEB_AUTHN}/transfer`,
-    { fromContext, toContext, credentialId },
+    { fromContext, toContext, credentialIds },
     { withCredentials: true },
   )
 
@@ -148,7 +148,7 @@ const useWebAuthnTwoFactor = () => {
     errorMessage: 'Erreur lors de la suppression',
   })
 
-  const transferCredential = useApiCall(transferCredentialApi, {
+  const transferCredentials = useApiCall(transferCredentialsApi, {
     successMessage: 'Clé transférée avec succès',
     errorMessage: 'Erreur lors du transfert',
   })
@@ -292,8 +292,8 @@ const useWebAuthnTwoFactor = () => {
     deleteCredential: deleteCredential.execute,
     deleteCredentialState: deleteCredential,
 
-    transferCredential: transferCredential.execute,
-    transferCredentialState: transferCredential,
+    transferCredentials: transferCredentials.execute,
+    transferCredentialsState: transferCredentials,
 
     disableTwoFactor: disableTwoFactor.execute,
     disableTwoFactorState: disableTwoFactor,

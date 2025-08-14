@@ -8,11 +8,11 @@ import {
   Fingerprint,
   AlertTriangle,
   ChevronRight,
-  Check,
   Plus,
   RefreshCw,
   ChevronLeft,
   Lock,
+  CheckCircle,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import ResendSection from '../ui/ResendSection'
@@ -23,6 +23,7 @@ import ErrorMessage from '../ui/ErrorMessage'
 import SixDigitCodeInput from '../ui/SixDigitCodeInput'
 import CustomInput from '../ui/CustomInput'
 import MethodSelectionCard from '../TwoFactor/MethodSelectionCard'
+import TransferCredentialCard from '../TwoFactor/TransferCredentialCard'
 import { useAuth } from '../../context/Auth'
 import useEmailTwoFactor from '../../hooks/TwoFactor/Email'
 import useAppTwoFactor from '../../hooks/TwoFactor/App'
@@ -56,7 +57,7 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
 
   // Flow states
   const [enableStep, setEnableStep] = useState<
-    'info' | 'selection' | 'config' | 'backup' | 'security'
+    'info' | 'method' | 'config' | 'verify' | 'backup' | 'security' | 'name'
   >('info')
   const [disableStep, setDisableStep] = useState<'method' | 'verify'>('method')
   const [selectedMethod, setSelectedMethod] = useState<
@@ -64,23 +65,23 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
   >('email')
   const [disableMethod, setDisableMethod] = useState<
     'email' | 'app' | 'webauthn' | 'password' | 'backup' | 'security'
-  >('email')
+  >('password')
   const [showKeyTransferOption, setShowKeyTransferOption] = useState(false)
+  const [selectedCredentials, setSelectedCredentials] = useState<string[]>([])
+  const [deviceName, setDeviceName] = useState('')
   const [direction, setDirection] = useState(1)
-
-  // Form states
+  const [error, setError] = useState<string | null>(null)
   const [verificationCode, setVerificationCode] = useState<string[]>(
     Array(6).fill(''),
   )
   const [disablePassword, setDisablePassword] = useState('')
-  const [backupCode, setBackupCode] = useState('')
-  const [securityAnswers, setSecurityAnswers] = useState<
-    { questionId: string; answer: string }[]
-  >([])
   const [securityQuestions, setSecurityQuestions] = useState<
     SecurityQuestion[]
   >([])
-  const [error, setError] = useState<string | null>(null)
+  const [securityAnswers, setSecurityAnswers] = useState<
+    { questionId: string; answer: string }[]
+  >([])
+  const [backupCode, setBackupCode] = useState('')
 
   // Hooks
   const {
@@ -98,8 +99,10 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
     registerDeviceState,
     disableTwoFactor,
     disableTwoFactorState,
-    transferCredential,
-    transferCredentialState,
+    transferCredentials,
+    transferCredentialsState,
+    setCredentialName,
+    setCredentialNameState,
   } = useWebAuthnTwoFactor()
   const { getAvailableQuestions } = useSecurityQuestions()
 
@@ -120,11 +123,43 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
     openDisableFlow()
   }
 
-  const changeStep = (newStep: typeof enableStep | typeof disableStep) => {
-    setDirection(newStep === 'verify' || newStep === 'config' ? 1 : -1)
-    if (newStep === 'method') setDisableStep(newStep)
-    else if (newStep === 'verify') setDisableStep(newStep)
-    else setEnableStep(newStep as typeof enableStep)
+  const changeStep = (
+    oldStep: typeof enableStep | typeof disableStep,
+    newStep: typeof enableStep | typeof disableStep,
+  ) => {
+    console.log(`Changing step from ${oldStep} to ${newStep}`)
+    if (
+      (oldStep === 'method' || oldStep === 'verify') &&
+      (newStep === 'verify' || newStep === 'method')
+    ) {
+      setDirection(newStep === 'method' ? -1 : 1)
+      setDisableStep(newStep)
+    } else {
+      console.log(enableStep.indexOf(oldStep), enableStep.indexOf(newStep))
+      setDirection(
+        [
+          'info',
+          'method',
+          'config',
+          'verify',
+          'backup',
+          'security',
+          'name',
+        ].indexOf(oldStep) <
+          [
+            'info',
+            'method',
+            'config',
+            'verify',
+            'backup',
+            'security',
+            'name',
+          ].indexOf(newStep)
+          ? 1
+          : -1,
+      )
+      setEnableStep(newStep)
+    }
   }
 
   const handleMethodSelection = async () => {
@@ -162,22 +197,70 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
     }
   }
 
-  const handleTransferPrimaryKey = async () => {
-    const result = await transferCredential('primary', 'secondary')
+  const handleTransferPrimaryKeys = async () => {
+    if (selectedCredentials.length === 0) {
+      setError('Veuillez sélectionner au moins une clé de sécurité')
+      return
+    }
+    const result = await transferCredentials(
+      'primary',
+      'secondary',
+      selectedCredentials,
+    )
+
     if (result.success) {
       setShowKeyTransferOption(false)
+      setSelectedCredentials([])
       setEnableStep('backup')
-      onStatusChange()
+      setError(null)
+    } else {
+      setError('Erreur lors du transfert de certaines clés')
     }
   }
 
   const handleRegisterNewKey = async () => {
     setShowKeyTransferOption(false)
+    setSelectedCredentials([])
     try {
-      await registerDevice('secondary')
+      const result = await registerDevice('secondary')
+      if (result.success) {
+        if (result.RequiresSetName) {
+          setEnableStep('name')
+        } else {
+          setEnableStep('backup')
+        }
+      }
     } catch (err) {
       setError("Erreur lors de l'enregistrement de la nouvelle clé")
     }
+  }
+
+  const handleSetName = async () => {
+    if (!deviceName.trim()) {
+      setError('Veuillez entrer un nom pour votre appareil')
+      return
+    }
+
+    const result = await setCredentialName(
+      'secondary',
+      registerDeviceState.data.credentialId,
+      deviceName,
+    )
+    if (result.success) {
+      setDeviceName('')
+      setEnableStep('backup')
+      setError(null)
+    } else {
+      setError('Erreur lors de la définition du nom')
+    }
+  }
+
+  const handleCredentialSelection = (credentialId: string) => {
+    setSelectedCredentials((prev) =>
+      prev.includes(credentialId)
+        ? prev.filter((id) => id !== credentialId)
+        : [...prev, credentialId],
+    )
   }
 
   const handleMethodVerification = async () => {
@@ -223,11 +306,9 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
     const result = await disableTwoFactor(
       user?.email || '',
       disableMethod,
-      disableMethod === 'backup'
-        ? backupCode
-        : disableMethod === 'password'
-          ? disablePassword
-          : verificationCode.join(''),
+      disableMethod === 'password'
+        ? disablePassword
+        : verificationCode.join(''),
     )
     if (result?.success) {
       setDisablePassword('')
@@ -318,7 +399,7 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
             </div>
 
             <PrimaryButton
-              onClick={() => changeStep('selection')}
+              onClick={() => changeStep(enableStep, 'method')}
               fullWidth
               icon={ChevronRight}
             >
@@ -327,7 +408,7 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
           </div>
         )
 
-      case 'selection':
+      case 'method':
         return (
           <div className='space-y-6'>
             <div className='text-center'>
@@ -367,7 +448,7 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
 
             <div className='flex space-x-3'>
               <PrimaryButton
-                onClick={() => changeStep('info')}
+                onClick={() => changeStep(enableStep, 'info')}
                 variant='outline'
                 fullWidth
               >
@@ -407,15 +488,16 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
                   className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/20'
                   initial={{ scale: 0.8 }}
                   animate={{ scale: 1 }}
+                  transition={{ type: 'spring', stiffness: 500 }}
                 >
                   <Fingerprint className='h-8 w-8 text-purple-600 dark:text-purple-400' />
                 </motion.div>
                 <h3 className='text-lg font-semibold text-gray-900 dark:text-gray-100'>
-                  Utiliser une clé existante ?
+                  Transférer des clés existantes
                 </h3>
                 <p className='text-sm text-gray-600 dark:text-gray-400'>
-                  Vous avez {primaryCredentials.length} clé(s) configurée(s)
-                  pour la connexion principale
+                  Sélectionnez les clés de sécurité à transférer pour la double
+                  authentification
                 </p>
               </div>
 
@@ -427,25 +509,71 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
                 />
               )}
 
-              <div className='space-y-4'>
+              <motion.div
+                className='space-y-4'
+                initial={{ opacity: 0, y: 10 }}
+                animate={{ opacity: 1, y: 0 }}
+              >
+                <div className='rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800/30 dark:bg-blue-900/10'>
+                  <h4 className='mb-3 font-medium text-blue-900 dark:text-blue-100'>
+                    Clés de sécurité disponibles ({selectedCredentials.length}{' '}
+                    sélectionnée
+                    {selectedCredentials.length > 1 ? 's' : ''}) :
+                  </h4>
+                  <div className='space-y-3'>
+                    {primaryCredentials
+                      .filter(
+                        (credential) =>
+                          !secondaryCredentials?.some(
+                            (secondaryCredential) =>
+                              credential.id === secondaryCredential.id,
+                          ),
+                      )
+                      .map((credential) => (
+                        <TransferCredentialCard
+                          key={credential.id}
+                          credential={credential}
+                          isSelected={selectedCredentials.includes(
+                            credential.id,
+                          )}
+                          onSelect={handleCredentialSelection}
+                        />
+                      ))}
+                  </div>
+                </div>
+              </motion.div>
+
+              <div className='flex space-x-3'>
                 <PrimaryButton
-                  onClick={handleTransferPrimaryKey}
+                  onClick={handleTransferPrimaryKeys}
+                  loading={transferCredentialsState.loading}
+                  disabled={selectedCredentials.length === 0}
                   fullWidth
                   icon={RefreshCw}
-                  loading={registerDeviceState.loading}
                 >
-                  Transférer une clé existante
+                  Transférer{' '}
+                  {selectedCredentials.length > 0
+                    ? `(${selectedCredentials.length})`
+                    : ''}
                 </PrimaryButton>
-
                 <PrimaryButton
                   onClick={handleRegisterNewKey}
                   variant='outline'
                   fullWidth
                   icon={Plus}
                 >
-                  Enregistrer une nouvelle clé
+                  Nouvelle clé
                 </PrimaryButton>
               </div>
+
+              <motion.button
+                onClick={() => changeStep(enableStep, 'method')}
+                className='flex items-center justify-center text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400'
+                whileHover={{ x: -2 }}
+              >
+                <ChevronLeft className='h-4 w-4' />
+                Retour aux méthodes
+              </motion.button>
             </div>
           )
         }
@@ -557,26 +685,37 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
                 animate={{ opacity: 1, y: 0 }}
               >
                 <div className='mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/20'>
-                  <Check className='h-8 w-8 text-green-600 dark:text-green-400' />
+                  <CheckCircle className='h-8 w-8 text-green-600 dark:text-green-400' />
                 </div>
                 <p className='text-sm text-gray-600 dark:text-gray-400'>
                   Votre clé de sécurité a été enregistrée avec succès
                 </p>
-                <PrimaryButton
-                  onClick={() => changeStep('backup')}
-                  loading={registerDeviceState.loading}
-                  disabled={registerDeviceState.loading}
-                  fullWidth
-                >
-                  Continuer
-                </PrimaryButton>
+                {registerDeviceState.data.RequiresSetName ? (
+                  <PrimaryButton
+                    onClick={() => setEnableStep('name')}
+                    loading={registerDeviceState.loading}
+                    disabled={registerDeviceState.loading}
+                    fullWidth
+                  >
+                    Nommer cette clé
+                  </PrimaryButton>
+                ) : (
+                  <PrimaryButton
+                    onClick={() => changeStep(enableStep, 'backup')}
+                    loading={registerDeviceState.loading}
+                    disabled={registerDeviceState.loading}
+                    fullWidth
+                  >
+                    Continuer
+                  </PrimaryButton>
+                )}
               </motion.div>
             )}
 
             {selectedMethod !== 'webauthn' && (
               <div className='flex space-x-3'>
                 <PrimaryButton
-                  onClick={() => changeStep('selection')}
+                  onClick={() => changeStep(enableStep, 'method')}
                   variant='outline'
                   fullWidth
                 >
@@ -599,11 +738,65 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
           </div>
         )
 
+      case 'verify':
+        return (
+          <div className='space-y-6'>
+            <div className='text-center'>
+              <h3 className='text-lg font-semibold text-gray-900 dark:text-gray-100'>
+                Vérification par Email
+              </h3>
+            </div>
+
+            {error && (
+              <ErrorMessage
+                message={error}
+                type='error'
+                onClose={() => setError(null)}
+              />
+            )}
+
+            <motion.div
+              className='space-y-4'
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <p className='text-sm text-gray-600 dark:text-gray-400'>
+                Entrez le code à 6 chiffres envoyé à{' '}
+                <span className='font-medium'>{user?.email}</span>
+              </p>
+
+              <SixDigitCodeInput
+                value={verificationCode}
+                onChange={setVerificationCode}
+                onComplete={handleMethodVerification}
+                loading={enableEmailState.loading}
+                disabled={enableEmailState.loading || resendCodeState.loading}
+                error={!!enableEmailState.error}
+                autoFocus
+              />
+              <ResendSection
+                onResend={() => handleResendCode('config')}
+                countdownSeconds={60}
+                loading={resendCodeState.loading}
+              />
+            </motion.div>
+
+            <motion.button
+              onClick={() => changeStep(enableStep, 'config')}
+              className='flex items-center justify-center text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400'
+              whileHover={{ x: -2 }}
+            >
+              <ChevronLeft className='h-4 w-4' />
+              Retour à la configuration
+            </motion.button>
+          </div>
+        )
+
       case 'backup':
         return (
           <BackupCodesDisplay
             codes={
-              transferCredentialState.data?.backupCodes?.map(
+              transferCredentialsState.data?.backupCodes?.map(
                 (c: any) => c.code,
               ) ||
               enableEmailState.data?.backupCodes?.map((c: any) => c.code) ||
@@ -612,7 +805,7 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
               []
             }
             onContinue={() => {
-              changeStep('security')
+              changeStep(enableStep, 'security')
             }}
             onSkip={() => {
               closeEnableFlow()
@@ -634,6 +827,72 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
               onStatusChange()
             }}
           />
+        )
+
+      case 'name':
+        return (
+          <div className='space-y-6'>
+            <div className='text-center'>
+              <motion.div
+                className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/20'
+                initial={{ scale: 0.8 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', stiffness: 500 }}
+              >
+                <Key className='h-8 w-8 text-purple-600 dark:text-purple-400' />
+              </motion.div>
+              <h3 className='text-lg font-semibold text-gray-900 dark:text-gray-100'>
+                Nommez votre clé de sécurité
+              </h3>
+              <p className='text-sm text-gray-600 dark:text-gray-400'>
+                Donnez un nom reconnaissable à votre clé de sécurité
+              </p>
+            </div>
+
+            {error && (
+              <ErrorMessage
+                message={error}
+                type='error'
+                onClose={() => setError(null)}
+              />
+            )}
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <CustomInput
+                label="Nom de l'appareil"
+                value={deviceName}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setDeviceName(e.target.value)
+                }
+                placeholder='Ex: iPhone de John, Clé YubiKey...'
+                autoFocus
+              />
+            </motion.div>
+
+            <div className='flex space-x-3'>
+              <PrimaryButton
+                onClick={handleSetName}
+                loading={setCredentialNameState.loading}
+                disabled={!deviceName.trim()}
+                fullWidth
+              >
+                Continuer
+              </PrimaryButton>
+              <PrimaryButton
+                variant='outline'
+                onClick={() => {
+                  closeEnableFlow()
+                  setDeviceName('')
+                }}
+                fullWidth
+              >
+                Annuler
+              </PrimaryButton>
+            </div>
+          </div>
         )
 
       default:
@@ -677,68 +936,84 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
             />
 
             <div className='grid grid-cols-2 min-[706px]:grid-cols-3 gap-3'>
-              <MethodOption
+              <MethodSelectionCard
                 icon={Key}
-                method='password'
-                currentMethod={disableMethod}
-                onClick={() => setDisableMethod('password')}
+                title='Mot de passe'
+                description='Votre mot de passe'
                 color='orange'
+                isSelected={disableMethod === 'password'}
+                onClick={() => setDisableMethod('password')}
+                layout='vertical'
+                showChevron={false}
               />
               {availableMethods && availableMethods.includes('email') && (
-                <MethodOption
+                <MethodSelectionCard
                   icon={Mail}
-                  method='email'
-                  currentMethod={disableMethod}
-                  onClick={() => {
-                    setDisableMethod('email')
-                  }}
+                  title='Email'
+                  description='Code par email'
                   color='blue'
+                  isSelected={disableMethod === 'email'}
+                  onClick={() => setDisableMethod('email')}
+                  layout='vertical'
+                  showChevron={false}
                 />
               )}
 
               {availableMethods && availableMethods.includes('app') && (
-                <MethodOption
+                <MethodSelectionCard
                   icon={Smartphone}
-                  method='app'
-                  currentMethod={disableMethod}
-                  onClick={() => setDisableMethod('app')}
+                  title='Application'
+                  description='Code 2FA'
                   color='yellow'
+                  isSelected={disableMethod === 'app'}
+                  onClick={() => setDisableMethod('app')}
+                  layout='vertical'
+                  showChevron={false}
                 />
               )}
 
               {availableMethods && availableMethods.includes('webauthn') && (
-                <MethodOption
+                <MethodSelectionCard
                   icon={Fingerprint}
-                  method='webauthn'
-                  currentMethod={disableMethod}
-                  onClick={() => setDisableMethod('webauthn')}
+                  title='Clé de sécurité'
+                  description='WebAuthn, FaceID'
                   color='purple'
+                  isSelected={disableMethod === 'webauthn'}
+                  onClick={() => setDisableMethod('webauthn')}
+                  layout='vertical'
+                  showChevron={false}
                 />
               )}
 
-              <MethodOption
+              <MethodSelectionCard
                 icon={Key}
-                method='backup'
-                currentMethod={disableMethod}
-                onClick={() => setDisableMethod('backup')}
+                title='Code de secours'
+                description='Code de récupération'
                 color='green'
+                isSelected={disableMethod === 'backup'}
+                onClick={() => setDisableMethod('backup')}
+                layout='vertical'
+                showChevron={false}
               />
 
-              <MethodOption
+              <MethodSelectionCard
                 icon={Shield}
-                method='security'
-                currentMethod={disableMethod}
+                title='Questions de sécurité'
+                description='Questions personnelles'
+                color='orange'
+                isSelected={disableMethod === 'security'}
                 onClick={() => {
                   setDisableMethod('security')
                   loadSecurityQuestions()
                 }}
-                color='orange'
+                layout='vertical'
+                showChevron={false}
               />
             </div>
 
             <PrimaryButton
               onClick={() => {
-                changeStep('verify')
+                changeStep(disableStep, 'verify')
                 if (disableMethod === 'email') {
                   handleResendCode('disable')
                 }
@@ -794,7 +1069,7 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
                   autoFocus
                 />
                 <motion.button
-                  onClick={() => changeStep('method')}
+                  onClick={() => changeStep(disableStep, 'method')}
                   className='flex items-center text-sm text-primary-600 dark:text-primary-400 cursor-pointer'
                   whileHover={{ x: 2 }}
                 >
@@ -829,7 +1104,7 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
                   />
                 )}
                 <motion.button
-                  onClick={() => changeStep('method')}
+                  onClick={() => changeStep(disableStep, 'method')}
                   className='flex items-center text-sm text-primary-600 dark:text-primary-400 cursor-pointer'
                   whileHover={{ x: 2 }}
                 >
@@ -856,7 +1131,7 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
                   Authentifier avec WebAuthn
                 </PrimaryButton>
                 <motion.button
-                  onClick={() => changeStep('method')}
+                  onClick={() => changeStep(disableStep, 'method')}
                   className='flex items-center text-sm text-primary-600 dark:text-primary-400 cursor-pointer'
                   whileHover={{ x: 2 }}
                 >
@@ -880,7 +1155,7 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
                   autoFocus
                 />
                 <motion.button
-                  onClick={() => changeStep('method')}
+                  onClick={() => changeStep(disableStep, 'method')}
                   className='flex items-center text-sm text-primary-600 dark:text-primary-400 cursor-pointer'
                   whileHover={{ x: 2 }}
                 >
@@ -917,7 +1192,7 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
                   </div>
                 ))}
                 <motion.button
-                  onClick={() => changeStep('method')}
+                  onClick={() => changeStep(disableStep, 'method')}
                   className='flex items-center text-sm text-primary-600 dark:text-primary-400 cursor-pointer'
                   whileHover={{ x: 2 }}
                 >
@@ -1064,71 +1339,6 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
         </AnimatePresence>
       </Modal>
     </>
-  )
-}
-
-const MethodOption = ({
-  icon,
-  method,
-  currentMethod,
-  onClick,
-  color,
-}: {
-  icon: React.ComponentType<{ className?: string }>
-  method: string
-  currentMethod: string
-  onClick: () => void
-  color: 'blue' | 'yellow' | 'purple' | 'green' | 'orange' | 'red'
-}) => {
-  const getMethodTitle = (method: string) => {
-    switch (method) {
-      case 'webauthn':
-        return 'Clé de sécurité'
-      case 'backup':
-        return 'Code de secours'
-      case 'security':
-        return 'Questions de sécurité'
-      case 'password':
-        return 'Mot de passe'
-      case 'email':
-        return 'Email'
-      case 'app':
-        return 'Application'
-      default:
-        return method
-    }
-  }
-
-  const getMethodDescription = (method: string) => {
-    switch (method) {
-      case 'webauthn':
-        return 'WebAuthn, FaceID'
-      case 'backup':
-        return 'Code de récupération'
-      case 'security':
-        return 'Questions personnelles'
-      case 'password':
-        return 'Votre mot de passe'
-      case 'email':
-        return 'Code par email'
-      case 'app':
-        return 'Code 2FA'
-      default:
-        return ''
-    }
-  }
-
-  return (
-    <MethodSelectionCard
-      icon={icon as any}
-      title={getMethodTitle(method)}
-      description={getMethodDescription(method)}
-      color={color}
-      isSelected={currentMethod === method}
-      onClick={onClick}
-      layout='vertical'
-      showChevron={false}
-    />
   )
 }
 

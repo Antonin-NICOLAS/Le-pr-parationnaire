@@ -7,7 +7,9 @@ import {
   Shield,
   AlertTriangle,
   ChevronLeft,
+  RefreshCw,
 } from 'lucide-react'
+import TransferCredentialCard from '../TwoFactor/TransferCredentialCard'
 import { motion, AnimatePresence } from 'framer-motion'
 import ToggleSwitch from '../ui/ToggleSwitch'
 import Modal from '../ui/Modal'
@@ -53,7 +55,7 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
   )
   const [disablePassword, setDisablePassword] = useState('')
   const [selectedSecondaryCredential, setSelectedSecondaryCredential] =
-    useState<string>('')
+    useState<string[]>([])
   const [direction, setDirection] = useState(1)
   const [error, setError] = useState<string | null>(null)
 
@@ -66,8 +68,8 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
     deleteCredentialState,
     disableWebAuthn,
     disableWebAuthnState,
-    transferCredential,
-    transferCredentialState,
+    transferCredentials,
+    transferCredentialsState,
   } = useWebAuthnTwoFactor()
 
   const handleEnable = async () => {
@@ -86,23 +88,32 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
     }
   }
 
-  const handleUseExistingCredential = async () => {
-    if (!selectedSecondaryCredential) {
-      setError('Veuillez sélectionner une clé de sécurité')
+  const handleTransferSecondaryKeys = async () => {
+    if (selectedSecondaryCredential.length === 0) {
+      setError('Veuillez sélectionner au moins une clé de sécurité')
       return
     }
 
-    const result = await transferCredential(
+    const result = await transferCredentials(
       'secondary',
       'primary',
       selectedSecondaryCredential,
     )
     if (result.success) {
       closeEnableFlow()
+      setSelectedSecondaryCredential([])
       onStatusChange()
     } else {
-      setError('Erreur lors du transfert de la clé')
+      setError('Erreur lors du transfert de certaines clés')
     }
+  }
+
+  const handleCredentialSelection = (credentialId: string) => {
+    setSelectedSecondaryCredential((prev) =>
+      prev.includes(credentialId)
+        ? prev.filter((id) => id !== credentialId)
+        : [...prev, credentialId],
+    )
   }
 
   const handleRegisterNew = async () => {
@@ -227,48 +238,52 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
               animate={{ opacity: 1, y: 0 }}
             >
               <div className='rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800/30 dark:bg-blue-900/10'>
-                <h4 className='mb-2 font-medium text-blue-900 dark:text-blue-100'>
-                  Clés de sécurité disponibles :
+                <h4 className='mb-3 font-medium text-blue-900 dark:text-blue-100'>
+                  Clés de sécurité disponibles (
+                  {selectedSecondaryCredential.length} sélectionnée
+                  {selectedSecondaryCredential.length > 1 ? 's' : ''}) :
                 </h4>
                 <div className='space-y-3'>
-                  {secondaryCredentials.map((credential) => (
-                    <motion.label
-                      key={credential.id}
-                      className='flex items-center space-x-3 rounded-lg p-3 hover:bg-blue-100 dark:hover:bg-blue-900/20'
-                      whileHover={{ x: 2 }}
-                    >
-                      <input
-                        type='radio'
-                        name='secondaryCredential'
-                        value={credential.id}
-                        checked={selectedSecondaryCredential === credential.id}
-                        onChange={(e) =>
-                          setSelectedSecondaryCredential(e.target.value)
-                        }
-                        className='text-primary-600 focus:ring-primary-500 h-4 w-4'
+                  {primaryCredentials
+                    .filter(
+                      (credential) =>
+                        !secondaryCredentials?.some(
+                          (secondaryCredential) =>
+                            credential.id === secondaryCredential.id,
+                        ),
+                    )
+                    .map((credential) => (
+                      <TransferCredentialCard
+                        key={credential.id}
+                        credential={credential}
+                        isSelected={selectedSecondaryCredential.includes(
+                          credential.id,
+                        )}
+                        onSelect={handleCredentialSelection}
                       />
-                      <span className='text-sm text-blue-800 dark:text-blue-200'>
-                        {credential.deviceName} ({credential.deviceType})
-                      </span>
-                    </motion.label>
-                  ))}
+                    ))}
                 </div>
               </div>
             </motion.div>
 
             <div className='flex space-x-3'>
               <PrimaryButton
-                onClick={handleUseExistingCredential}
-                loading={transferCredentialState.loading}
-                disabled={!selectedSecondaryCredential}
+                onClick={handleTransferSecondaryKeys}
+                loading={transferCredentialsState.loading}
+                disabled={selectedSecondaryCredential.length === 0}
                 fullWidth
+                icon={RefreshCw}
               >
-                Utiliser cette clé
+                Transférer{' '}
+                {selectedSecondaryCredential.length > 0
+                  ? `(${selectedSecondaryCredential.length})`
+                  : ''}
               </PrimaryButton>
               <PrimaryButton
                 variant='outline'
                 onClick={() => changeStep('register')}
                 fullWidth
+                icon={Plus}
               >
                 Nouvelle clé
               </PrimaryButton>
