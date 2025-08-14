@@ -23,6 +23,7 @@ const ForgotPasswordPage: React.FC = () => {
   } = useForgotPassword()
   const errorMessage =
     forgotPasswordState.error || resendForgotPasswordState.error
+
   const form = useFormHandler({
     initialValues: {
       email: '',

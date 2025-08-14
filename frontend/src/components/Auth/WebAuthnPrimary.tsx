@@ -6,12 +6,14 @@ import {
   Trash2,
   Shield,
   AlertTriangle,
+  ChevronLeft,
 } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import ToggleSwitch from '../ui/ToggleSwitch'
 import Modal from '../ui/Modal'
 import PrimaryButton from '../ui/PrimaryButton'
 import CustomInput from '../ui/CustomInput'
+import ErrorMessage from '../ui/ErrorMessage'
 import { useAuth } from '../../context/Auth'
 import useWebAuthnTwoFactor from '../../hooks/TwoFactor/WebAuthn'
 import { useUrlModal } from '../../routes/UseUrlModal'
@@ -52,6 +54,8 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
   const [disablePassword, setDisablePassword] = useState('')
   const [selectedSecondaryCredential, setSelectedSecondaryCredential] =
     useState<string>('')
+  const [direction, setDirection] = useState(1)
+  const [error, setError] = useState<string | null>(null)
 
   const {
     registerDevice,
@@ -76,7 +80,10 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
   }
 
   const handleUseExistingCredential = async () => {
-    if (!selectedSecondaryCredential) return
+    if (!selectedSecondaryCredential) {
+      setError('Veuillez sélectionner une clé de sécurité')
+      return
+    }
 
     const result = await transferCredential(
       'secondary',
@@ -86,6 +93,8 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
     if (result.success) {
       closeEnableFlow()
       onStatusChange()
+    } else {
+      setError('Erreur lors du transfert de la clé')
     }
   }
 
@@ -100,11 +109,16 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
         closeEnableFlow()
         onStatusChange()
       }
+    } else {
+      setError("Erreur lors de l'enregistrement de la clé")
     }
   }
 
   const handleSetName = async () => {
-    if (!deviceName.trim()) return
+    if (!deviceName.trim()) {
+      setError('Veuillez entrer un nom pour votre appareil')
+      return
+    }
 
     const result = await setCredentialName(
       'primary',
@@ -116,10 +130,17 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
       setDeviceName('')
       setCurrentStep('transfer-choice')
       onStatusChange()
+    } else {
+      setError('Erreur lors de la définition du nom')
     }
   }
 
   const handleDisable = async () => {
+    if (disableMethod === 'password' && !disablePassword) {
+      setError('Veuillez entrer votre mot de passe')
+      return
+    }
+
     const result = await disableWebAuthn(
       'primary',
       user?.email || '',
@@ -130,6 +151,12 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
       closeDisableFlow()
       setDisablePassword('')
       onStatusChange()
+    } else {
+      setError(
+        disableMethod === 'password'
+          ? 'Mot de passe incorrect'
+          : 'Erreur de vérification',
+      )
     }
   }
 
@@ -145,8 +172,15 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
         if (primaryCredentials.length <= 1) {
           closeCredentialsList()
         }
+      } else {
+        setError('Erreur lors de la suppression')
       }
     }
+  }
+
+  const changeStep = (newStep: typeof currentStep) => {
+    setDirection(newStep === 'name' ? 1 : -1)
+    setCurrentStep(newStep)
   }
 
   const renderEnableFlow = () => {
@@ -155,9 +189,14 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
         return (
           <div className='space-y-6'>
             <div className='text-center'>
-              <div className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/20'>
+              <motion.div
+                className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/20'
+                initial={{ scale: 0.8 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', stiffness: 500 }}
+              >
                 <Fingerprint className='h-8 w-8 text-purple-600 dark:text-purple-400' />
-              </div>
+              </motion.div>
               <h3 className='text-lg font-semibold text-gray-900 dark:text-gray-100'>
                 Activer la connexion sans mot de passe
               </h3>
@@ -167,16 +206,29 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
               </p>
             </div>
 
-            <div className='space-y-4'>
+            {error && (
+              <ErrorMessage
+                message={error}
+                type='error'
+                onClose={() => setError(null)}
+              />
+            )}
+
+            <motion.div
+              className='space-y-4'
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
               <div className='rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800/30 dark:bg-blue-900/10'>
                 <h4 className='mb-2 font-medium text-blue-900 dark:text-blue-100'>
                   Clés de sécurité disponibles :
                 </h4>
-                <div className='space-y-2'>
+                <div className='space-y-3'>
                   {secondaryCredentials.map((credential) => (
-                    <label
+                    <motion.label
                       key={credential.id}
-                      className='flex items-center space-x-3'
+                      className='flex items-center space-x-3 rounded-lg p-3 hover:bg-blue-100 dark:hover:bg-blue-900/20'
+                      whileHover={{ x: 2 }}
                     >
                       <input
                         type='radio'
@@ -186,16 +238,16 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
                         onChange={(e) =>
                           setSelectedSecondaryCredential(e.target.value)
                         }
-                        className='text-primary-600 focus:ring-primary-500'
+                        className='text-primary-600 focus:ring-primary-500 h-4 w-4'
                       />
                       <span className='text-sm text-blue-800 dark:text-blue-200'>
                         {credential.deviceName} ({credential.deviceType})
                       </span>
-                    </label>
+                    </motion.label>
                   ))}
                 </div>
               </div>
-            </div>
+            </motion.div>
 
             <div className='flex space-x-3'>
               <PrimaryButton
@@ -208,10 +260,10 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
               </PrimaryButton>
               <PrimaryButton
                 variant='outline'
-                onClick={() => setCurrentStep('register')}
+                onClick={() => changeStep('register')}
                 fullWidth
               >
-                Enregistrer une nouvelle clé
+                Nouvelle clé
               </PrimaryButton>
             </div>
           </div>
@@ -221,9 +273,14 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
         return (
           <div className='space-y-6'>
             <div className='text-center'>
-              <div className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/20'>
+              <motion.div
+                className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/20'
+                initial={{ scale: 0.8 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', stiffness: 500 }}
+              >
                 <Key className='h-8 w-8 text-purple-600 dark:text-purple-400' />
-              </div>
+              </motion.div>
               <h3 className='text-lg font-semibold text-gray-900 dark:text-gray-100'>
                 Enregistrer une nouvelle clé
               </h3>
@@ -233,14 +290,36 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
               </p>
             </div>
 
-            <PrimaryButton
-              onClick={handleRegisterNew}
-              loading={registerDeviceState.loading}
-              fullWidth
-              icon={Key}
+            {error && (
+              <ErrorMessage
+                message={error}
+                type='error'
+                onClose={() => setError(null)}
+              />
+            )}
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
             >
-              Enregistrer la clé
-            </PrimaryButton>
+              <PrimaryButton
+                onClick={handleRegisterNew}
+                loading={registerDeviceState.loading}
+                fullWidth
+                icon={Key}
+              >
+                Enregistrer la clé
+              </PrimaryButton>
+            </motion.div>
+
+            <motion.button
+              onClick={() => changeStep('transfer-choice')}
+              className='flex items-center justify-center text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400'
+              whileHover={{ x: -2 }}
+            >
+              <ChevronLeft className='h-4 w-4' />
+              Retour aux clés existantes
+            </motion.button>
           </div>
         )
 
@@ -248,9 +327,14 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
         return (
           <div className='space-y-6'>
             <div className='text-center'>
-              <div className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/20'>
+              <motion.div
+                className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/20'
+                initial={{ scale: 0.8 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', stiffness: 500 }}
+              >
                 <Key className='h-8 w-8 text-purple-600 dark:text-purple-400' />
-              </div>
+              </motion.div>
               <h3 className='text-lg font-semibold text-gray-900 dark:text-gray-100'>
                 Nommez votre clé de sécurité
               </h3>
@@ -259,15 +343,28 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
               </p>
             </div>
 
-            <CustomInput
-              label="Nom de l'appareil"
-              value={deviceName}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-                setDeviceName(e.target.value)
-              }
-              placeholder='Ex: iPhone de John, Clé YubiKey...'
-              autoFocus
-            />
+            {error && (
+              <ErrorMessage
+                message={error}
+                type='error'
+                onClose={() => setError(null)}
+              />
+            )}
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+            >
+              <CustomInput
+                label="Nom de l'appareil"
+                value={deviceName}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setDeviceName(e.target.value)
+                }
+                placeholder='Ex: iPhone de John, Clé YubiKey...'
+                autoFocus
+              />
+            </motion.div>
 
             <div className='flex space-x-3'>
               <PrimaryButton
@@ -297,9 +394,14 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
   const renderDisableFlow = () => (
     <div className='space-y-6'>
       <div className='text-center'>
-        <div className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20'>
+        <motion.div
+          className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20'
+          initial={{ scale: 0.8 }}
+          animate={{ scale: 1 }}
+          transition={{ type: 'spring', stiffness: 500 }}
+        >
           <AlertTriangle className='h-8 w-8 text-red-600 dark:text-red-400' />
-        </div>
+        </motion.div>
         <h3 className='text-lg font-semibold text-gray-900 dark:text-gray-100'>
           Désactiver la connexion sans mot de passe
         </h3>
@@ -308,47 +410,78 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
         </p>
       </div>
 
+      {error && (
+        <ErrorMessage
+          message={error}
+          type='error'
+          onClose={() => setError(null)}
+        />
+      )}
+
       <div className='space-y-4'>
-        <div className='flex space-x-4'>
-          <button
-            onClick={() => setDisableMethod('password')}
+        <motion.div
+          className='flex space-x-4'
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+        >
+          <motion.button
+            onClick={() => {
+              setDisableMethod('password')
+              setError(null)
+            }}
             className={`flex-1 rounded-lg border-2 p-4 transition-all ${
               disableMethod === 'password'
                 ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
                 : 'border-gray-200 hover:border-gray-300 dark:border-gray-600'
             }`}
+            whileHover={{ y: -2 }}
+            whileTap={{ scale: 0.98 }}
           >
             <Shield className='mx-auto mb-2 h-6 w-6 text-gray-900 dark:text-gray-400' />
             <div className='text-sm font-medium text-gray-900 dark:text-gray-400'>
               Mot de passe
             </div>
-          </button>
-          <button
-            onClick={() => setDisableMethod('webauthn')}
+          </motion.button>
+          <motion.button
+            onClick={() => {
+              setDisableMethod('webauthn')
+              setError(null)
+            }}
             className={`flex-1 rounded-lg border-2 p-4 transition-all ${
               disableMethod === 'webauthn'
                 ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
                 : 'border-gray-200 hover:border-gray-300 dark:border-gray-600'
             }`}
+            whileHover={{ y: -2 }}
+            whileTap={{ scale: 0.98 }}
           >
             <Fingerprint className='mx-auto mb-2 h-6 w-6 text-gray-900 dark:text-gray-400' />
             <div className='text-sm font-medium text-gray-900 dark:text-gray-400'>
               Clé de sécurité
             </div>
-          </button>
-        </div>
+          </motion.button>
+        </motion.div>
 
-        {disableMethod === 'password' && (
-          <CustomInput
-            type='password'
-            label='Mot de passe'
-            value={disablePassword}
-            onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
-              setDisablePassword(e.target.value)
-            }
-            autoFocus
-          />
-        )}
+        <AnimatePresence>
+          {disableMethod === 'password' && (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <CustomInput
+                type='password'
+                label='Mot de passe'
+                value={disablePassword}
+                onChange={(e: React.ChangeEvent<HTMLInputElement>) =>
+                  setDisablePassword(e.target.value)
+                }
+                autoFocus
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <div className='flex space-x-3'>
@@ -383,9 +516,13 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
 
       <div className='space-y-3'>
         {primaryCredentials.map((credential) => (
-          <div
+          <motion.div
             key={credential.id}
             className='flex items-center justify-between rounded-lg bg-gray-50 p-4 dark:bg-gray-700/50'
+            whileHover={{ y: -2 }}
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ type: 'spring', stiffness: 300 }}
           >
             <div className='flex items-center space-x-3'>
               <div className='rounded-lg bg-purple-100 p-2 dark:bg-purple-900/20'>
@@ -411,17 +548,21 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
             >
               Supprimer
             </PrimaryButton>
-          </div>
+          </motion.div>
         ))}
       </div>
 
       {primaryCredentials.length === 0 && (
-        <div className='py-8 text-center'>
+        <motion.div
+          className='py-8 text-center'
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+        >
           <Key className='mx-auto mb-4 h-12 w-12 text-gray-400' />
           <p className='text-gray-500 dark:text-gray-400'>
             Aucune clé de sécurité enregistrée
           </p>
-        </div>
+        </motion.div>
       )}
     </div>
   )
@@ -429,15 +570,18 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
   return (
     <>
       <motion.div
-        className='flex items-center justify-between rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800'
+        className='flex items-center justify-between rounded-xl border border-gray-200 bg-white p-6 shadow-sm dark:border-gray-700 dark:bg-gray-800/50 dark:shadow-none'
         whileHover={{ scale: 1.007 }}
         whileTap={{ scale: 0.995 }}
         transition={{ type: 'spring', stiffness: 600, damping: 13 }}
       >
         <div className='flex items-center space-x-4'>
-          <div className='rounded-lg bg-purple-100 p-3 dark:bg-purple-700/30'>
+          <motion.div
+            className='rounded-lg bg-purple-100 p-3 dark:bg-purple-700/30'
+            whileHover={{ rotate: 5 }}
+          >
             <Fingerprint className='h-6 w-6 text-purple-600 dark:text-purple-400' />
-          </div>
+          </motion.div>
           <div>
             <h3 className='text-lg font-semibold text-gray-900 dark:text-gray-100'>
               Connexion sans mot de passe
@@ -446,7 +590,7 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
               Utilisez WebAuthn pour vous connecter sans mot de passe
             </p>
             {isEnabled && (
-              <p className='text-xs text-gray-500 dark:text-gray-400 mt-1'>
+              <p className='mt-1 text-xs text-gray-500 dark:text-gray-400'>
                 {primaryCredentials.length} clé
                 {primaryCredentials.length > 1 ? 's' : ''} enregistrée
                 {primaryCredentials.length > 1 ? 's' : ''}
@@ -454,31 +598,63 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
             )}
           </div>
         </div>
-        <div className='flex flex-col items-end space-y-2'>
+        <div className='flex items-center space-x-2'>
+          {isEnabled && (
+            <motion.div whileHover={{ scale: 1.03 }}>
+              <PrimaryButton
+                variant='outline'
+                size='sm'
+                onClick={openCredentialsList}
+              >
+                Gérer les clés ({primaryCredentials.length})
+              </PrimaryButton>
+            </motion.div>
+          )}
           <ToggleSwitch
             checked={isEnabled}
             onChange={isEnabled ? openDisableFlow : handleEnable}
             size='lg'
           />
-          {isEnabled && (
-            <PrimaryButton
-              variant='outline'
-              size='sm'
-              onClick={openCredentialsList}
-            >
-              Gérer les clés ({primaryCredentials.length})
-            </PrimaryButton>
-          )}
         </div>
       </motion.div>
 
       <Modal
-        onClose={closeEnableFlow}
+        onClose={() => {
+          closeEnableFlow()
+          setCurrentStep('transfer-choice')
+          setError(null)
+        }}
         title='Activer la connexion sans mot de passe'
         size='md'
         urlName='enable-webauthn-primary'
       >
-        {renderEnableFlow()}
+        <AnimatePresence custom={direction} mode='wait'>
+          <motion.div
+            key={currentStep}
+            custom={direction}
+            variants={{
+              enter: (direction: number) => ({
+                x: direction > 0 ? 50 : -50,
+                opacity: 0,
+              }),
+              center: {
+                x: 0,
+                opacity: 1,
+                transition: { duration: 0.3 },
+              },
+              exit: (direction: number) => ({
+                x: direction < 0 ? 50 : -50,
+                opacity: 0,
+                transition: { duration: 0.2 },
+              }),
+            }}
+            initial='enter'
+            animate='center'
+            exit='exit'
+          >
+            {renderEnableFlow()}
+          </motion.div>
+        </AnimatePresence>
       </Modal>
 
       <Modal
@@ -491,7 +667,10 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
       </Modal>
 
       <Modal
-        onClose={closeDisableFlow}
+        onClose={() => {
+          closeDisableFlow()
+          setError(null)
+        }}
         title='Désactiver la connexion sans mot de passe'
         size='md'
         urlName='disable-webauthn-primary'

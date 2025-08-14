@@ -1,5 +1,5 @@
 import { AlertCircle, Mail, RefreshCw, Shield, Star } from 'lucide-react'
-import React, { useEffect, useState, useRef } from 'react'
+import React, { useState } from 'react'
 
 import { useAuth } from '../../context/Auth'
 import useEmailTwoFactor from '../../hooks/TwoFactor/Email'

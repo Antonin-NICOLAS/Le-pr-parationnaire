@@ -583,7 +583,7 @@ export const disableWebAuthn = asyncHandler(
 
     const { method, value } = req.body
     if (!method || !value) {
-      return ApiResponse.error(res, t('auth:errors.missing_fields'), 400)
+      return ApiResponse.error(res, t('common:errors.bad_request'), 400)
     }
 
     const user = await User.findById(req.user._id).select(

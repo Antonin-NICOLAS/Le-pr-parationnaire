@@ -7,7 +7,7 @@ import {
 import axios from 'axios'
 
 import { useAuth } from '../../context/Auth'
-import { VITE_WEB_AUTHN } from '../../utils/env'
+import { VITE_WEB_AUTHN, VITE_2FA } from '../../utils/env'
 import { type ApiCallConfig, useApiCall } from '../useApiCall'
 
 export function useWebAuthnApiCall<T = any>(
@@ -110,6 +110,16 @@ const disableWebAuthnApi = (
     `${VITE_WEB_AUTHN}/disable`,
     { method, value },
     { params: { context }, withCredentials: true },
+  )
+
+const disableTwoFactorApi = (
+  method: 'password' | 'email' | 'app' | 'webauthn' | 'backup_code',
+  value: any,
+) =>
+  axios.post(
+    `${VITE_2FA}/disable`,
+    { method, value },
+    { withCredentials: true },
   )
 
 // ---------------------------
@@ -228,6 +238,34 @@ const useWebAuthnTwoFactor = () => {
     },
   )
 
+  const disableTwoFactor = useWebAuthnApiCall(
+    async (
+      email: string,
+      method: 'password' | 'email' | 'app' | 'webauthn' | 'backup_code',
+      value: string,
+    ) => {
+      if (method !== 'webauthn') {
+        return (await disableTwoFactorApi(method, value)).data
+      } else {
+        const optionsRes = await getAuthenticationOptionsApi('secondary', email)
+        if (!optionsRes.data?.success || !optionsRes.data?.options) {
+          return optionsRes.data
+        }
+
+        const assertionResponse: AuthenticationResponseJSON =
+          await startAuthentication({
+            optionsJSON: optionsRes.data.options,
+          })
+
+        return (await disableTwoFactorApi('webauthn', assertionResponse)).data
+      }
+    },
+    {
+      successMessage: 'WebAuthn désactivé',
+      errorMessage: 'Erreur lors de la désactivation',
+    },
+  )
+
   return {
     registerDevice: registerDevice.execute,
     registerDeviceState: registerDevice,
@@ -246,6 +284,9 @@ const useWebAuthnTwoFactor = () => {
 
     transferCredential: transferCredential.execute,
     transferCredentialState: transferCredential,
+
+    disableTwoFactor: disableTwoFactor.execute,
+    disableTwoFactorState: disableTwoFactor,
   }
 }
 

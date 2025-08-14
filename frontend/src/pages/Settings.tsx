@@ -254,8 +254,9 @@ const SettingsPage: React.FC = () => {
                   key={session.sessionId}
                   variants={itemVariants}
                   className='flex items-center justify-between rounded-lg bg-gray-50 p-4 dark:bg-gray-700/50'
-                  whileHover={{ scale: 1.005 }}
-                  transition={{ type: 'spring', stiffness: 500 }}
+                  whileHover={{ scale: 1.007 }}
+                  whileTap={{ scale: 0.995 }}
+                  transition={{ type: 'spring', stiffness: 600, damping: 13 }}
                 >
                   <div className='flex flex-1 items-center space-x-3'>
                     <div className='flex-shrink-0'>
@@ -719,13 +720,19 @@ const SettingsPage: React.FC = () => {
           <motion.div variants={itemVariants}>
             <TwoFactorMain
               isEnabled={getTwoFactorStatusState.data?.isEnabled || false}
-              availableMethods={Object.entries(getTwoFactorStatusState.data)
-                .filter(
-                  ([key, value]) =>
-                    (key === 'email' || key === 'app' || key === 'webauthn') &&
-                    (value as { isEnabled?: boolean }).isEnabled,
-                )
-                .map(([key]) => key as 'email' | 'app' | 'webauthn')}
+              availableMethods={
+                getTwoFactorStatusState.data &&
+                typeof getTwoFactorStatusState.data === 'object' &&
+                Object.entries(getTwoFactorStatusState.data)
+                  .filter(
+                    ([key, value]) =>
+                      (key === 'email' ||
+                        key === 'app' ||
+                        key === 'webauthn') &&
+                      (value as { isEnabled?: boolean }).isEnabled,
+                  )
+                  .map(([key]) => key as 'email' | 'app' | 'webauthn')
+              }
               primaryCredentials={
                 getTwoFactorStatusState.data?.primaryCredentials || []
               }

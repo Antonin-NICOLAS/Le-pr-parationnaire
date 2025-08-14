@@ -158,8 +158,7 @@ export const checkAuthStatus = asyncHandler(
     if (email && validateEmail(decodeURIComponent(email as string))) {
       const user = await User.findOne({ email })
       if (user) {
-        isLoginWithWebAuthn =
-          (user.loginWithWebAuthn && user.twoFactor.webauthn.isEnabled) || false
+        isLoginWithWebAuthn = user.authMethods.webauthn.isEnabled || false
       }
     }
 

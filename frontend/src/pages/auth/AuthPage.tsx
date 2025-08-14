@@ -115,6 +115,20 @@ const AuthPage: React.FC = () => {
     if (result?.success) {
       navigate('/home')
       await checkAuth()
+    } else if (result.requiresTwoFactor || loginState.data?.requiresTwoFactor) {
+      if (result.twoFactor.preferredMethod === 'email') {
+        await resendCode(loginForm.values.email, 'login')
+      }
+      navigate(`/2fa-verify/${result.twoFactor.preferredMethod}`, {
+        state: {
+          email: loginForm.values.email,
+          rememberMe: loginForm.values.rememberMe,
+          email2FA: result.twoFactor.email || loginState.data?.twoFactor?.email,
+          app2FA: result.twoFactor.app || loginState.data?.twoFactor?.app,
+          webauthn2FA:
+            result.twoFactor.webauthn || loginState.data?.twoFactor?.webauthn,
+        },
+      })
     } else {
       setLoginStep('password')
       setDirection(-1)

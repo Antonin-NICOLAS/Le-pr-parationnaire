@@ -15,7 +15,7 @@ import {
   disableTwoFactorEmail,
   setPreferredMethod,
   twoFactorLogin,
-  switchTwoFactor,
+  disableTwoFactor,
 } from '../controllers/2FAController.js'
 
 // Middlewares
@@ -45,9 +45,7 @@ const authIfNeeded = (req: Request, res: Response, next: NextFunction) => {
 router.get('/status', authenticate, getStatus)
 router.post('/set-preferred-method', authenticate, setPreferredMethod)
 router.post('/login', rateLimiterMiddleware, twoFactorLogin)
-
-// Global 2FA control
-router.post('/switch', authenticate, switchTwoFactor)
+router.post('/disable', authenticate, disableTwoFactor)
 
 // Email 2FA
 router.post(

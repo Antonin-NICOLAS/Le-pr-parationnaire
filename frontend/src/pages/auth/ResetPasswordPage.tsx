@@ -20,6 +20,7 @@ const ResetPasswordPage: React.FC = () => {
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token')
   const email = searchParams.get('email')
+
   const form = useFormHandler({
     initialValues: {
       newPassword: '',

@@ -8,6 +8,8 @@ import ErrorMessage from '../../components/ui/ErrorMessage'
 import SixDigitCodeInput from '../../components/ui/SixDigitCodeInput'
 import { useAuth } from '../../context/Auth'
 import AuthLayout from '../../layouts/AuthLayout'
+import { useFormHandler } from '../../hooks/useFormHandler'
+import { emailVerificationSchema } from '../../utils/validation'
 
 const EmailVerificationPage: React.FC = () => {
   const location = useLocation()
@@ -19,9 +21,20 @@ const EmailVerificationPage: React.FC = () => {
     resendVerificationEmail,
     resendVerificationEmailState,
   } = useAuth()
+
+  const form = useFormHandler({
+    initialValues: {
+      token: Array(6).fill(''),
+      email: email || '',
+      rememberMe: rememberMe || false,
+    },
+    validationSchema: emailVerificationSchema,
+    validateOnBlur: true,
+    validateOnChange: false,
+  })
+
   const errorMessage =
     emailVerificationState.error || resendVerificationEmailState.error
-  const [code, setCode] = useState<string[]>(Array(6).fill(''))
   const [canResend, setCanResend] = useState(false)
 
   const handleVerification = async (token: string) => {
@@ -77,14 +90,14 @@ const EmailVerificationPage: React.FC = () => {
         )}
         <div className='space-y-4'>
           <SixDigitCodeInput
-            value={code}
-            onChange={setCode}
+            value={form.values.token}
+            onChange={(value) => form.handleChange('token', value)}
             disabled={
               emailVerificationState.loading ||
               resendVerificationEmailState.loading
             }
-            onComplete={() => handleVerification(code.join(''))}
-            error={!!errorMessage}
+            onComplete={() => handleVerification(form.values.token.join(''))}
+            error={!!form.errors.token}
             autoFocus
           />
 
