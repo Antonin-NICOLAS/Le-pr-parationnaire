@@ -2,7 +2,7 @@
  * @swagger
  * tags:
  *   - name: WebAuthn Authentication
- *     description: Endpoints pour l'authentification WebAuthn
+ *     description: Endpoints pour l'authentification WebAuthn (primaire et secondaire)
  *   - name: WebAuthn Management
  *     description: Gestion des clés d'accès WebAuthn
  */
@@ -16,11 +16,20 @@
  *     description: |
  *       Génère les options nécessaires pour enregistrer une nouvelle clé d'accès.
  *       Protégée par rate limiting (5 requêtes/2 minutes) et authentification.
+ *       Le paramètre context détermine si la clé est pour l'authentification principale (primary) ou la 2FA (secondary).
  *     security:
  *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: context
+ *         schema:
+ *           type: string
+ *           enum: [primary, secondary]
+ *         required: true
+ *         description: Contexte d'utilisation (primary pour auth principale, secondary pour 2FA)
  *     responses:
  *       200:
- *         description: Options d'enregistrement générées avec succès
+ *         description: Options d'enregistrement générées avec succès ou détection de clés existantes
  *         content:
  *           application/json:
  *             schema:
@@ -30,6 +39,7 @@
  *                   properties:
  *                     options:
  *                       type: object
+ *                       description: Options d'enregistrement (seulement si RequiresSetName est false)
  *                       properties:
  *                         rp:
  *                           type: object
@@ -63,6 +73,18 @@
  *                           type: array
  *                           items:
  *                             type: object
+ *                     RequiresSetName:
+ *                       type: boolean
+ *                       description: Indique si des clés existaient déjà et ont été réactivées
+ *       400:
+ *         description: Requête invalide
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             example:
+ *               success: false
+ *               error: "Requête invalide"
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  *       404:
@@ -84,6 +106,14 @@
  *       Protégée par rate limiting (5 requêtes/2 minutes) et authentification.
  *     security:
  *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: context
+ *         schema:
+ *           type: string
+ *           enum: [primary, secondary]
+ *         required: true
+ *         description: Contexte d'utilisation (primary pour auth principale, secondary pour 2FA)
  *     requestBody:
  *       required: true
  *       content:
@@ -115,10 +145,15 @@
  *                     preferredMethod:
  *                       type: string
  *                       enum: [email, app, webauthn, none]
+ *                       description: Méthode 2FA préférée (seulement si context=secondary)
  *                     backupCodes:
  *                       type: array
  *                       items:
  *                         type: string
+ *                       description: Codes de secours (seulement si context=secondary et première méthode 2FA activée)
+ *                     RequiresSetName:
+ *                       type: boolean
+ *                       description: Indique si le nom du périphérique doit être défini
  *       400:
  *         description: Requête invalide
  *         content:
@@ -165,6 +200,13 @@
  *           format: email
  *         required: true
  *         description: Email de l'utilisateur
+ *       - in: query
+ *         name: context
+ *         schema:
+ *           type: string
+ *           enum: [primary, secondary]
+ *         required: true
+ *         description: Contexte d'authentification (primary pour auth principale, secondary pour 2FA)
  *     responses:
  *       200:
  *         description: Options d'authentification générées avec succès
@@ -196,9 +238,15 @@
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               success: false
- *               error: "L'authentification par clé d'accès n'est pas activée."
+ *             examples:
+ *               not_enabled:
+ *                 value:
+ *                   success: false
+ *                   error: "L'authentification par clé d'accès n'est pas activée pour ce contexte."
+ *               missing_fields:
+ *                 value:
+ *                   success: false
+ *                   error: "Tous les champs sont requis."
  *       404:
  *         $ref: '#/components/responses/UserNotFound'
  *       429:
@@ -216,6 +264,14 @@
  *     description: |
  *       Vérifie l'authentification avec une clé d'accès après la réponse du navigateur.
  *       Protégée par rate limiting (5 requêtes/2 minutes).
+ *     parameters:
+ *       - in: query
+ *         name: context
+ *         schema:
+ *           type: string
+ *           enum: [primary, secondary]
+ *         required: true
+ *         description: Contexte d'authentification (primary pour auth principale, secondary pour 2FA)
  *     requestBody:
  *       required: true
  *       content:
@@ -241,25 +297,51 @@
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/SuccessResponse'
- *             example:
- *               success: true
- *               message: "Authentification réussie"
- *         headers:
- *           Set-Cookie:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/SuccessResponse'
+ *                 - type: object
+ *                   properties:
+ *                     accessToken:
+ *                       type: string
+ *                     refreshToken:
+ *                       type: string
+ *       202:
+ *         description: Authentification principale réussie mais 2FA requise
+ *         content:
+ *           application/json:
  *             schema:
- *               type: string
- *             description: |
- *               Définit les cookies de session
+ *               allOf:
+ *                 - $ref: '#/components/schemas/InfoResponse'
+ *                 - type: object
+ *                   properties:
+ *                     requiresTwoFactor:
+ *                       type: boolean
+ *                       example: true
+ *                     twoFactor:
+ *                       type: object
+ *                       properties:
+ *                         email:
+ *                           type: boolean
+ *                         app:
+ *                           type: boolean
+ *                         webauthn:
+ *                           type: boolean
+ *                         preferredMethod:
+ *                           type: string
+ *                           enum: [email, app, webauthn, none]
  *       400:
  *         description: Requête invalide
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
- *             example:
- *               success: false
- *               error: "La vérification de votre clé d'accès a échouée. Veuillez réessayer plus tard."
+ *             examples:
+ *               authentication_error:
+ *                 value:
+ *                   success: false
+ *                   error: "La vérification de votre clé d'accès a échouée. Veuillez réessayer plus tard."
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
  *       404:
  *         description: Éléments introuvables
  *         content:
@@ -267,14 +349,14 @@
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *             examples:
- *              credential_not_found:
- *                value:
- *                  success: false
- *                  error: "Votre clé d'accès ne correspond à aucune clé enregistrée."
- *              user_not_found:
- *                value:
- *                  success: false
- *                  error: "Utilisateur non trouvé"
+ *               credential_not_found:
+ *                 value:
+ *                   success: false
+ *                   error: "Votre clé d'accès ne correspond à aucune clé enregistrée."
+ *               user_not_found:
+ *                 value:
+ *                   success: false
+ *                   error: "Utilisateur non trouvé"
  *       429:
  *         $ref: '#/components/responses/RateLimitExceeded'
  *       500:
@@ -289,6 +371,7 @@
  *     summary: Transférer des clés entre contextes
  *     description: |
  *       Copie des clés WebAuthn d'un contexte à un autre (primary ↔ secondary).
+ *       Nécessite une authentification valide.
  *     security:
  *       - cookieAuth: []
  *     requestBody:
@@ -298,27 +381,57 @@
  *           schema:
  *             type: object
  *             required:
- *               - from
- *               - to
+ *               - fromContext
+ *               - toContext
  *             properties:
- *               from:
+ *               fromContext:
  *                 type: string
  *                 enum: [primary, secondary]
- *               to:
+ *                 description: Contexte source
+ *               toContext:
  *                 type: string
  *                 enum: [primary, secondary]
+ *                 description: Contexte destination
  *     responses:
  *       200:
- *         description: Clés transférées
+ *         description: Clés transférées avec succès
  *         content:
  *           application/json:
  *             schema:
- *               type: object
- *               properties:
- *                 credentials:
- *                   type: array
- *                   items:
- *                     $ref: '#/components/schemas/WebAuthnCredential'
+ *               allOf:
+ *                 - $ref: '#/components/schemas/SuccessResponse'
+ *                 - type: object
+ *                   properties:
+ *                     credentials:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/WebAuthnCredential'
+ *                     preferredMethod:
+ *                       type: string
+ *                       enum: [email, app, webauthn, none]
+ *                       description: Méthode 2FA préférée (seulement si toContext=secondary)
+ *                     backupCodes:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *                       description: Codes de secours (seulement si toContext=secondary)
+ *       400:
+ *         description: Requête invalide
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *             examples:
+ *               transfer_same_context:
+ *                 value:
+ *                   success: false
+ *                   error: "Impossible de transférer vers le même contexte"
+ *       401:
+ *         $ref: '#/components/responses/Unauthorized'
+ *       404:
+ *         $ref: '#/components/responses/UserNotFound'
+ *       500:
+ *         $ref: '#/components/responses/ServerError'
  */
 
 /**
@@ -332,6 +445,14 @@
  *       Protégée par rate limiting (5 requêtes/2 minutes) et authentification.
  *     security:
  *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: context
+ *         schema:
+ *           type: string
+ *           enum: [primary, secondary]
+ *         required: true
+ *         description: Contexte de la clé (primary pour auth principale, secondary pour 2FA)
  *     requestBody:
  *       required: true
  *       content:
@@ -381,10 +502,6 @@
  *                 value:
  *                   success: false
  *                   error: "Votre clé d'accès ne correspond à aucune clé enregistrée."
- *               user_not_found:
- *                 value:
- *                   success: false
- *                   error: "Utilisateur introuvable."
  *       500:
  *         $ref: '#/components/responses/ServerError'
  */
@@ -394,12 +511,20 @@
  * /auth/webauthn/disable:
  *   post:
  *     tags: [WebAuthn Management]
- *     summary: Désactiver WebAuthn
+ *     summary: Désactiver WebAuthn pour un contexte
  *     description: |
- *       Désactive complètement WebAuthn pour l'utilisateur après vérification.
+ *       Désactive complètement WebAuthn pour l'utilisateur dans le contexte spécifié après vérification.
  *       Protégée par rate limiting (5 requêtes/2 minutes) et authentification.
  *     security:
  *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: context
+ *         schema:
+ *           type: string
+ *           enum: [primary, secondary]
+ *         required: true
+ *         description: Contexte à désactiver (primary pour auth principale, secondary pour 2FA)
  *     requestBody:
  *       required: true
  *       content:
@@ -431,10 +556,12 @@
  *                     preferredMethod:
  *                       type: string
  *                       enum: [email, app, webauthn, none]
+ *                       description: Nouvelle méthode 2FA préférée (seulement si context=secondary)
  *                     backupCodes:
  *                       type: array
  *                       items:
  *                         type: string
+ *                       description: Codes de secours mis à jour (seulement si context=secondary)
  *       400:
  *         description: Requête invalide
  *         content:
@@ -442,10 +569,6 @@
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
  *             examples:
- *               missing_fields:
- *                 value:
- *                   success: false
- *                   error: "Tous les champs sont requis."
  *               not_enabled:
  *                 value:
  *                   success: false
@@ -479,10 +602,18 @@
  *     tags: [WebAuthn Management]
  *     summary: Lister les clés d'accès WebAuthn
  *     description: |
- *       Retourne la liste des clés d'accès WebAuthn enregistrées pour l'utilisateur.
+ *       Retourne la liste des clés d'accès WebAuthn enregistrées pour l'utilisateur dans le contexte spécifié.
  *       Nécessite une authentification valide.
  *     security:
  *       - cookieAuth: []
+ *     parameters:
+ *       - in: query
+ *         name: context
+ *         schema:
+ *           type: string
+ *           enum: [primary, secondary]
+ *         required: true
+ *         description: Contexte des clés (primary pour auth principale, secondary pour 2FA)
  *     responses:
  *       200:
  *         description: Liste des clés d'accès
@@ -512,7 +643,7 @@
  *     tags: [WebAuthn Management]
  *     summary: Supprimer une clé d'accès WebAuthn
  *     description: |
- *       Supprime une clé d'accès WebAuthn spécifique.
+ *       Supprime une clé d'accès WebAuthn spécifique dans le contexte donné.
  *       Nécessite une authentification valide.
  *     security:
  *       - cookieAuth: []
@@ -523,6 +654,13 @@
  *           type: string
  *         required: true
  *         description: ID de la clé d'accès à supprimer
+ *       - in: query
+ *         name: context
+ *         schema:
+ *           type: string
+ *           enum: [primary, secondary]
+ *         required: true
+ *         description: Contexte de la clé (primary pour auth principale, secondary pour 2FA)
  *     responses:
  *       200:
  *         description: Clé d'accès supprimée avec succès
@@ -540,10 +678,12 @@
  *                     preferredMethod:
  *                       type: string
  *                       enum: [email, app, webauthn, none]
+ *                       description: Nouvelle méthode 2FA préférée (seulement si context=secondary)
  *                     backupCodes:
  *                       type: array
  *                       items:
  *                         type: string
+ *                       description: Codes de secours mis à jour (seulement si context=secondary)
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  *       404:
@@ -557,10 +697,6 @@
  *                 value:
  *                   success: false
  *                   error: "Votre clé d'accès ne correspond à aucune clé enregistrée."
- *               user_not_found:
- *                 value:
- *                   success: false
- *                   error: "Utilisateur introuvable."
  *       500:
  *         $ref: '#/components/responses/ServerError'
  */

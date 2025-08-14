@@ -707,7 +707,7 @@ export const disableTwoFactor = asyncHandler(
         user.twoFactor.app.secret
       ) {
         isValid = verifyTwoFactorCode(user.twoFactor.app.secret, value)
-      } else if (method === 'webauthn' && user.authMethods.webauthn.isEnabled) {
+      } else if (method === 'webauthn' && user.twoFactor.webauthn.isEnabled) {
         if (!value || typeof value !== 'object') {
           return ApiResponse.error(
             res,

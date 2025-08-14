@@ -216,7 +216,6 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
       <div className='space-y-4'>
         <div className='grid grid-cols-2 gap-3'>
           <MethodSelectionCard
-            method='otp'
             icon={Mail}
             title='Code par email'
             description='Code 2FA'
@@ -227,7 +226,6 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
             showChevron={false}
           />
           <MethodSelectionCard
-            method='password'
             icon={Shield}
             title='Mot de passe'
             description='Votre mot de passe'

@@ -71,7 +71,14 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
   } = useWebAuthnTwoFactor()
 
   const handleEnable = async () => {
-    if (secondaryCredentials.length > 0) {
+    if (
+      secondaryCredentials.some(
+        (credential) =>
+          !primaryCredentials?.some(
+            (primaryCredential) => credential.id === primaryCredential.id,
+          ),
+      )
+    ) {
       setCurrentStep('transfer-choice')
       openEnableFlow()
     } else {

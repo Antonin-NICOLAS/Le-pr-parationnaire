@@ -117,7 +117,7 @@ export function useApiCall<T = any>(
         setError(errorMsg)
 
         if (showErrorToast) {
-          toast.error(errorMessage || errorMsg)
+          toast.error(errorMsg || errorMessage || 'An error occurred')
         }
 
         if (onError) {

@@ -736,6 +736,9 @@ const SettingsPage: React.FC = () => {
               primaryCredentials={
                 getTwoFactorStatusState.data?.primaryCredentials || []
               }
+              secondaryCredentials={
+                getTwoFactorStatusState.data?.secondaryCredentials || []
+              }
               onStatusChange={() => fetch2FAStatus()}
             />
           </motion.div>

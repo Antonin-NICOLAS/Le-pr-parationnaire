@@ -261,7 +261,6 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
       <div className='space-y-4'>
         <div className='grid grid-cols-2 gap-3'>
           <MethodSelectionCard
-            method='otp'
             icon={Smartphone}
             title='Application'
             description='Code 2FA'
@@ -272,7 +271,6 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
             showChevron={false}
           />
           <MethodSelectionCard
-            method='password'
             icon={Shield}
             title='Mot de passe'
             description='Votre mot de passe'

@@ -286,7 +286,6 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
       <div className='space-y-4'>
         <div className='grid grid-cols-2 gap-3'>
           <MethodSelectionCard
-            method='password'
             icon={Shield}
             title='Mot de passe'
             description='Votre mot de passe'
@@ -297,7 +296,6 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
             showChevron={false}
           />
           <MethodSelectionCard
-            method='webauthn'
             icon={Fingerprint}
             title='Clé de sécurité'
             description='WebAuthn'

@@ -1,12 +1,19 @@
 /**
  * @swagger
+ * tags:
+ *   - name: Two-Factor Authentication
+ *     description: Gestion de l'authentification à deux facteurs (2FA)
+ */
+
+/**
+ * @swagger
  * /auth/2fa/status:
  *   get:
  *     tags: [Two-Factor Authentication]
- *     summary: Obtenir le statut de la 2FA
+ *     summary: Obtenir le statut complet de la 2FA
  *     description: |
- *       Cette route retourne le statut actuel de la double authentification pour l'utilisateur,
- *       incluant les méthodes activées et les codes de secours.
+ *       Retourne le statut détaillé de la 2FA incluant toutes les méthodes activées,
+ *       les clés WebAuthn et les codes de secours.
  *       Nécessite une authentification valide.
  *     security:
  *       - cookieAuth: []
@@ -22,10 +29,10 @@
  *                   properties:
  *                     isEnabled:
  *                       type: boolean
- *                       description: Indique si la 2FA est activée globalement
+ *                       description: Statut global de la 2FA
  *                     loginWithWebAuthn:
  *                       type: boolean
- *                       description: Indique si la connexion avec WebAuthn est activée
+ *                       description: Indique si l'authentification principale par WebAuthn est activée
  *                     email:
  *                       type: object
  *                       properties:
@@ -52,8 +59,11 @@
  *                       type: array
  *                       items:
  *                         type: string
- *                       description: Codes de secours disponibles
- *                     credentials:
+ *                     primaryCredentials:
+ *                       type: array
+ *                       items:
+ *                         $ref: '#/components/schemas/WebAuthnCredential'
+ *                     secondaryCredentials:
  *                       type: array
  *                       items:
  *                         $ref: '#/components/schemas/WebAuthnCredential'
@@ -69,10 +79,10 @@
  * /auth/2fa/login:
  *   post:
  *     tags: [Two-Factor Authentication]
- *     summary: Connexion avec vérification 2FA
+ *     summary: Valider la deuxième étape d'authentification
  *     description: |
- *       Cette route permet de valider la deuxième étape d'authentification
- *       après une connexion initiale réussie.
+ *       Valide le code 2FA après une connexion initiale réussie.
+ *       Accepte les codes d'application, email ou codes de secours.
  *       Protégée par rate limiting (5 requêtes/2 minutes).
  *     requestBody:
  *       required: true
@@ -92,35 +102,32 @@
  *               rememberMe:
  *                 type: boolean
  *                 default: false
- *                 description: |
- *                   Si true, la session sera prolongée (30 jours au lieu de 1 jour)
+ *                 description: Prolonge la session à 7 jours si true
  *               method:
  *                 type: string
- *                 enum: [email, app, backup_code]
- *                 description: Méthode de vérification 2FA
+ *                 enum: [email, app, backup_code, webauthn]
  *               value:
  *                 type: string
  *                 description: |
- *                   Code de vérification selon la méthode :
+ *                   Code selon la méthode :
  *                   - Code à 6 chiffres pour 'app'
- *                   - Code de vérification pour 'email'
+ *                   - Code email pour 'email'
  *                   - Code de secours pour 'backup_code'
+ *                   - Réponse WebAuthn pour 'webauthn'
  *     responses:
  *       200:
  *         description: Connexion 2FA réussie
  *         content:
  *           application/json:
  *             schema:
- *               $ref: '#/components/schemas/SuccessResponse'
- *             example:
- *               success: true
- *               message: "Connexion réussie."
- *         headers:
- *           Set-Cookie:
- *             schema:
- *               type: string
- *             description: |
- *               Définit les cookies de session
+ *               allOf:
+ *                 - $ref: '#/components/schemas/SuccessResponse'
+ *                 - type: object
+ *                   properties:
+ *                     accessToken:
+ *                       type: string
+ *                     refreshToken:
+ *                       type: string
  *       400:
  *         description: Requête invalide
  *         content:
@@ -151,7 +158,7 @@
  *               backup_code_used:
  *                 value:
  *                   success: false
- *                   error: "Le code de sauvegarde a déjà été utilisé."
+ *                   error: "Le code de secours a déjà été utilisé."
  *       401:
  *         description: Échec d'authentification
  *         content:
@@ -176,8 +183,8 @@
  *     tags: [Two-Factor Authentication]
  *     summary: Définir la méthode 2FA préférée
  *     description: |
- *       Cette route permet de définir la méthode de double authentification préférée.
- *       La méthode doit être préalablement activée pour l'utilisateur.
+ *       Change la méthode de vérification 2FA préférée.
+ *       La méthode doit être déjà activée pour l'utilisateur.
  *       Nécessite une authentification valide.
  *     security:
  *       - cookieAuth: []
@@ -196,7 +203,7 @@
  *                 description: Méthode 2FA à définir comme préférée
  *     responses:
  *       200:
- *         description: Méthode préférée mise à jour avec succès
+ *         description: Méthode préférée mise à jour
  *         content:
  *           application/json:
  *             schema:
@@ -222,7 +229,7 @@
  *               method_not_enabled:
  *                 value:
  *                   success: false
- *                   error: "La double authentification par cette méthode n'est pas activée."
+ *                   error: "Cette méthode 2FA n'est pas activée"
  *       401:
  *         $ref: '#/components/responses/Unauthorized'
  *       404:
@@ -236,16 +243,16 @@
  * /auth/2fa/email/config:
  *   post:
  *     tags: [Two-Factor Authentication]
- *     summary: Configurer la 2FA par email
+ *     summary: Initialiser la 2FA par email
  *     description: |
- *       Initialise la configuration de la double authentification par email.
+ *       Lance le processus d'activation de la 2FA par email.
  *       Envoie un code de vérification à l'email de l'utilisateur.
- *       Protégée par rate limiting (5 requêtes/2 minutes) et authentification.
+ *       Protégée par rate limiting (5 requêtes/2 minutes).
  *     security:
  *       - cookieAuth: []
  *     responses:
  *       200:
- *         description: Code de vérification envoyé par email
+ *         description: Code de vérification envoyé
  *         content:
  *           application/json:
  *             schema:
@@ -291,8 +298,8 @@
  *     tags: [Two-Factor Authentication]
  *     summary: Activer la 2FA par email
  *     description: |
- *       Active la double authentification par email après vérification du code.
- *       Nécessite une authentification valide.
+ *       Active la 2FA par email après vérification du code.
+ *       Génère des codes de secours si c'est la première méthode activée.
  *     security:
  *       - cookieAuth: []
  *     requestBody:
@@ -311,7 +318,7 @@
  *                 example: "123456"
  *     responses:
  *       200:
- *         description: 2FA par email activée avec succès
+ *         description: 2FA email activée
  *         content:
  *           application/json:
  *             schema:
@@ -334,7 +341,7 @@
  *               backupCodes: ["ABC123", "DEF456"]
  *               preferredMethod: "email"
  *       400:
- *         description: Requête invalide
+ *         description: Code invalide ou expiré
  *         content:
  *           application/json:
  *             schema:
@@ -367,9 +374,8 @@
  *     tags: [Two-Factor Authentication]
  *     summary: Désactiver la 2FA par email
  *     description: |
- *       Désactive la double authentification par email.
- *       Accepte soit un code OTP soit un mot de passe pour la vérification.
- *       Nécessite une authentification valide.
+ *       Désactive la 2FA par email après vérification par mot de passe ou code OTP.
+ *       Met à jour la méthode préférée si nécessaire.
  *     security:
  *       - cookieAuth: []
  *     requestBody:
@@ -398,7 +404,7 @@
  *                 example: "654321"
  *     responses:
  *       200:
- *         description: 2FA par email désactivée avec succès
+ *         description: 2FA email désactivée
  *         content:
  *           application/json:
  *             schema:
@@ -464,12 +470,9 @@
  * /auth/2fa/email/resend/{context}:
  *   post:
  *     tags: [Two-Factor Authentication]
- *     summary: Renvoyer le code de vérification selon le contexte
+ *     summary: Renvoyer un code de vérification email
  *     description: |
- *       Renvoie un nouveau code de vérification pour la 2FA par email selon le contexte.
- *       - **login** : Pour l'authentification (pas d'authentification requise)
- *       - **config** : Pour la configuration (authentification requise)
- *       - **disable** : Pour la désactivation (authentification requise)
+ *       Renvoie un code selon le contexte (login, config, disable).
  *       Protégée par rate limiting (5 requêtes/2 minutes).
  *     parameters:
  *       - in: path
@@ -480,7 +483,6 @@
  *           enum: [login, config, disable]
  *         description: Contexte d'utilisation du code
  *     requestBody:
- *       required: true
  *       content:
  *         application/json:
  *           schema:
@@ -489,9 +491,7 @@
  *               email:
  *                 type: string
  *                 format: email
- *                 description: |
- *                   Email de l'utilisateur (requis seulement pour le contexte 'login')
- *                 example: "utilisateur@example.com"
+ *                 required: context === 'login'
  *     responses:
  *       200:
  *         description: Nouveau code envoyé avec succès
@@ -503,7 +503,7 @@
  *               success: true
  *               message: "Nouveau code envoyé"
  *       400:
- *         description: Requête invalide
+ *         description: Contexte invalide
  *         content:
  *           application/json:
  *             schema:
@@ -538,14 +538,13 @@
  *     tags: [Two-Factor Authentication]
  *     summary: Configurer la 2FA par application
  *     description: |
- *       Initialise la configuration de la double authentification par application.
  *       Génère un secret et un QR code pour l'application d'authentification.
- *       Protégée par rate limiting (5 requêtes/2 minutes) et authentification.
+ *       Protégée par rate limiting (5 requêtes/2 minutes).
  *     security:
  *       - cookieAuth: []
  *     responses:
  *       200:
- *         description: Configuration 2FA initialisée
+ *         description: Configuration initialisée
  *         content:
  *           application/json:
  *             schema:
@@ -555,16 +554,14 @@
  *                   properties:
  *                     secret:
  *                       type: string
- *                       description: Secret en format base32
- *                       example: "JBSWY3DPEHPK3PXP"
  *                     qrCode:
  *                       type: string
  *                       format: byte
  *                       description: |
- *                         QR code au format base64 contenant le secret et les métadonnées
+ *                         QR code au format base32 contenant le secret et les métadonnées
  *                         pour l'application d'authentification
  *       400:
- *         description: Requête invalide
+ *         description: Déjà configuré
  *         content:
  *           application/json:
  *             schema:
@@ -589,8 +586,8 @@
  *     tags: [Two-Factor Authentication]
  *     summary: Activer la 2FA par application
  *     description: |
- *       Active la double authentification par application après vérification du code.
- *       Nécessite une authentification valide.
+ *       Active la 2FA par app après vérification du code.
+ *       Génère des codes de secours si première méthode activée.
  *     security:
  *       - cookieAuth: []
  *     requestBody:
@@ -609,7 +606,7 @@
  *                 example: "123456"
  *     responses:
  *       200:
- *         description: 2FA par application activée avec succès
+ *         description: 2FA app activée
  *         content:
  *           application/json:
  *             schema:
@@ -632,7 +629,7 @@
  *               backupCodes: ["ABC123", "DEF456"]
  *               preferredMethod: "app"
  *       400:
- *         description: Requête invalide
+ *         description: Code invalide
  *         content:
  *           application/json:
  *             schema:
@@ -661,9 +658,8 @@
  *     tags: [Two-Factor Authentication]
  *     summary: Désactiver la 2FA par application
  *     description: |
- *       Désactive la double authentification par application.
- *       Accepte soit un code OTP soit un mot de passe pour la vérification.
- *       Nécessite une authentification valide.
+ *       Désactive la 2FA par app après vérification par mot de passe ou code OTP.
+ *       Met à jour la méthode préférée si nécessaire.
  *     security:
  *       - cookieAuth: []
  *     requestBody:
@@ -679,20 +675,11 @@
  *               method:
  *                 type: string
  *                 enum: [password, otp]
- *                 description: |
- *                   Méthode de vérification :
- *                   - 'password' pour utiliser le mot de passe
- *                   - 'otp' pour utiliser le code OTP de l'application
  *               value:
  *                 type: string
- *                 description: |
- *                   Valeur de vérification selon la méthode :
- *                   - Mot de passe pour 'password'
- *                   - Code à 6 chiffres pour 'otp'
- *                 example: "654321"
  *     responses:
  *       200:
- *         description: 2FA par application désactivée avec succès
+ *         description: 2FA app désactivée
  *         content:
  *           application/json:
  *             schema:
@@ -702,8 +689,65 @@
  *                   properties:
  *                     preferredMethod:
  *                       type: string
- *                       enum: [email, app, webauthn, none]
- *                       description: Méthode 2FA préférée mise à jour
+ *                     backupCodes:
+ *                       type: array
+ *                       items:
+ *                         type: string
+ *       400:
+ *         description: Vérification échouée
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
+ *       500:
+ *         $ref: '#/components/responses/ServerError'
+ */
+
+/**
+ * @swagger
+ * /auth/2fa/disable:
+ *   post:
+ *     tags: [Two-Factor Authentication]
+ *     summary: Désactiver complètement la 2FA
+ *     description: |
+ *       Désactive toutes les méthodes 2FA après vérification.
+ *       Accepte mot de passe, code email, code app, WebAuthn ou code de secours.
+ *     security:
+ *       - cookieAuth: []
+ *     requestBody:
+ *       required: true
+ *       content:
+ *         application/json:
+ *           schema:
+ *             type: object
+ *             required:
+ *               - method
+ *               - value
+ *             properties:
+ *               method:
+ *                 type: string
+ *                 enum: [password, email, app, webauthn, backup_code]
+ *               value:
+ *                 type: string
+ *                 description: |
+ *                   Valeur de vérification selon la méthode :
+ *                   - Mot de passe pour 'password'
+ *                   - Code à 6 chiffres pour 'email' et 'app'
+ *                   - AssertionResponse pour 'webauthn'
+ *                   - Code de secours pour 'backup_code'
+ *                 example: "654321"
+ *     responses:
+ *       200:
+ *         description: 2FA désactivée
+ *         content:
+ *           application/json:
+ *             schema:
+ *               allOf:
+ *                 - $ref: '#/components/schemas/SuccessResponse'
+ *                 - type: object
+ *                   properties:
+ *                     preferredMethod:
+ *                       type: string
  *                     backupCodes:
  *                       type: array
  *                       items:
@@ -711,40 +755,29 @@
  *                       description: Codes de secours mis à jour
  *             example:
  *               success: true
- *               message: "2FA par application désactivée"
+ *               message: "2FA désactivée"
  *               preferredMethod: "email"
  *               backupCodes: ["GHI789", "JKL012"]
  *       400:
- *         description: Requête invalide
+ *         description: Vérification échouée
  *         content:
  *           application/json:
  *             schema:
  *               $ref: '#/components/schemas/ErrorResponse'
- *             examples:
- *               missing_fields:
- *                 value:
- *                   success: false
- *                   error: "Tous les champs sont requis."
- *               not_enabled:
- *                 value:
- *                   success: false
- *                   error: "La 2FA par application n'est pas activée."
- *               invalid_method:
- *                 value:
- *                   success: false
- *                   error: "La méthode fournie est invalide."
- *               invalid_code:
- *                 value:
- *                   success: false
- *                   error: "Le code est incorrect."
- *               password_incorrect:
- *                 value:
- *                   success: false
- *                   error: "Le mot de passe est incorrect."
  *       401:
- *         $ref: '#/components/responses/Unauthorized'
+ *         description: Non autorisé (pour les contextes config/disable)
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/responses/Unauthorized'
  *       404:
  *         $ref: '#/components/responses/UserNotFound'
+ *       429:
+ *         description: Trop de requêtes
+ *         content:
+ *           application/json:
+ *             schema:
+ *               $ref: '#/components/schemas/ErrorResponse'
  *       500:
  *         $ref: '#/components/responses/ServerError'
  */

@@ -18,7 +18,6 @@ export function useWebAuthnApiCall<T = any>(
     try {
       return await apiFunction(...args)
     } catch (error: any) {
-      // Interception des erreurs spécifiques WebAuthn
       if (error?.name === 'InvalidStateError') {
         return { success: false, error: 'Cet appareil est déjà enregistré' }
       }
@@ -28,7 +27,18 @@ export function useWebAuthnApiCall<T = any>(
           error: "L'opération a été annulée par l'utilisateur",
         }
       }
-      throw error // Laisser useApiCall gérer les autres erreurs
+      if (axios.isAxiosError(error)) {
+        return {
+          success: false,
+          error:
+            error.response?.data?.error ||
+            error.response?.data?.message ||
+            error.message ||
+            'Erreur réseau',
+        }
+      }
+
+      return { success: false, error: error.message || 'Erreur inconnue' }
     }
   }, config)
 }

@@ -3,7 +3,6 @@ import { ChevronRight, type LucideIcon } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 interface MethodSelectionCardProps {
-  method: string
   icon: LucideIcon
   title: string
   description: string
@@ -17,7 +16,6 @@ interface MethodSelectionCardProps {
 }
 
 const MethodSelectionCard: React.FC<MethodSelectionCardProps> = ({
-  method,
   icon: Icon,
   title,
   description,

@@ -37,13 +37,15 @@ interface TwoFactorMainProps {
   isEnabled: boolean
   availableMethods: ('email' | 'app' | 'webauthn')[]
   primaryCredentials: WebAuthnCredential[]
+  secondaryCredentials?: WebAuthnCredential[]
   onStatusChange: () => void
 }
 
 const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
   isEnabled,
-  availableMethods = ['email', 'app', 'webauthn'],
-  primaryCredentials,
+  availableMethods = [],
+  primaryCredentials = [],
+  secondaryCredentials = [],
   onStatusChange,
 }) => {
   const { user } = useAuth()
@@ -87,15 +89,17 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
     resendCode,
     configureEmailState,
     enableEmailState,
+    resendCodeState,
   } = useEmailTwoFactor()
   const { configureApp, enableApp, configureAppState, enableAppState } =
     useAppTwoFactor()
   const {
     registerDevice,
+    registerDeviceState,
     disableTwoFactor,
+    disableTwoFactorState,
     transferCredential,
     transferCredentialState,
-    registerDeviceState,
   } = useWebAuthnTwoFactor()
   const { getAvailableQuestions } = useSecurityQuestions()
 
@@ -137,7 +141,16 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
           await configureApp()
           break
         case 'webauthn':
-          if (primaryCredentials.length > 0) {
+          // Check if at least one primary credential is different from secondary ones
+          if (
+            primaryCredentials.some(
+              (credential) =>
+                !secondaryCredentials?.some(
+                  (secondaryCredential) =>
+                    credential.id === secondaryCredential.id,
+                ),
+            )
+          ) {
             setShowKeyTransferOption(true)
           } else {
             await registerDevice('secondary')
@@ -150,14 +163,11 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
   }
 
   const handleTransferPrimaryKey = async () => {
-    try {
-      const result = await transferCredential('primary', 'secondary')
-      if (result.success) {
-        setShowKeyTransferOption(false)
-        setEnableStep('backup')
-      }
-    } catch (err) {
-      setError('Erreur lors du transfert de la clé')
+    const result = await transferCredential('primary', 'secondary')
+    if (result.success) {
+      setShowKeyTransferOption(false)
+      setEnableStep('backup')
+      onStatusChange()
     }
   }
 
@@ -188,6 +198,7 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
       }
 
       if (result?.success) {
+        setVerificationCode(Array(6).fill(''))
         setEnableStep('backup')
       } else {
         setError('Code de vérification incorrect')
@@ -197,10 +208,11 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
     }
   }
 
-  const handleResendCode = async () => {
+  const handleResendCode = async (context: 'config' | 'disable') => {
+    resendCodeState.resetError()
     if (selectedMethod === 'email') {
       try {
-        await resendCode()
+        await resendCode(user?.email, context)
       } catch (err) {
         setError("Erreur lors de l'envoi du code")
       }
@@ -218,6 +230,8 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
           : verificationCode.join(''),
     )
     if (result?.success) {
+      setDisablePassword('')
+      setVerificationCode(Array(6).fill(''))
       closeDisableFlow()
       onStatusChange()
     }
@@ -249,7 +263,6 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
     color: 'blue' | 'yellow' | 'purple' | 'green' | 'orange' | 'red'
   }) => (
     <MethodSelectionCard
-      method={method}
       icon={icon as any}
       title={title}
       description={description}
@@ -327,35 +340,29 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
             </div>
 
             <div className='space-y-3'>
-              {availableMethods.includes('email') && (
-                <MethodCard
-                  method='email'
-                  icon={Mail}
-                  title='Email'
-                  description='Codes temporaires envoyés par email'
-                  color='blue'
-                />
-              )}
+              <MethodCard
+                method='email'
+                icon={Mail}
+                title='Email'
+                description='Codes temporaires envoyés par email'
+                color='blue'
+              />
 
-              {availableMethods.includes('app') && (
-                <MethodCard
-                  method='app'
-                  icon={Smartphone}
-                  title='Application'
-                  description='Google Authenticator, Authy, etc.'
-                  color='yellow'
-                />
-              )}
+              <MethodCard
+                method='app'
+                icon={Smartphone}
+                title='Application'
+                description='Google Authenticator, Authy, etc.'
+                color='yellow'
+              />
 
-              {availableMethods.includes('webauthn') && (
-                <MethodCard
-                  method='webauthn'
-                  icon={Fingerprint}
-                  title='Clé de sécurité'
-                  description='WebAuthn, FaceID, TouchID'
-                  color='purple'
-                />
-              )}
+              <MethodCard
+                method='webauthn'
+                icon={Fingerprint}
+                title='Clé de sécurité'
+                description='WebAuthn, FaceID, TouchID'
+                color='purple'
+              />
             </div>
 
             <div className='flex space-x-3'>
@@ -447,7 +454,13 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
           <div className='space-y-6'>
             <div className='text-center'>
               <motion.div
-                className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/20'
+                className={`mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full ${
+                  selectedMethod === 'email'
+                    ? 'bg-blue-100 dark:bg-blue-900/20'
+                    : selectedMethod === 'app'
+                      ? 'bg-yellow-100 dark:bg-yellow-900/20'
+                      : 'bg-purple-100 dark:bg-purple-900/20'
+                }`}
                 initial={{ scale: 0.8 }}
                 animate={{ scale: 1 }}
               >
@@ -490,9 +503,17 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
                 <SixDigitCodeInput
                   value={verificationCode}
                   onChange={setVerificationCode}
+                  onComplete={handleMethodVerification}
+                  loading={enableEmailState.loading}
+                  disabled={enableEmailState.loading || resendCodeState.loading}
+                  error={!!enableEmailState.error}
                   autoFocus
                 />
-                <ResendSection onResend={handleResendCode} />
+                <ResendSection
+                  onResend={() => handleResendCode('config')}
+                  countdownSeconds={60}
+                  loading={resendCodeState.loading}
+                />
               </motion.div>
             )}
 
@@ -520,6 +541,10 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
                 <SixDigitCodeInput
                   value={verificationCode}
                   onChange={setVerificationCode}
+                  onComplete={handleMethodVerification}
+                  loading={enableAppState.loading}
+                  disabled={enableAppState.loading}
+                  error={!!enableAppState.error}
                   autoFocus
                 />
               </motion.div>
@@ -664,7 +689,9 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
                   icon={Mail}
                   method='email'
                   currentMethod={disableMethod}
-                  onClick={() => setDisableMethod('email')}
+                  onClick={() => {
+                    setDisableMethod('email')
+                  }}
                   color='blue'
                 />
               )}
@@ -709,7 +736,15 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
               />
             </div>
 
-            <PrimaryButton onClick={() => changeStep('verify')} fullWidth>
+            <PrimaryButton
+              onClick={() => {
+                changeStep('verify')
+                if (disableMethod === 'email') {
+                  handleResendCode('disable')
+                }
+              }}
+              fullWidth
+            >
               Vérifier mon identité
             </PrimaryButton>
           </div>
@@ -750,6 +785,7 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
                 animate={{ opacity: 1, y: 0 }}
               >
                 <CustomInput
+                  type='password'
                   label='Mot de passe'
                   icon={Lock}
                   value={disablePassword}
@@ -777,8 +813,21 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
                 <SixDigitCodeInput
                   value={verificationCode}
                   onChange={setVerificationCode}
+                  onComplete={handleDisableVerification}
+                  loading={disableTwoFactorState.loading}
+                  disabled={
+                    disableTwoFactorState.loading || resendCodeState.loading
+                  }
+                  error={!!disableTwoFactorState.error}
                   autoFocus
                 />
+                {disableMethod === 'email' && (
+                  <ResendSection
+                    countdownSeconds={60}
+                    onResend={() => handleResendCode('disable')}
+                    loading={resendCodeState.loading}
+                  />
+                )}
                 <motion.button
                   onClick={() => changeStep('method')}
                   className='flex items-center text-sm text-primary-600 dark:text-primary-400 cursor-pointer'
@@ -1071,7 +1120,6 @@ const MethodOption = ({
 
   return (
     <MethodSelectionCard
-      method={method}
       icon={icon as any}
       title={getMethodTitle(method)}
       description={getMethodDescription(method)}
