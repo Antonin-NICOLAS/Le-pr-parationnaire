@@ -24,7 +24,7 @@ const StatusBadge: React.FC<StatusBadgeProps> = ({
 }) => {
   return (
     <div
-      className={`flex flex-col space-y-2 min-[320px]:flex-row items-center min-[320px]:justify-between ${className}`}
+      className={`flex flex-col space-y-2 min-[320px]:space-y-0 min-[320px]:flex-row items-center min-[320px]:justify-between ${className}`}
     >
       <span
         className={`rounded-full px-2 py-1 text-xs ${

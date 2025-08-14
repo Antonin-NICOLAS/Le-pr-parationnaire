@@ -1,4 +1,5 @@
-import React, { useState } from 'react'
+import type React from 'react'
+import { useState } from 'react'
 import {
   Key,
   Shield,
@@ -12,7 +13,6 @@ import {
   RefreshCw,
   ChevronLeft,
   Lock,
-  UserLock,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import ResendSection from '../ui/ResendSection'
@@ -22,6 +22,7 @@ import PrimaryButton from '../ui/PrimaryButton'
 import ErrorMessage from '../ui/ErrorMessage'
 import SixDigitCodeInput from '../ui/SixDigitCodeInput'
 import CustomInput from '../ui/CustomInput'
+import MethodSelectionCard from '../TwoFactor/MethodSelectionCard'
 import { useAuth } from '../../context/Auth'
 import useEmailTwoFactor from '../../hooks/TwoFactor/Email'
 import useAppTwoFactor from '../../hooks/TwoFactor/App'
@@ -236,7 +237,7 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
 
   const MethodCard = ({
     method,
-    icon: Icon,
+    icon,
     title,
     description,
     color,
@@ -245,37 +246,18 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
     icon: React.ComponentType<{ className?: string }>
     title: string
     description: string
-    color: string
+    color: 'blue' | 'yellow' | 'purple' | 'green' | 'orange' | 'red'
   }) => (
-    <motion.button
-      whileHover={{ y: -2 }}
-      whileTap={{ scale: 0.98 }}
+    <MethodSelectionCard
+      method={method}
+      icon={icon as any}
+      title={title}
+      description={description}
+      color={color}
+      isSelected={selectedMethod === method}
       onClick={() => setSelectedMethod(method)}
-      className={`w-full rounded-xl border-2 p-4 text-left transition-all ${
-        selectedMethod === method
-          ? `border-${color}-500 bg-${color}-50 dark:bg-${color}-900/20`
-          : 'border-gray-200 hover:border-gray-300 dark:border-gray-600'
-      }`}
-    >
-      <div className='flex items-center space-x-3'>
-        <div
-          className={`flex h-10 w-10 items-center justify-center rounded-lg bg-${color}-100 dark:bg-${color}-900/20`}
-        >
-          <Icon
-            className={`h-5 w-5 text-${color}-600 dark:text-${color}-400`}
-          />
-        </div>
-        <div>
-          <div className='font-medium text-gray-900 dark:text-gray-100'>
-            {title}
-          </div>
-          <div className='text-sm text-gray-500 dark:text-gray-400'>
-            {description}
-          </div>
-        </div>
-        <ChevronRight className='ml-auto h-5 w-5 text-gray-400' />
-      </div>
-    </motion.button>
+      showChevron={true}
+    />
   )
 
   const renderEnableFlow = () => {
@@ -345,29 +327,35 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
             </div>
 
             <div className='space-y-3'>
-              <MethodCard
-                method='email'
-                icon={Mail}
-                title='Email'
-                description='Codes temporaires envoyés par email'
-                color='blue'
-              />
+              {availableMethods.includes('email') && (
+                <MethodCard
+                  method='email'
+                  icon={Mail}
+                  title='Email'
+                  description='Codes temporaires envoyés par email'
+                  color='blue'
+                />
+              )}
 
-              <MethodCard
-                method='app'
-                icon={Smartphone}
-                title='Application'
-                description='Google Authenticator, Authy, etc.'
-                color='yellow'
-              />
+              {availableMethods.includes('app') && (
+                <MethodCard
+                  method='app'
+                  icon={Smartphone}
+                  title='Application'
+                  description='Google Authenticator, Authy, etc.'
+                  color='yellow'
+                />
+              )}
 
-              <MethodCard
-                method='webauthn'
-                icon={Fingerprint}
-                title='Clé de sécurité'
-                description='WebAuthn, FaceID, TouchID'
-                color='purple'
-              />
+              {availableMethods.includes('webauthn') && (
+                <MethodCard
+                  method='webauthn'
+                  icon={Fingerprint}
+                  title='Clé de sécurité'
+                  description='WebAuthn, FaceID, TouchID'
+                  color='purple'
+                />
+              )}
             </div>
 
             <div className='flex space-x-3'>
@@ -516,7 +504,7 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
               >
                 <div className='text-center'>
                   <img
-                    src={configureAppState.data.qrCode}
+                    src={configureAppState.data.qrCode || '/placeholder.svg'}
                     alt='QR Code'
                     className='mx-auto h-48 w-48 rounded-lg border bg-white p-2'
                   />
@@ -663,7 +651,7 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
               message="Cette action réduira la sécurité de votre compte. Assurez-vous d'avoir une autre méthode de protection."
             />
 
-            <div className='grid grid-cols-2 gap-3'>
+            <div className='grid grid-cols-2 min-[706px]:grid-cols-3 gap-3'>
               <MethodOption
                 icon={Key}
                 method='password'
@@ -771,7 +759,7 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
                 />
                 <motion.button
                   onClick={() => changeStep('method')}
-                  className='flex items-center text-sm text-primary-600 dark:text-primary-400'
+                  className='flex items-center text-sm text-primary-600 dark:text-primary-400 cursor-pointer'
                   whileHover={{ x: 2 }}
                 >
                   <ChevronLeft className='h-4 w-4' />
@@ -793,7 +781,7 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
                 />
                 <motion.button
                   onClick={() => changeStep('method')}
-                  className='flex items-center text-sm text-primary-600 dark:text-primary-400'
+                  className='flex items-center text-sm text-primary-600 dark:text-primary-400 cursor-pointer'
                   whileHover={{ x: 2 }}
                 >
                   <ChevronLeft className='h-4 w-4' />
@@ -818,6 +806,14 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
                 >
                   Authentifier avec WebAuthn
                 </PrimaryButton>
+                <motion.button
+                  onClick={() => changeStep('method')}
+                  className='flex items-center text-sm text-primary-600 dark:text-primary-400 cursor-pointer'
+                  whileHover={{ x: 2 }}
+                >
+                  <ChevronLeft className='h-4 w-4' />
+                  Changer de méthode
+                </motion.button>
               </motion.div>
             )}
 
@@ -836,7 +832,7 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
                 />
                 <motion.button
                   onClick={() => changeStep('method')}
-                  className='flex items-center text-sm text-primary-600 dark:text-primary-400'
+                  className='flex items-center text-sm text-primary-600 dark:text-primary-400 cursor-pointer'
                   whileHover={{ x: 2 }}
                 >
                   <ChevronLeft className='h-4 w-4' />
@@ -871,6 +867,14 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
                     />
                   </div>
                 ))}
+                <motion.button
+                  onClick={() => changeStep('method')}
+                  className='flex items-center text-sm text-primary-600 dark:text-primary-400 cursor-pointer'
+                  whileHover={{ x: 2 }}
+                >
+                  <ChevronLeft className='h-4 w-4' />
+                  Changer de méthode
+                </motion.button>
               </motion.div>
             )}
 
@@ -912,7 +916,7 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
             className='rounded-lg bg-gradient-to-br from-primary-100 to-purple-100 p-3 dark:from-primary-900/30 dark:to-purple-900/20'
             whileHover={{ rotate: 5 }}
           >
-            <UserLock className='h-6 w-6 text-primary-600 dark:text-primary-400' />
+            <Shield className='h-6 w-6 text-primary-600 dark:text-primary-400' />
           </motion.div>
           <div>
             <h3 className='text-lg font-semibold text-gray-900 dark:text-gray-100'>
@@ -978,7 +982,8 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
           setError(null)
         }}
         title='Désactiver la 2FA'
-        size='md'
+        size='lg'
+        className='max-w-[50rem]'
         urlName='disable-2fa-main'
       >
         <AnimatePresence custom={direction} mode='wait'>
@@ -1014,7 +1019,7 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
 }
 
 const MethodOption = ({
-  icon: Icon,
+  icon,
   method,
   currentMethod,
   onClick,
@@ -1024,33 +1029,59 @@ const MethodOption = ({
   method: string
   currentMethod: string
   onClick: () => void
-  color: string
-}) => (
-  <motion.button
-    whileHover={{ scale: 1.03 }}
-    whileTap={{ scale: 0.98 }}
-    onClick={onClick}
-    className={`rounded-xl border-2 p-4 transition-all flex flex-col items-center ${
-      currentMethod === method
-        ? `border-${color}-500 bg-${color}-50 dark:bg-${color}-900/20`
-        : 'border-gray-200 hover:border-gray-300 dark:border-gray-600'
-    }`}
-  >
-    <div
-      className={`flex h-10 w-10 items-center justify-center rounded-lg bg-${color}-100 dark:bg-${color}-900/20 mb-2`}
-    >
-      <Icon className={`h-5 w-5 text-${color}-600 dark:text-${color}-400`} />
-    </div>
-    <div className='text-sm font-medium capitalize'>
-      {method === 'webauthn'
-        ? 'Clé de sécurité'
-        : method === 'backup'
-          ? 'Code de secours'
-          : method === 'security'
-            ? 'Questions'
-            : method}
-    </div>
-  </motion.button>
-)
+  color: 'blue' | 'yellow' | 'purple' | 'green' | 'orange' | 'red'
+}) => {
+  const getMethodTitle = (method: string) => {
+    switch (method) {
+      case 'webauthn':
+        return 'Clé de sécurité'
+      case 'backup':
+        return 'Code de secours'
+      case 'security':
+        return 'Questions de sécurité'
+      case 'password':
+        return 'Mot de passe'
+      case 'email':
+        return 'Email'
+      case 'app':
+        return 'Application'
+      default:
+        return method
+    }
+  }
+
+  const getMethodDescription = (method: string) => {
+    switch (method) {
+      case 'webauthn':
+        return 'WebAuthn, FaceID'
+      case 'backup':
+        return 'Code de récupération'
+      case 'security':
+        return 'Questions personnelles'
+      case 'password':
+        return 'Votre mot de passe'
+      case 'email':
+        return 'Code par email'
+      case 'app':
+        return 'Code 2FA'
+      default:
+        return ''
+    }
+  }
+
+  return (
+    <MethodSelectionCard
+      method={method}
+      icon={icon as any}
+      title={getMethodTitle(method)}
+      description={getMethodDescription(method)}
+      color={color}
+      isSelected={currentMethod === method}
+      onClick={onClick}
+      layout='vertical'
+      showChevron={false}
+    />
+  )
+}
 
 export default TwoFactorMain

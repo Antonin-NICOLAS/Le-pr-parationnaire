@@ -598,7 +598,7 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
             )}
           </div>
         </div>
-        <div className='flex items-center space-x-2'>
+        <div className='flex items-center space-x-2 flex-shrink-0'>
           {isEnabled && (
             <motion.div whileHover={{ scale: 1.03 }}>
               <PrimaryButton

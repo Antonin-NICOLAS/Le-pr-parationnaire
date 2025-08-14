@@ -350,10 +350,6 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
         preferredLoading={setPreferredMethodState.loading}
       />
 
-      <div className='rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800'>
-        {/* Additional content can be added here if needed */}
-      </div>
-
       <Modal
         onClose={closeEnableFlow}
         title='Activer la 2FA par application'
