@@ -12,6 +12,7 @@ import {
   RefreshCw,
   ChevronLeft,
   Lock,
+  UserLock,
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import ResendSection from '../ui/ResendSection'
@@ -52,7 +53,7 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
 
   // Flow states
   const [enableStep, setEnableStep] = useState<
-    'info' | 'method' | 'config' | 'backup' | 'security'
+    'info' | 'selection' | 'config' | 'backup' | 'security'
   >('info')
   const [disableStep, setDisableStep] = useState<'method' | 'verify'>('method')
   const [selectedMethod, setSelectedMethod] = useState<
@@ -92,6 +93,7 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
     registerDevice,
     disableTwoFactor,
     transferCredential,
+    transferCredentialState,
     registerDeviceState,
   } = useWebAuthnTwoFactor()
   const { getAvailableQuestions } = useSecurityQuestions()
@@ -321,7 +323,7 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
             </div>
 
             <PrimaryButton
-              onClick={() => changeStep('method')}
+              onClick={() => changeStep('selection')}
               fullWidth
               icon={ChevronRight}
             >
@@ -330,7 +332,7 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
           </div>
         )
 
-      case 'method':
+      case 'selection':
         return (
           <div className='space-y-6'>
             <div className='text-center'>
@@ -343,35 +345,29 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
             </div>
 
             <div className='space-y-3'>
-              {availableMethods.includes('email') && (
-                <MethodCard
-                  method='email'
-                  icon={Mail}
-                  title='Email'
-                  description='Codes temporaires envoyés par email'
-                  color='blue'
-                />
-              )}
+              <MethodCard
+                method='email'
+                icon={Mail}
+                title='Email'
+                description='Codes temporaires envoyés par email'
+                color='blue'
+              />
 
-              {availableMethods.includes('app') && (
-                <MethodCard
-                  method='app'
-                  icon={Smartphone}
-                  title='Application'
-                  description='Google Authenticator, Authy, etc.'
-                  color='yellow'
-                />
-              )}
+              <MethodCard
+                method='app'
+                icon={Smartphone}
+                title='Application'
+                description='Google Authenticator, Authy, etc.'
+                color='yellow'
+              />
 
-              {availableMethods.includes('webauthn') && (
-                <MethodCard
-                  method='webauthn'
-                  icon={Fingerprint}
-                  title='Clé de sécurité'
-                  description='WebAuthn, FaceID, TouchID'
-                  color='purple'
-                />
-              )}
+              <MethodCard
+                method='webauthn'
+                icon={Fingerprint}
+                title='Clé de sécurité'
+                description='WebAuthn, FaceID, TouchID'
+                color='purple'
+              />
             </div>
 
             <div className='flex space-x-3'>
@@ -567,7 +563,7 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
             {selectedMethod !== 'webauthn' && (
               <div className='flex space-x-3'>
                 <PrimaryButton
-                  onClick={() => changeStep('method')}
+                  onClick={() => changeStep('selection')}
                   variant='outline'
                   fullWidth
                 >
@@ -594,6 +590,9 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
         return (
           <BackupCodesDisplay
             codes={
+              transferCredentialState.data?.backupCodes?.map(
+                (c: any) => c.code,
+              ) ||
               enableEmailState.data?.backupCodes?.map((c: any) => c.code) ||
               enableAppState.data?.backupCodes?.map((c: any) => c.code) ||
               registerDeviceState.data?.backupCodes?.map((c: any) => c.code) ||
@@ -913,7 +912,7 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
             className='rounded-lg bg-gradient-to-br from-primary-100 to-purple-100 p-3 dark:from-primary-900/30 dark:to-purple-900/20'
             whileHover={{ rotate: 5 }}
           >
-            <Shield className='h-6 w-6 text-primary-600 dark:text-primary-400' />
+            <UserLock className='h-6 w-6 text-primary-600 dark:text-primary-400' />
           </motion.div>
           <div>
             <h3 className='text-lg font-semibold text-gray-900 dark:text-gray-100'>

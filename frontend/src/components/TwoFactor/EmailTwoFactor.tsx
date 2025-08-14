@@ -1,11 +1,11 @@
-import { AlertCircle, Mail, RefreshCw, Shield, Star } from 'lucide-react'
-import React, { useState } from 'react'
+import { AlertCircle, Mail, Shield } from 'lucide-react'
+import type React from 'react'
+import { useState } from 'react'
 
 import { useAuth } from '../../context/Auth'
 import useEmailTwoFactor from '../../hooks/TwoFactor/Email'
 import useTwoFactorAuth from '../../hooks/TwoFactor/Main'
 import { useUrlModal } from '../../routes/UseUrlModal'
-import CountdownTimer from '../ui/CountdownTimer'
 import CustomInput from '../ui/CustomInput'
 import ErrorMessage from '../ui/ErrorMessage'
 import Modal from '../ui/Modal'
@@ -13,6 +13,9 @@ import PrimaryButton from '../ui/PrimaryButton'
 import SixDigitCodeInput from '../ui/SixDigitCodeInput'
 import BackupCodesDisplay from './BackupCodesDisplay'
 import SecurityQuestionsSetup from './SecurityQuestionsSetup'
+import TwoFactorMethodCard from './TwoFactorMethodCard'
+import MethodSelectionCard from './MethodSelectionCard'
+import ResendSection from '../ui/ResendSection'
 
 interface EmailTwoFactorProps {
   isEnabled: boolean
@@ -35,7 +38,6 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
   const [currentStep, setCurrentStep] = useState<
     'config' | 'verify' | 'backup' | 'security'
   >('config')
-  const [canResend, setCanResend] = useState(false)
   const [verificationCode, setVerificationCode] = useState<string[]>(
     Array(6).fill(''),
   )
@@ -69,10 +71,7 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
 
   const handleResendCode = async (method: 'config' | 'disable') => {
     resendCodeState.resetError()
-    const result = await resendCode(user?.email, method)
-    if (result.success) {
-      setCanResend(false)
-    }
+    await resendCode(user?.email, method)
   }
 
   // Step 2: Verify Code
@@ -136,40 +135,24 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
                 onClose={() => enableEmailState.resetError()}
               />
             )}
-            <div className='space-y-4'>
-              <SixDigitCodeInput
-                value={verificationCode}
-                onChange={setVerificationCode}
-                disabled={enableEmailState.loading}
-                error={!!enableEmailState.error}
-                onComplete={() => handleVerifyCode()}
-                autoFocus
-              />
-            </div>
-            {!canResend ? (
-              <div className='space-y-2 text-center'>
-                <CountdownTimer
-                  initialSeconds={60}
-                  onComplete={() => setCanResend(true)}
-                  className='justify-center'
-                />
-              </div>
-            ) : (
-              <div className='text-center text-sm text-gray-600 dark:text-gray-400'>
-                Vous n'avez pas reçu l'email ? Vérifiez votre dossier
-                Indésirables ou{' '}
-                <PrimaryButton
-                  variant='ghost'
-                  onClick={() => handleResendCode('config')}
-                  loading={resendCodeState.loading}
-                  disabled={!canResend || resendCodeState.loading}
-                  icon={RefreshCw}
-                  className='mt-2'
-                >
-                  Renvoyer un code
-                </PrimaryButton>
-              </div>
-            )}
+
+            <SixDigitCodeInput
+              value={verificationCode}
+              onChange={setVerificationCode}
+              disabled={enableEmailState.loading}
+              error={!!enableEmailState.error}
+              onComplete={() => handleVerifyCode()}
+              autoFocus
+            />
+
+            <ResendSection
+              message="Vous n'avez pas reçu l'email ? Vérifiez votre dossier Indésirables ou"
+              countdownSeconds={60}
+              onResend={() => handleResendCode('config')}
+              loading={resendCodeState.loading}
+              buttonText='Renvoyer un code'
+              align='center'
+            />
 
             <div className='flex space-x-3'>
               <PrimaryButton
@@ -231,33 +214,29 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
       </div>
 
       <div className='space-y-4'>
-        <div className='flex space-x-4'>
-          <button
+        <div className='grid grid-cols-2 gap-3'>
+          <MethodSelectionCard
+            method='otp'
+            icon={Mail}
+            title='Code par email'
+            description='Code 2FA'
+            color='blue'
+            isSelected={disableMethod === 'otp'}
             onClick={() => setDisableMethod('otp')}
-            className={`flex-1 rounded-lg border-2 p-4 transition-all ${
-              disableMethod === 'otp'
-                ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                : 'border-gray-200 hover:border-gray-300 dark:border-gray-600'
-            }`}
-          >
-            <Mail className='mx-auto mb-2 h-6 w-6 text-gray-900 dark:text-gray-400' />
-            <div className='text-sm font-medium text-gray-900 dark:text-gray-400'>
-              Code par email
-            </div>
-          </button>
-          <button
+            layout='vertical'
+            showChevron={false}
+          />
+          <MethodSelectionCard
+            method='password'
+            icon={Shield}
+            title='Mot de passe'
+            description='Votre mot de passe'
+            color='orange'
+            isSelected={disableMethod === 'password'}
             onClick={() => setDisableMethod('password')}
-            className={`flex-1 rounded-lg border-2 p-4 transition-all ${
-              disableMethod === 'password'
-                ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                : 'border-gray-200 hover:border-gray-300 dark:border-gray-600'
-            }`}
-          >
-            <Shield className='mx-auto mb-2 h-6 w-6 text-gray-900 dark:text-gray-400' />
-            <div className='text-sm font-medium text-gray-900 dark:text-gray-400'>
-              Mot de passe
-            </div>
-          </button>
+            layout='vertical'
+            showChevron={false}
+          />
         </div>
 
         {disableEmailState.error && (
@@ -267,49 +246,26 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
             onClose={() => disableEmailState.resetError()}
           />
         )}
+
         {disableMethod === 'otp' ? (
-          <div className='space-y-6'>
-            {enableEmailState.error && (
-              <ErrorMessage
-                message={enableEmailState.error}
-                type='error'
-                onClose={() => enableEmailState.resetError()}
-              />
-            )}
-            <div className='space-y-4'>
-              <SixDigitCodeInput
-                value={disableCode}
-                onChange={setDisableCode}
-                disabled={disableEmailState.loading}
-                error={!!disableEmailState.error}
-                onComplete={() => handleDisable()}
-                autoFocus
-              />
-            </div>
-            {!canResend ? (
-              <div className='space-y-2 text-center'>
-                <CountdownTimer
-                  initialSeconds={60}
-                  onComplete={() => setCanResend(true)}
-                  className='justify-center'
-                />
-              </div>
-            ) : (
-              <div className='text-center text-sm text-gray-600 dark:text-gray-400'>
-                Vous n'avez pas reçu l'email ? Vérifiez votre dossier
-                Indésirables ou{' '}
-                <PrimaryButton
-                  variant='ghost'
-                  onClick={() => handleResendCode('config')}
-                  loading={resendCodeState.loading}
-                  disabled={!canResend || resendCodeState.loading}
-                  icon={RefreshCw}
-                  className='mt-2'
-                >
-                  Renvoyer un code
-                </PrimaryButton>
-              </div>
-            )}
+          <div className='space-y-4'>
+            <SixDigitCodeInput
+              value={disableCode}
+              onChange={setDisableCode}
+              disabled={disableEmailState.loading}
+              error={!!disableEmailState.error}
+              onComplete={() => handleDisable()}
+              autoFocus
+            />
+
+            <ResendSection
+              message="Vous n'avez pas reçu l'email ? Vérifiez votre dossier Indésirables ou"
+              countdownSeconds={60}
+              onResend={() => handleResendCode('disable')}
+              loading={resendCodeState.loading}
+              buttonText='Renvoyer un code'
+              align='center'
+            />
           </div>
         ) : (
           <CustomInput
@@ -345,67 +301,27 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
 
   return (
     <>
-      <div className='rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800'>
-        <div className='mb-4 flex items-center space-x-3'>
-          <div className='rounded-lg bg-blue-100 p-2 dark:bg-blue-900/20'>
-            <Mail className='text-blue-600 dark:text-blue-400' size={20} />
-          </div>
-          <div>
-            <h4 className='font-semibold text-gray-900 dark:text-gray-100'>
-              Email
-            </h4>
-            <p className='text-sm text-gray-500 dark:text-gray-400'>
-              Codes temporaires par email
-            </p>
-          </div>
-        </div>
-
-        <div className='mb-4 flex flex-col space-y-2 min-[320px]:flex-row items-center min-[320px]:justify-between'>
-          <span
-            className={`rounded-full px-2 py-1 text-xs ${
-              isEnabled
-                ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-                : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-            }`}
-          >
-            {isEnabled ? 'Activé' : 'Désactivé'}
-          </span>
-          {isEnabled && (
-            <button
-              className={`flex rounded-full px-2 py-1 text-xs ${
-                isPreferredMethod
-                  ? 'bg-blue-100 text-blue-600 dark:bg-blue-900/20 dark:text-blue-400'
-                  : 'cursor-pointer bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
-              }`}
-              disabled={setPreferredMethodState.loading}
-              {...(!isPreferredMethod && { onClick: handleSetPreferredMethod })}
-            >
-              {<Star className='mr-1 h-4 w-4' />}
-              {isPreferredMethod
-                ? 'Méthode préférée'
-                : 'Choisir comme préférée'}
-            </button>
-          )}
-        </div>
-
-        <PrimaryButton
-          variant={isEnabled ? 'secondary' : 'primary'}
-          size='sm'
-          fullWidth
-          onClick={
-            isEnabled
-              ? () => {
-                  ;(openDisableFlow(), resendCode(user?.email || '', 'disable'))
-                }
-              : handleEnable
-          }
-          loading={
-            isEnabled ? disableEmailState.loading : configureEmailState.loading
-          }
-        >
-          {isEnabled ? 'Désactiver' : 'Activer'}
-        </PrimaryButton>
-      </div>
+      <TwoFactorMethodCard
+        icon={Mail}
+        iconColor='blue'
+        title='Email'
+        description='Codes temporaires par email'
+        isEnabled={isEnabled}
+        isPreferred={isPreferredMethod}
+        onToggle={
+          isEnabled
+            ? () => {
+                openDisableFlow()
+                resendCode(user?.email || '', 'disable')
+              }
+            : handleEnable
+        }
+        onSetPreferred={handleSetPreferredMethod}
+        toggleLoading={
+          isEnabled ? disableEmailState.loading : configureEmailState.loading
+        }
+        preferredLoading={setPreferredMethodState.loading}
+      />
 
       <Modal
         onClose={closeEnableFlow}

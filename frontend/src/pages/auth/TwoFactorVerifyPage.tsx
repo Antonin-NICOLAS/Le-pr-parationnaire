@@ -4,7 +4,6 @@ import {
   Mail,
   Shield,
   Smartphone,
-  RefreshCw,
   ChevronLeft,
   ChevronRight,
 } from 'lucide-react'
@@ -48,7 +47,6 @@ const TwoFactorVerifyPage: React.FC = () => {
   const [currentMethod, setCurrentMethod] = useState<MethodType>(
     method as MethodType,
   )
-  const [canResend, setCanResend] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [backupCodes, setBackupCodes] = useState<string[]>(Array(8).fill(''))
   const [securityAnswers, setSecurityAnswers] = useState<
@@ -126,10 +124,7 @@ const TwoFactorVerifyPage: React.FC = () => {
   const handleResendCode = async () => {
     resendCodeState.resetError()
     if (currentMethod !== 'email') return
-    const result = await resendCode(email, 'login')
-    if (result.success) {
-      setCanResend(false)
-    }
+    await resendCode(email, 'login')
   }
 
   const handleWebAuthn = async () => {
@@ -313,31 +308,12 @@ const TwoFactorVerifyPage: React.FC = () => {
               autoFocus
             />
             {currentMethod === 'email' && (
-              <div className='text-center'>
-                {!canResend ? (
-                  <ResendSection
-                    countdownSeconds={30}
-                    loading={resendCodeState.loading}
-                    variant='block'
-                    onResend={handleResendCode}
-                  />
-                ) : (
-                  <motion.div
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <PrimaryButton
-                      variant='ghost'
-                      icon={RefreshCw}
-                      onClick={handleResendCode}
-                      loading={resendCodeState.loading}
-                      disabled={resendCodeState.loading}
-                    >
-                      Resend Code
-                    </PrimaryButton>
-                  </motion.div>
-                )}
-              </div>
+              <ResendSection
+                countdownSeconds={30}
+                loading={resendCodeState.loading}
+                variant='block'
+                onResend={handleResendCode}
+              />
             )}
           </div>
         )

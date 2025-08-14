@@ -748,7 +748,18 @@ export const transferWebAuthnCredentials = asyncHandler(
         user.authMethods.webauthn.isEnabled = true
     }
 
+    const basePayload = {
+      credentials: target.credentials,
+    }
+    const secondaryPayload =
+      dst === 'secondary'
+        ? {
+            preferredMethod: user.twoFactor.preferredMethod,
+            backupCodes: user.twoFactor.backupCodes,
+          }
+        : {}
+
     await user.save()
-    return ApiResponse.success(res, { credentials: target.credentials })
+    return ApiResponse.success(res, { ...basePayload, ...secondaryPayload })
   },
 )

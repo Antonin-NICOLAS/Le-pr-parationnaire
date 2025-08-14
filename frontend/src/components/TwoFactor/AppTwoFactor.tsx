@@ -1,12 +1,6 @@
-import {
-  AlertCircle,
-  Copy,
-  QrCode,
-  Shield,
-  Smartphone,
-  Star,
-} from 'lucide-react'
-import React, { useState } from 'react'
+import { AlertCircle, Copy, QrCode, Shield, Smartphone } from 'lucide-react'
+import type React from 'react'
+import { useState } from 'react'
 import { toast } from 'sonner'
 
 import useAppTwoFactor from '../../hooks/TwoFactor/App'
@@ -19,6 +13,8 @@ import PrimaryButton from '../ui/PrimaryButton'
 import SixDigitCodeInput from '../ui/SixDigitCodeInput'
 import BackupCodesDisplay from './BackupCodesDisplay'
 import SecurityQuestionsSetup from './SecurityQuestionsSetup'
+import TwoFactorMethodCard from './TwoFactorMethodCard'
+import MethodSelectionCard from './MethodSelectionCard'
 
 interface AppTwoFactorProps {
   isEnabled: boolean
@@ -136,7 +132,7 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
               <div className='flex justify-center'>
                 <div className='rounded-lg border bg-white p-1'>
                   <img
-                    src={configureAppState.data.qrCode}
+                    src={configureAppState.data.qrCode || '/placeholder.svg'}
                     alt='QR Code'
                     className='h-48 w-48'
                   />
@@ -263,34 +259,31 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
       </div>
 
       <div className='space-y-4'>
-        <div className='flex space-x-4'>
-          <button
+        <div className='grid grid-cols-2 gap-3'>
+          <MethodSelectionCard
+            method='otp'
+            icon={Smartphone}
+            title='Application'
+            description='Code 2FA'
+            color='yellow'
+            isSelected={disableMethod === 'otp'}
             onClick={() => setDisableMethod('otp')}
-            className={`flex-1 rounded-lg border-2 p-4 transition-all ${
-              disableMethod === 'otp'
-                ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                : 'border-gray-200 hover:border-gray-300 dark:border-gray-600'
-            }`}
-          >
-            <Smartphone className='mx-auto mb-2 h-6 w-6 text-gray-900 dark:text-gray-400' />
-            <div className='text-sm font-medium text-gray-900 dark:text-gray-400'>
-              Application
-            </div>
-          </button>
-          <button
+            layout='vertical'
+            showChevron={false}
+          />
+          <MethodSelectionCard
+            method='password'
+            icon={Shield}
+            title='Mot de passe'
+            description='Votre mot de passe'
+            color='orange'
+            isSelected={disableMethod === 'password'}
             onClick={() => setDisableMethod('password')}
-            className={`flex-1 rounded-lg border-2 p-4 transition-all ${
-              disableMethod === 'password'
-                ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                : 'border-gray-200 hover:border-gray-300 dark:border-gray-600'
-            }`}
-          >
-            <Shield className='mx-auto mb-2 h-6 w-6 text-gray-900 dark:text-gray-400' />
-            <div className='text-sm font-medium text-gray-900 dark:text-gray-400'>
-              Mot de passe
-            </div>
-          </button>
+            layout='vertical'
+            showChevron={false}
+          />
         </div>
+
         {disableAppState.error && (
           <ErrorMessage
             message={disableAppState.error}
@@ -342,63 +335,23 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
 
   return (
     <>
+      <TwoFactorMethodCard
+        icon={Smartphone}
+        iconColor='yellow'
+        title='Application'
+        description='Google Authenticator, Authy'
+        isEnabled={isEnabled}
+        isPreferred={isPreferredMethod}
+        onToggle={isEnabled ? openDisableFlow : handleEnable}
+        onSetPreferred={handleSetPreferredMethod}
+        toggleLoading={
+          isEnabled ? disableAppState.loading : configureAppState.loading
+        }
+        preferredLoading={setPreferredMethodState.loading}
+      />
+
       <div className='rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800'>
-        <div className='mb-4 flex items-center space-x-3'>
-          <div className='rounded-lg bg-yellow-100 p-2 dark:bg-yellow-900/20'>
-            <Smartphone
-              className='text-yellow-600 dark:text-yellow-400'
-              size={20}
-            />
-          </div>
-          <div>
-            <h4 className='font-semibold text-gray-900 dark:text-gray-100'>
-              Application
-            </h4>
-            <p className='text-sm text-gray-500 dark:text-gray-400'>
-              Google Authenticator, Authy
-            </p>
-          </div>
-        </div>
-
-        <div className='mb-4 flex flex-col space-y-2 min-[320px]:flex-row items-center min-[320px]:justify-between'>
-          <span
-            className={`rounded-full px-2 py-1 text-xs ${
-              isEnabled
-                ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-                : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-            }`}
-          >
-            {isEnabled ? 'Activé' : 'Désactivé'}
-          </span>
-          {isEnabled && (
-            <button
-              className={`flex rounded-full px-2 py-1 text-xs ${
-                isPreferredMethod
-                  ? 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/20 dark:text-yellow-400'
-                  : 'cursor-pointer bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
-              }`}
-              disabled={setPreferredMethodState.loading}
-              {...(!isPreferredMethod && { onClick: handleSetPreferredMethod })}
-            >
-              {<Star className='mr-1 h-4 w-4' />}
-              {isPreferredMethod
-                ? 'Méthode préférée'
-                : 'Choisir comme préférée'}
-            </button>
-          )}
-        </div>
-
-        <PrimaryButton
-          variant={isEnabled ? 'secondary' : 'primary'}
-          size='sm'
-          fullWidth
-          onClick={isEnabled ? openDisableFlow : handleEnable}
-          loading={
-            isEnabled ? disableAppState.loading : configureAppState.loading
-          }
-        >
-          {isEnabled ? 'Désactiver' : 'Activer'}
-        </PrimaryButton>
+        {/* Additional content can be added here if needed */}
       </div>
 
       <Modal

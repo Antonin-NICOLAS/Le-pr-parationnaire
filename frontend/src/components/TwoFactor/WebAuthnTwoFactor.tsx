@@ -4,10 +4,10 @@ import {
   Key,
   Plus,
   Shield,
-  Star,
   Trash2,
 } from 'lucide-react'
-import React, { useState } from 'react'
+import type React from 'react'
+import { useState } from 'react'
 
 import { useAuth } from '../../context/Auth'
 import useTwoFactorAuth from '../../hooks/TwoFactor/Main'
@@ -19,6 +19,8 @@ import Modal from '../ui/Modal'
 import PrimaryButton from '../ui/PrimaryButton'
 import BackupCodesDisplay from './BackupCodesDisplay'
 import SecurityQuestionsSetup from './SecurityQuestionsSetup'
+import TwoFactorMethodCard from './TwoFactorMethodCard'
+import MethodSelectionCard from './MethodSelectionCard'
 
 interface WebAuthnTwoFactorProps {
   isEnabled: boolean
@@ -282,33 +284,29 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
       </div>
 
       <div className='space-y-4'>
-        <div className='flex space-x-4'>
-          <button
+        <div className='grid grid-cols-2 gap-3'>
+          <MethodSelectionCard
+            method='password'
+            icon={Shield}
+            title='Mot de passe'
+            description='Votre mot de passe'
+            color='orange'
+            isSelected={disableMethod === 'password'}
             onClick={() => setDisableMethod('password')}
-            className={`flex-1 rounded-lg border-2 p-4 transition-all ${
-              disableMethod === 'password'
-                ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                : 'border-gray-200 hover:border-gray-300 dark:border-gray-600'
-            }`}
-          >
-            <Shield className='mx-auto mb-2 h-6 w-6 text-gray-900 dark:text-gray-400' />
-            <div className='text-sm font-medium text-gray-900 dark:text-gray-400'>
-              Mot de passe
-            </div>
-          </button>
-          <button
+            layout='vertical'
+            showChevron={false}
+          />
+          <MethodSelectionCard
+            method='webauthn'
+            icon={Fingerprint}
+            title='Clé de sécurité'
+            description='WebAuthn'
+            color='purple'
+            isSelected={disableMethod === 'webauthn'}
             onClick={() => setDisableMethod('webauthn')}
-            className={`flex-1 rounded-lg border-2 p-4 transition-all ${
-              disableMethod === 'webauthn'
-                ? 'border-primary-500 bg-primary-50 dark:bg-primary-900/20'
-                : 'border-gray-200 hover:border-gray-300 dark:border-gray-600'
-            }`}
-          >
-            <Fingerprint className='mx-auto mb-2 h-6 w-6 text-gray-900 dark:text-gray-400' />
-            <div className='text-sm font-medium text-gray-900 dark:text-gray-400'>
-              Clé de sécurité
-            </div>
-          </button>
+            layout='vertical'
+            showChevron={false}
+          />
         </div>
 
         {disableMethod === 'password' && (
@@ -341,83 +339,36 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
 
   return (
     <>
-      <div className='rounded-lg border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-800'>
-        <div className='mb-4 flex items-center space-x-3'>
-          <div className='rounded-lg bg-purple-100 p-2 dark:bg-purple-900/20'>
-            <Key className='text-purple-600 dark:text-purple-400' size={20} />
-          </div>
-          <div className='flex-1'>
-            <div className='flex items-center justify-between gap-2'>
-              <h4 className='font-semibold text-gray-900 dark:text-gray-100'>
-                Clé de sécurité
-              </h4>
-              {isEnabled && (
-                <span className='text-xs text-gray-500 dark:text-gray-400'>
-                  {credentials.length} clé{credentials.length > 1 ? 's' : ''}
-                </span>
-              )}
-            </div>
-            <p className='text-sm text-gray-500 dark:text-gray-400'>
-              WebAuthn, FaceID, TouchID
-            </p>
-          </div>
-        </div>
-
-        <div className='mb-4 flex flex-col space-y-2 min-[320px]:flex-row items-center min-[320px]:justify-between'>
-          <span
-            className={`rounded-full px-2 py-1 text-xs ${
-              isEnabled
-                ? 'bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-400'
-                : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'
-            }`}
-          >
-            {isEnabled ? 'Activé' : 'Désactivé'}
-          </span>
-          {isEnabled && (
-            <button
-              className={`flex rounded-full px-2 py-1 text-xs ${
-                isPreferredMethod
-                  ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/20 dark:text-purple-400'
-                  : 'cursor-pointer bg-gray-100 text-gray-800 hover:bg-gray-200 dark:bg-gray-700 dark:text-gray-300 dark:hover:bg-gray-600'
-              }`}
-              disabled={setPreferredMethodState.loading}
-              {...(!isPreferredMethod && { onClick: handleSetPreferredMethod })}
-            >
-              {<Star className='mr-1 h-4 w-4' />}
-              {isPreferredMethod
-                ? 'Méthode préférée'
-                : 'Choisir comme préférée'}
-            </button>
-          )}
-        </div>
-
-        <div className='space-y-2'>
+      <TwoFactorMethodCard
+        icon={Key}
+        iconColor='purple'
+        title='Clé de sécurité'
+        description='WebAuthn, FaceID, TouchID'
+        isEnabled={isEnabled}
+        isPreferred={isPreferredMethod}
+        onToggle={isEnabled ? openDisableFlow : handleEnable}
+        onSetPreferred={handleSetPreferredMethod}
+        toggleLoading={
+          isEnabled ? disableWebAuthnState.loading : registerDeviceState.loading
+        }
+        preferredLoading={setPreferredMethodState.loading}
+        additionalInfo={
+          isEnabled
+            ? `${credentials?.length || 0} clé${(credentials?.length || 0) > 1 ? 's' : ''}`
+            : undefined
+        }
+      >
+        {isEnabled && (
           <PrimaryButton
-            variant={isEnabled ? 'secondary' : 'primary'}
+            variant='outline'
             size='sm'
             fullWidth
-            onClick={isEnabled ? openDisableFlow : handleEnable}
-            loading={
-              isEnabled
-                ? disableWebAuthnState.loading
-                : registerDeviceState.loading
-            }
+            onClick={openCredentialsList}
           >
-            {isEnabled ? 'Désactiver' : 'Activer'}
+            Gérer les clés ({credentials?.length || 0})
           </PrimaryButton>
-
-          {isEnabled && (
-            <PrimaryButton
-              variant='outline'
-              size='sm'
-              fullWidth
-              onClick={openCredentialsList}
-            >
-              Gérer les clés ({credentials.length})
-            </PrimaryButton>
-          )}
-        </div>
-      </div>
+        )}
+      </TwoFactorMethodCard>
 
       <Modal
         onClose={closeEnableFlow}

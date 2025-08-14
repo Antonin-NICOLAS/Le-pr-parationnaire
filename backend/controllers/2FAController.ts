@@ -37,6 +37,11 @@ import dotenv from 'dotenv'
 dotenv.config()
 
 let rpID = process.env.DOMAIN || 'localhost'
+let PORT = Number(process.env.FRONT_PORT || 5173)
+let origin =
+  process.env.NODE_ENV === 'production'
+    ? `https://${rpID}`
+    : `http://${rpID}:${PORT}`
 
 // Obtenir le statut de la 2FA
 export const getStatus = asyncHandler(async (req: Request, res: Response) => {
