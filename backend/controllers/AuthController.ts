@@ -1,5 +1,4 @@
 import User from '../models/User.js'
-import type { LoginHistory } from '../models/User.js'
 import mongoose from 'mongoose'
 import { asyncHandler } from '../helpers/AsyncHandler.js'
 import { ApiResponse } from '../helpers/ApiResponse.js'
@@ -22,6 +21,7 @@ import {
 import { sendVerificationEmail, sendLoginEmail } from '../emails/SendMail.js'
 import { TokenService } from '../services/TokenService.js'
 import { generateSecureCode } from '../helpers/2FAHelpers.js'
+import { assertUserExists } from '../helpers/General.js'
 
 export const refreshToken = asyncHandler(
   async (req: Request, res: Response) => {
@@ -33,7 +33,7 @@ export const refreshToken = asyncHandler(
       return ApiResponse.error(res, t('auth:errors.unauthorized'), 401)
     }
 
-    console.log('Raw refresh token:', rawRefreshToken)
+    console.log('[REFRESH] Raw refresh token:', rawRefreshToken)
 
     const session = await mongoose.startSession()
     session.startTransaction()
@@ -51,14 +51,14 @@ export const refreshToken = asyncHandler(
       const userSession = user.loginHistory.find(
         (s) => s.sessionId === sessionId,
       )
-      console.log('userSession', userSession)
+      console.log('[REFRESH] userSession:', userSession)
 
       if (!userSession || !userSession.refreshToken) {
         await session.abortTransaction()
         return ApiResponse.error(res, t('auth:errors.session_expired'), 401)
       }
 
-      console.log('Refresh token :', userSession.refreshToken)
+      console.log('[REFRESH] Refresh token :', userSession.refreshToken)
 
       // 3. Vérifier l'expiration
       if (userSession.expiresAt.getTime() < Date.now()) {
@@ -67,7 +67,7 @@ export const refreshToken = asyncHandler(
       }
 
       console.log(
-        'Session expirée à :',
+        '[REFRESH] Session expirée à :',
         userSession.expiresAt,
         userSession.expiresAt.getTime() < Date.now(),
       )
@@ -84,7 +84,7 @@ export const refreshToken = asyncHandler(
           { $pull: { loginHistory: { sessionId } } },
         ).session(session)
         await session.commitTransaction()
-        return ApiResponse.error(res, t('auth:errors.token_invalid'), 401)
+        return ApiResponse.error(res, t('common:errors.bad_request'), 401)
       }
 
       // 5. Mettre à jour lastActive AVANT la génération des tokens
@@ -105,20 +105,6 @@ export const refreshToken = asyncHandler(
       return ApiResponse.success(res, { accessToken }, '', 200)
     } catch (error: any) {
       await session.abortTransaction()
-      console.error('[RefreshToken] Error:', {
-        sessionId,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined,
-      })
-
-      // Gestion spécifique des conflits
-      if (error.message.includes('Write conflict')) {
-        return ApiResponse.error(
-          res,
-          t('common:errors.concurrent_request'),
-          429,
-        )
-      }
 
       return ApiResponse.error(res, t('common:errors.server_error'), 500)
     } finally {
@@ -127,72 +113,33 @@ export const refreshToken = asyncHandler(
   },
 )
 
-export const register = asyncHandler(async (req: Request, res: Response) => {
-  const { email, password, lastName, firstName, rememberMe } = req.body
+export const checkAuth = asyncHandler(async (req: Request, res: Response) => {
   const { t } = req
-
-  // 1. Vérifier que tous les champs sont présents
-  if (!email || !password || !lastName || !firstName) {
-    return ApiResponse.error(res, t('auth:errors.missing_fields'), 400)
+  const user = req.user
+  if (!user.emailVerification.isVerified) {
+    return ApiResponse.info(
+      res,
+      {
+        requiresVerification: true,
+        email: user.email,
+        rememberMe: false,
+      },
+      t('auth:errors.email_not_verified'),
+      403,
+    )
   }
 
-  // 2. Vérification du nom et prénom
-  if (!validateName(lastName)) {
-    return ApiResponse.error(res, t('auth:errors.invalid_name'), 400)
-  }
-
-  if (!validateName(firstName)) {
-    return ApiResponse.error(res, t('auth:errors.invalid_name'), 400)
-  }
-
-  // 3. On vérifie l'email
-  if (!validateEmail(email)) {
-    return ApiResponse.error(res, t('auth:errors.invalid_email'), 400)
-  }
-
-  // 4. L'email est valide, on cherche si il est deja utilisé
-  const existingUser = await User.findOne({ email })
-  if (existingUser) {
-    return ApiResponse.error(res, t('auth:errors.email_exists'), 409)
-  }
-
-  // 5. On vérifie le mot de passe
-  if (!validatePassword(password)) {
-    return ApiResponse.error(res, t('auth:errors.invalid_password'), 400)
-  }
-
-  // 6. Mot de passe valide, on le crypte
-  const hashedPassword = await hashPassword(password)
-
-  // 7. On vérifie l'email de l'utilisateur
-  const emailToken = generateSecureCode()
-  const expiration = new Date(Date.now() + 24 * 60 * 60 * 1000)
-
-  // 8. On crée l'utilisateur
-  const user = await User.create({
-    lastName,
-    firstName,
-    email,
-    password: hashedPassword,
-    emailVerification: {
-      token: emailToken,
-      expiration,
-    },
-    language: i18next.language,
-  })
-
-  await sendVerificationEmail(t as TFunction, user, emailToken)
-
-  return ApiResponse.success(
-    res,
-    {
-      requiresVerification: true,
+  return ApiResponse.success(res, {
+    user: {
+      id: user._id,
       email: user.email,
-      rememberMe: rememberMe,
+      lastName: user.lastName,
+      firstName: user.firstName,
+      language: user.language,
+      theme: user.theme,
+      role: user.role,
     },
-    t('auth:success.registered'),
-    200,
-  )
+  })
 })
 
 export const checkAuthStatus = asyncHandler(
@@ -356,103 +303,144 @@ export const logout = asyncHandler(async (req: Request, res: Response) => {
   return ApiResponse.success(res, {}, t('auth:success.logged_out'), 200)
 })
 
-export const checkSession = asyncHandler(
+export const register = asyncHandler(async (req: Request, res: Response) => {
+  const { email, password, lastName, firstName, rememberMe } = req.body
+  const { t } = req
+
+  // 1. Vérifier que tous les champs sont présents
+  if (!email || !password || !lastName || !firstName) {
+    return ApiResponse.error(res, t('auth:errors.missing_fields'), 400)
+  }
+
+  // 2. Vérification du nom et prénom
+  if (!validateName(lastName)) {
+    return ApiResponse.error(res, t('auth:errors.invalid_name'), 400)
+  }
+
+  if (!validateName(firstName)) {
+    return ApiResponse.error(res, t('auth:errors.invalid_name'), 400)
+  }
+
+  // 3. On vérifie l'email
+  if (!validateEmail(email)) {
+    return ApiResponse.error(res, t('auth:errors.invalid_email'), 400)
+  }
+
+  // 4. L'email est valide, on cherche si il est deja utilisé
+  const existingUser = await User.findOne({ email })
+  if (existingUser) {
+    return ApiResponse.error(res, t('auth:errors.email_exists'), 409)
+  }
+
+  // 5. On vérifie le mot de passe
+  if (!validatePassword(password)) {
+    return ApiResponse.error(res, t('auth:errors.invalid_password'), 400)
+  }
+
+  // 6. Mot de passe valide, on le crypte
+  const hashedPassword = await hashPassword(password)
+
+  // 7. On vérifie l'email de l'utilisateur
+  const emailToken = generateSecureCode()
+  const expiration = new Date(Date.now() + 24 * 60 * 60 * 1000)
+
+  // 8. On crée l'utilisateur
+  const user = await User.create({
+    lastName,
+    firstName,
+    email,
+    password: hashedPassword,
+    emailVerification: {
+      token: emailToken,
+      expiration,
+    },
+    language: i18next.language,
+  })
+
+  await sendVerificationEmail(t as TFunction, user, emailToken)
+
+  return ApiResponse.success(
+    res,
+    {
+      requiresVerification: true,
+      email: user.email,
+      rememberMe: rememberMe,
+    },
+    t('auth:success.registered'),
+    200,
+  )
+})
+
+export const emailVerification = asyncHandler(
   async (req: Request, res: Response) => {
+    const { token, email, rememberMe = false } = req.body
     const { t } = req
-    const user = req.user
-    if (!user.emailVerification.isVerified) {
-      return ApiResponse.info(
+
+    // 1. Validation des champs
+    if (!token) {
+      return ApiResponse.error(res, t('auth:errors.missing_fields'), 400)
+    }
+    if (!email) {
+      return ApiResponse.error(res, t('common:errors.bad_request'), 400)
+    }
+    // 2. On vérifie si l'utilisateur existe
+    const user = await User.findOne({ email })
+    if (!assertUserExists(user, res, t)) return
+
+    // 3. Vérification si l'email est déjà vérifié
+    if (user.emailVerification.isVerified) {
+      return ApiResponse.error(
         res,
-        {
-          requiresVerification: true,
-          email: user.email,
-          rememberMe: false,
-        },
-        t('auth:errors.email_not_verified'),
-        403,
+        t('auth:errors.email_already_verified'),
+        400,
       )
     }
 
-    return ApiResponse.success(res, {
-      user: {
-        id: user._id,
-        email: user.email,
-        lastName: user.lastName,
-        firstName: user.firstName,
-        language: user.language,
-        theme: user.theme,
-        role: user.role,
-      },
-    })
+    // 4. Vérification du token
+    if (user.emailVerification.token !== token) {
+      return ApiResponse.error(res, t('auth:errors.2fa.invalid_code'), 400)
+    }
+    if (
+      user.emailVerification.expiration &&
+      user.emailVerification.expiration < new Date()
+    ) {
+      return ApiResponse.error(res, t('auth:errors.code_expired'), 400)
+    }
+
+    // 5. Mise à jour de l'utilisateur
+    user.emailVerification.isVerified = true
+    user.emailVerification.token = undefined
+    user.emailVerification.expiration = undefined
+    await user.save()
+
+    // 6. On génère le cookie de session
+    const session = await mongoose.startSession()
+    session.startTransaction()
+    try {
+      const { accessToken, refreshToken } =
+        await SessionService.createSessionWithTokens(user, req, res, rememberMe)
+
+      user.lastLogin = new Date()
+      await user.save({ session })
+      await session.commitTransaction()
+
+      // 7. Send login email notification
+      // TODO: implement welcome email sending
+
+      return ApiResponse.success(
+        res,
+        { accessToken, refreshToken },
+        t('auth:success.logged_in'),
+        200,
+      )
+    } catch (error) {
+      await session.abortTransaction()
+      throw error
+    } finally {
+      session.endSession()
+    }
   },
 )
-
-export const verifyEmail = asyncHandler(async (req: Request, res: Response) => {
-  const { token, email, rememberMe = false } = req.body
-  const { t } = req
-
-  // 1. Validation des champs
-  if (!token || !email) {
-    return ApiResponse.error(res, t('auth:errors.missing_fields'), 400)
-  }
-  // 2. On vérifie si l'utilisateur existe
-  const user = await User.findOne({ email })
-  if (!user) {
-    return ApiResponse.error(res, t('auth:errors.user_not_found'), 404)
-  }
-
-  // 3. Vérification si l'email est déjà vérifié
-  if (user.emailVerification.isVerified) {
-    return ApiResponse.error(res, t('auth:errors.email_already_verified'), 400)
-  }
-
-  // 4. Vérification du token
-  if (user.emailVerification.token !== token) {
-    return ApiResponse.error(res, t('auth:errors.2fa.invalid_code'), 400)
-  }
-  if (
-    user.emailVerification.expiration &&
-    user.emailVerification.expiration < new Date()
-  ) {
-    return ApiResponse.error(res, t('auth:errors.code_expired'), 400)
-  }
-
-  // 5. Mise à jour de l'utilisateur
-  user.emailVerification.isVerified = true
-  user.emailVerification.token = undefined
-  user.emailVerification.expiration = undefined
-  await user.save()
-
-  // 6. On génère le cookie de session
-  const session = await mongoose.startSession()
-  session.startTransaction()
-  try {
-    const {
-      accessToken,
-      refreshToken,
-      session: userSession,
-    } = await SessionService.createSessionWithTokens(user, req, res, rememberMe)
-
-    user.lastLogin = new Date()
-    await user.save({ session })
-    await session.commitTransaction()
-
-    // 7. Send login email notification
-    // TODO: implement welcome email sending
-
-    return ApiResponse.success(
-      res,
-      { accessToken, refreshToken },
-      t('auth:success.logged_in'),
-      200,
-    )
-  } catch (error) {
-    await session.abortTransaction()
-    throw error
-  } finally {
-    session.endSession()
-  }
-})
 
 export const resendVerificationEmail = asyncHandler(
   async (req: Request, res: Response) => {
@@ -464,9 +452,7 @@ export const resendVerificationEmail = asyncHandler(
     }
 
     const user = await User.findOne({ email })
-    if (!user) {
-      return ApiResponse.error(res, t('auth:errors.user_not_found'), 404)
-    }
+    if (!assertUserExists(user, res, t)) return
 
     if (user.emailVerification.isVerified) {
       return ApiResponse.error(
@@ -488,81 +474,6 @@ export const resendVerificationEmail = asyncHandler(
       res,
       {},
       t('auth:success.verification_email_resent'),
-      200,
-    )
-  },
-)
-
-export const getActiveSessions = asyncHandler(
-  async (req: Request, res: Response) => {
-    const { t } = req
-    const user = req.user
-    const currentSessionId = req.cookies?.sessionId
-
-    if (!user) {
-      return ApiResponse.error(res, t('auth:errors.user_not_found'), 404)
-    }
-
-    const sessions = SessionService.getActiveSessions(user, currentSessionId)
-
-    return ApiResponse.success(res, { sessions })
-  },
-)
-
-export const revokeSession = asyncHandler(
-  async (req: Request, res: Response) => {
-    const { t } = req
-
-    const { sessionId } = req.params
-    if (!sessionId) {
-      return ApiResponse.error(res, t('auth:errors.missing_fields'), 400)
-    }
-
-    const user = await User.findById(req.user._id)
-    if (!user) {
-      return ApiResponse.error(res, t('auth:errors.user_not_found'), 404)
-    }
-
-    const session = user.loginHistory.find(
-      (session: LoginHistory) => session.sessionId === sessionId,
-    )
-    if (!session) {
-      return ApiResponse.error(res, t('auth:errors.session_not_found'), 404)
-    }
-
-    // On ne peut pas révoquer la session courante
-    if (session.sessionId === req.cookies?.sessionId) {
-      return ApiResponse.error(
-        res,
-        t('auth:errors.cannot_revoke_current_session'),
-        400,
-      )
-    }
-    // Supprimer la session
-    SessionService.revokeSession(user, sessionId)
-    await user.save()
-
-    return ApiResponse.success(res, {}, t('auth:success.session_revoked'), 200)
-  },
-)
-
-export const revokeAllSessions = asyncHandler(
-  async (req: Request, res: Response) => {
-    const { t } = req
-    const user = await User.findById(req.user._id)
-
-    if (!user) {
-      return ApiResponse.error(res, t('auth:errors.user_not_found'), 404)
-    }
-
-    // Supprimer toutes les sessions
-    SessionService.revokeAllSessions(user)
-    await user.save()
-
-    return ApiResponse.success(
-      res,
-      {},
-      t('auth:success.all_sessions_revoked'),
       200,
     )
   },

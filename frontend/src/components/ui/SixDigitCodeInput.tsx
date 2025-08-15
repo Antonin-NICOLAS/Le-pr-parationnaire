@@ -12,7 +12,7 @@ import PrimaryButton from './PrimaryButton'
 interface SixDigitCodeInputProps {
   value: string[]
   onChange: (value: string[]) => void
-  onComplete?: () => void
+  onComplete: () => void
   loading?: boolean
   disabled?: boolean
   error?: boolean
@@ -41,7 +41,6 @@ const SixDigitCodeInput: React.FC<SixDigitCodeInputProps> = ({
   useEffect(() => {
     const codeValue = value.join('')
     if (
-      onComplete &&
       codeValue.length === 6 &&
       !loading &&
       lastCodeRef.current !== codeValue
@@ -125,6 +124,7 @@ const SixDigitCodeInput: React.FC<SixDigitCodeInputProps> = ({
       setFocusedIndex(index + 1)
     } else if (e.key === 'Enter' && index === 5 && value[5]) {
       inputRefs.current[index]?.blur()
+      onComplete()
     }
   }
 

@@ -71,7 +71,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         withCredentials: true,
       })
     },
-    { showErrorToast: true, showSuccessToast: false },
+    { showErrorToast: false, showSuccessToast: false },
   )
 
   const loginCall = useApiCall<LoginResponse>(
@@ -79,6 +79,9 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       return axios.post(`${VITE_AUTH}/login`, data, { withCredentials: true })
     },
     {
+      showErrorToast: false,
+      showSuccessToast: true,
+      showInfoToast: true,
       onSuccess: async (res) => {
         if (!res.requiresTwoFactor) {
           await checkAuth()
@@ -105,6 +108,7 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
         withCredentials: true,
       })
     },
+    { showErrorToast: true, showSuccessToast: true },
   )
 
   const emailVerificationCall = useApiCall(
@@ -114,19 +118,24 @@ export const AuthProvider = ({ children }: { children: React.ReactNode }) => {
       })
     },
     {
+      showErrorToast: false,
+      showSuccessToast: true,
       onSuccess: async () => {
         await checkAuth()
       },
     },
   )
 
-  const resendVerificationEmailCall = useApiCall(async (email: string) => {
-    return axios.post(
-      `${VITE_AUTH}/resend-verification-email`,
-      { email },
-      { withCredentials: true },
-    )
-  })
+  const resendVerificationEmailCall = useApiCall(
+    async (email: string) => {
+      return axios.post(
+        `${VITE_AUTH}/resend-verification-email`,
+        { email },
+        { withCredentials: true },
+      )
+    },
+    { showErrorToast: false, showSuccessToast: true },
+  )
 
   /** ---------------------------
    * --------------------------- */

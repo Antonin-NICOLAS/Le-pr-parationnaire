@@ -52,8 +52,8 @@ const SettingsPage: React.FC = () => {
   const navigate = useNavigate()
   const { user } = useAuth()
   const {
-    checkActiveSessions,
-    checkActiveSessionsState,
+    getActiveSessions,
+    getActiveSessionsState,
     revokeSession,
     revokeSessionState,
     revokeAllSessions,
@@ -153,7 +153,7 @@ const SettingsPage: React.FC = () => {
 
   useEffect(() => {
     const fetchActiveSessions = async () => {
-      await checkActiveSessions()
+      await getActiveSessions()
     }
     fetchActiveSessions()
     fetch2FAStatus()
@@ -247,9 +247,9 @@ const SettingsPage: React.FC = () => {
           initial='hidden'
           animate='show'
         >
-          {!checkActiveSessionsState.loading &&
-          checkActiveSessionsState.data?.sessions?.length ? (
-            checkActiveSessionsState.data.sessions.map(
+          {!getActiveSessionsState.loading &&
+          getActiveSessionsState.data?.sessions?.length ? (
+            getActiveSessionsState.data.sessions.map(
               (session: LoginHistory) => (
                 <motion.div
                   key={session.sessionId}
@@ -318,7 +318,7 @@ const SettingsPage: React.FC = () => {
             )
           ) : (
             <div className='rounded-lg bg-gray-50 p-4 dark:bg-gray-700/50'>
-              {checkActiveSessionsState.loading ? (
+              {getActiveSessionsState.loading ? (
                 <motion.div
                   className='space-y-4'
                   initial={{ opacity: 0.5 }}
@@ -341,9 +341,9 @@ const SettingsPage: React.FC = () => {
               )}
             </div>
           )}
-          {!checkActiveSessionsState.loading &&
-            checkActiveSessionsState.data?.sessions?.length &&
-            checkActiveSessionsState.data.sessions.length !== 1 && (
+          {!getActiveSessionsState.loading &&
+            getActiveSessionsState.data?.sessions?.length &&
+            getActiveSessionsState.data.sessions.length !== 1 && (
               <PrimaryButton
                 variant='secondary'
                 onClick={handleRevokeAllSessions}

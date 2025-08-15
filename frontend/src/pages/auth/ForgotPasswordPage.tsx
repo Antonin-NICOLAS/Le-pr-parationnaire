@@ -119,7 +119,7 @@ const ForgotPasswordPage: React.FC = () => {
           onClose={() => {
             forgotPasswordState.resetError()
           }}
-          isVisible={forgotPasswordState.error !== null}
+          isVisible={!!forgotPasswordState.error}
         />
         <CustomInput
           id='forgot-email'
@@ -129,7 +129,7 @@ const ForgotPasswordPage: React.FC = () => {
           placeholder='Enter your email address'
           value={form.values.email}
           onChange={(e) => form.handleChange('email', e.target.value)}
-          error={form.touched.email ? form.errors.email : undefined}
+          error={form.errors.email}
           icon={Mail}
           required
           autoComplete='email'
@@ -144,7 +144,8 @@ const ForgotPasswordPage: React.FC = () => {
           disabled={
             !form.isValid ||
             forgotPasswordState.loading ||
-            !Object.values(form.values).some(Boolean)
+            !Object.values(form.values).some(Boolean) ||
+            !Object.values(form.touched).some(Boolean)
           }
           fullWidth
           size='lg'

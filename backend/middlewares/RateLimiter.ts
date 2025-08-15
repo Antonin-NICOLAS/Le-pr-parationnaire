@@ -22,11 +22,7 @@ const refreshTokenRateLimiter = new RateLimiterMemory({
 })
 
 // Middleware to apply rate limiting
-const rateLimiterMiddleware = (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const NormalRL = (req: Request, res: Response, next: NextFunction) => {
   const { t } = req
   rateLimiter
     .consume(req.ip ?? '')
@@ -81,11 +77,7 @@ const StrictRL = (req: Request, res: Response, next: NextFunction) => {
     })
 }
 
-const refreshTokenRateLimiterMiddleware = (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const refreshTokenRL = (req: Request, res: Response, next: NextFunction) => {
   const { t } = req
   refreshTokenRateLimiter
     .consume(req.ip ?? '')
@@ -99,4 +91,4 @@ const refreshTokenRateLimiterMiddleware = (
     })
 }
 
-export { rateLimiterMiddleware, StrictRL, refreshTokenRateLimiterMiddleware }
+export { NormalRL, StrictRL, refreshTokenRL }

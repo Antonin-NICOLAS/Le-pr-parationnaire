@@ -35,11 +35,11 @@ const TwoFactorVerifyPage: React.FC = () => {
   const navigate = useNavigate()
   const location = useLocation()
   const {
-    email = 'antoninnicolas@icloud.com',
+    email = '',
     rememberMe = false,
-    email2FA = true,
-    app2FA = true,
-    webauthn2FA = true,
+    email2FA = false,
+    app2FA = false,
+    webauthn2FA = false,
   } = location.state || {}
 
   const [code, setCode] = useState<string[]>(Array(6).fill(''))

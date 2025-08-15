@@ -100,6 +100,7 @@ const UserSchema = new Schema<IUser>({
     unique: true,
     lowercase: true,
     trim: true,
+    index: true,
   },
   password: { type: String, required: true, minlength: 8 },
   tokenVersion: { type: Number, default: 0 },

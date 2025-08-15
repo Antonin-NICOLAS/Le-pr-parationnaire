@@ -13,8 +13,8 @@ import {
 } from '../controllers/UserController.js'
 
 // Middlewares
-import { authenticate } from '../middlewares/VerifyAuth.js'
-import { rateLimiterMiddleware } from '../middlewares/RateLimiter.js'
+import { authenticateFull } from '../middlewares/VerifyAuth.js'
+import { NormalRL } from '../middlewares/RateLimiter.js'
 
 // Router
 const router = express.Router()
@@ -28,37 +28,22 @@ router.use(
 )
 
 // Routes
-router.post(
-  '/change-password',
-  rateLimiterMiddleware,
-  authenticate,
-  changePassword,
-)
-router.post(
-  '/change-email/step1',
-  rateLimiterMiddleware,
-  authenticate,
-  changeEmailStep1,
-)
+router.post('/change-password', NormalRL, authenticateFull, changePassword)
+router.post('/change-email/step1', NormalRL, authenticateFull, changeEmailStep1)
 router.post(
   '/change-email/step2',
-  rateLimiterMiddleware,
-  authenticate,
+  NormalRL,
+  authenticateFull,
   changeEmailStep2Step4,
 )
-router.post(
-  '/change-email/step3',
-  rateLimiterMiddleware,
-  authenticate,
-  changeEmailStep3,
-)
+router.post('/change-email/step3', NormalRL, authenticateFull, changeEmailStep3)
 router.post(
   '/change-email/step4',
-  rateLimiterMiddleware,
-  authenticate,
+  NormalRL,
+  authenticateFull,
   changeEmailStep2Step4,
 )
 
-router.delete('/delete-account', authenticate, deleteAccount)
+router.delete('/delete-account', authenticateFull, deleteAccount)
 
 export default router

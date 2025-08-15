@@ -6,23 +6,21 @@ dotenv.config()
 // Controllers
 import {
   refreshToken,
-  register,
+  checkAuth,
   checkAuthStatus,
   login,
   logout,
-  checkSession,
-  verifyEmail,
+  register,
+  emailVerification,
   resendVerificationEmail,
-  getActiveSessions,
-  revokeSession,
-  revokeAllSessions,
 } from '../controllers/AuthController.js'
 
 // Middlewares
-import { authenticate } from '../middlewares/VerifyAuth.js'
+import { authenticateLean } from '../middlewares/VerifyAuth.js'
 import {
-  refreshTokenRateLimiterMiddleware,
-  rateLimiterMiddleware,
+  NormalRL,
+  StrictRL,
+  refreshTokenRL,
 } from '../middlewares/RateLimiter.js'
 
 // Router
@@ -37,26 +35,17 @@ router.use(
 )
 
 // Routes
-router.get('/profile', authenticate, checkSession)
-router.post('/refresh', refreshTokenRateLimiterMiddleware, refreshToken)
+router.get('/profile', authenticateLean, checkAuth)
+router.post('/refresh', refreshTokenRL, refreshToken)
 
 // Authentication Flow
-router.get('/status', rateLimiterMiddleware, checkAuthStatus)
-router.post('/login', rateLimiterMiddleware, login)
+router.get('/status', NormalRL, checkAuthStatus)
+router.post('/login', NormalRL, login)
 router.post('/logout', logout)
 
 // Registration Flow
-router.post('/register', rateLimiterMiddleware, register)
-router.post('/verify-email', rateLimiterMiddleware, verifyEmail)
-router.post(
-  '/resend-verification-email',
-  rateLimiterMiddleware,
-  resendVerificationEmail,
-)
-
-// Session Management
-router.get('/active-sessions', authenticate, getActiveSessions)
-router.delete('/revoke-session/:sessionId', authenticate, revokeSession)
-router.delete('/revoke-all-sessions', authenticate, revokeAllSessions)
+router.post('/register', NormalRL, register)
+router.post('/verify-email', NormalRL, emailVerification)
+router.post('/resend-verification-email', StrictRL, resendVerificationEmail)
 
 export default router

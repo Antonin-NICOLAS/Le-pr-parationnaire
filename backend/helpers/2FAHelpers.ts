@@ -1,19 +1,13 @@
 import speakeasy from 'speakeasy'
 import QRCode from 'qrcode'
-import CryptoJS from 'crypto-js'
+import crypto from 'crypto'
 import bcrypt from 'bcrypt'
 import { IUser, BackupCode } from '../models/User.js'
+import { TFunction } from 'i18next'
 
+// APP
 export function generateTwoFactorSecret() {
   return speakeasy.generateSecret({ name: 'Le préparationnaire', length: 20 })
-}
-
-export async function hashEmailCode(code: string) {
-  return await bcrypt.hash(code, 12)
-}
-
-export async function compareEmailCode(hashedCode: string, plainCode: string) {
-  return await bcrypt.compare(plainCode, hashedCode)
 }
 
 export async function generateQRCode(secret: speakeasy.GeneratedSecret) {
@@ -38,23 +32,40 @@ export function verifyTwoFactorCode(secret: string, token: string) {
   })
 }
 
-export function generateBackupCodes(count = 8): BackupCode[] {
-  const codes: BackupCode[] = []
-  for (let i = 0; i < count; i++) {
-    const hash = CryptoJS.SHA256(
-      Date.now().toString() + Math.random().toString(),
-    )
-      .toString(CryptoJS.enc.Hex)
-      .toUpperCase()
-    codes.push({ code: hash.substring(0, 8), used: false })
-  }
-  return codes
+// EMAIL
+export function generateSecureCode(): string {
+  return String(crypto.randomInt(100000, 999999))
+}
+export async function hashEmailCode(code: string) {
+  return await bcrypt.hash(code, 12)
 }
 
-export function rotateBackupCodes(user: IUser) {
-  const unusedCodes = user.twoFactor.backupCodes.filter((c) => !c.used)
-  const newCodes = generateBackupCodes(8 - unusedCodes.length)
-  user.twoFactor.backupCodes = [...unusedCodes, ...newCodes]
+export async function compareEmailCode(hashedCode: string, plainCode: string) {
+  return await bcrypt.compare(plainCode, hashedCode)
+}
+
+export function isCodeExpired(expiration: Date): boolean {
+  return expiration < new Date()
+}
+
+// BACKUP CODES
+export function rotateBackupCodes(user: IUser): BackupCode[] {
+  const activeCodes = user.twoFactor.backupCodes
+    .filter((c) => !c.used)
+    .slice(0, 4)
+
+  const neededCodes = 8 - activeCodes.length
+  return [
+    ...activeCodes,
+    ...(neededCodes > 0 ? generateBackupCodes(neededCodes) : []),
+  ]
+}
+
+export function generateBackupCodes(count: number): BackupCode[] {
+  return Array.from({ length: count }, () => ({
+    code: crypto.randomBytes(4).toString('hex').toUpperCase(),
+    used: false,
+  }))
 }
 
 export function verifyBackupCode(user: IUser, code: string) {
@@ -78,28 +89,69 @@ export function validateSixDigitCode(code: string): boolean {
   return Boolean(code && code.length === 6 && /^\d+$/.test(code))
 }
 
-export function isCodeExpired(expiration: Date): boolean {
-  return expiration < new Date()
+type MethodType = 'password' | 'email' | 'app' | 'webauthn' | 'backup_code'
+export function getErrorMessageForMethod(
+  method: MethodType,
+  t: TFunction,
+): string {
+  const messages = {
+    password: t('auth:errors.password_incorrect'),
+    email: t('auth:errors.2fa.invalid_code'),
+    app: t('auth:errors.2fa.invalid_code'),
+    webauthn: t('auth:errors.webauthn.authentication'),
+    backup_code: t('auth:errors.2fa.invalid_backup_code'),
+  }
+  return messages[method] || t('auth:errors.2fa.invalid_method')
 }
 
-export function generateSecureCode(): string {
-  // Utiliser Math.random pour une meilleure compatibilité
-  const min = 100000
-  const max = 999999
-  return String(Math.floor(Math.random() * (max - min + 1)) + min)
-}
+export async function verifySecondFactor(
+  user: any,
+  method: string,
+  value: string,
+  t: TFunction,
+): Promise<{ valid: boolean; errorMessage: string }> {
+  switch (method) {
+    case 'app':
+      if (!user.twoFactor?.app?.isEnabled || !user.twoFactor.app.secret) {
+        return {
+          valid: false,
+          errorMessage: t('auth:errors.2fa.invalid_method'),
+        }
+      }
+      return {
+        valid: verifyTwoFactorCode(user.twoFactor.app.secret, value),
+        errorMessage: t('auth:errors.2fa.invalid_code'),
+      }
 
-export default {
-  generateTwoFactorSecret,
-  hashEmailCode,
-  compareEmailCode,
-  generateQRCode,
-  verifyTwoFactorCode,
-  generateBackupCodes,
-  rotateBackupCodes,
-  verifyBackupCode,
-  validatePreferredMethod,
-  validateSixDigitCode,
-  isCodeExpired,
-  generateSecureCode,
+    case 'email':
+      if (
+        !user.twoFactor?.email?.isEnabled ||
+        !user.twoFactor.email.token ||
+        !user.twoFactor.email.expiration
+      ) {
+        return {
+          valid: false,
+          errorMessage: t('auth:errors.2fa.setup_required'),
+        }
+      }
+      if (isCodeExpired(user.twoFactor.email.expiration)) {
+        return { valid: false, errorMessage: t('auth:errors.2fa.code_expired') }
+      }
+      return {
+        valid: await compareEmailCode(user.twoFactor.email.token, value),
+        errorMessage: t('auth:errors.2fa.invalid_code'),
+      }
+
+    case 'backup_code':
+      const codeIndex = (user.twoFactor.backupCodes || []).findIndex(
+        (c: BackupCode) => c.code === value && !c.used,
+      )
+      return {
+        valid: codeIndex !== -1,
+        errorMessage: t('auth:errors.2fa.invalid_backup_code'),
+      }
+
+    default:
+      return { valid: false, errorMessage: t('auth:errors.2fa.invalid_method') }
+  }
 }

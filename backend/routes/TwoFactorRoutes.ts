@@ -19,8 +19,8 @@ import {
 } from '../controllers/2FAController.js'
 
 // Middlewares
-import { authenticate } from '../middlewares/VerifyAuth.js'
-import { rateLimiterMiddleware } from '../middlewares/RateLimiter.js'
+import { authenticateLean } from '../middlewares/VerifyAuth.js'
+import { NormalRL } from '../middlewares/RateLimiter.js'
 
 // Router
 const router = express.Router()
@@ -36,41 +36,26 @@ router.use(
 const authIfNeeded = (req: Request, res: Response, next: NextFunction) => {
   const { context } = req.params
   if (['config', 'disable'].includes(context)) {
-    return authenticate(req, res, next)
+    return authenticateLean(req, res, next)
   }
   next()
 }
 
 // Routes
-router.get('/status', authenticate, getStatus)
-router.post('/set-preferred-method', authenticate, setPreferredMethod)
-router.post('/login', rateLimiterMiddleware, twoFactorLogin)
-router.post('/disable', authenticate, disableTwoFactor)
+router.get('/status', authenticateLean, getStatus)
+router.post('/set-preferred-method', authenticateLean, setPreferredMethod)
+router.post('/login', NormalRL, twoFactorLogin)
+router.post('/disable', authenticateLean, disableTwoFactor)
 
 // Email 2FA
-router.post(
-  '/email/config',
-  rateLimiterMiddleware,
-  authenticate,
-  configTwoFactorEmail,
-)
-router.post('/email/enable', authenticate, enableTwoFactorEmail)
-router.post('/email/disable', authenticate, disableTwoFactorEmail)
-router.post(
-  '/email/resend/:context',
-  rateLimiterMiddleware,
-  authIfNeeded,
-  resendEmailCode,
-)
+router.post('/email/config', NormalRL, authenticateLean, configTwoFactorEmail)
+router.post('/email/enable', authenticateLean, enableTwoFactorEmail)
+router.post('/email/disable', authenticateLean, disableTwoFactorEmail)
+router.post('/email/resend/:context', NormalRL, authIfNeeded, resendEmailCode)
 
 // App 2FA
-router.post(
-  '/app/config',
-  rateLimiterMiddleware,
-  authenticate,
-  configTwoFactorApp,
-)
-router.post('/app/enable', authenticate, enableTwoFactorApp)
-router.post('/app/disable', authenticate, disableTwoFactorApp)
+router.post('/app/config', NormalRL, authenticateLean, configTwoFactorApp)
+router.post('/app/enable', authenticateLean, enableTwoFactorApp)
+router.post('/app/disable', authenticateLean, disableTwoFactorApp)
 
 export default router

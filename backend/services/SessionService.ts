@@ -1,9 +1,10 @@
-import { IUser, LoginHistory } from '../models/User.js'
+import { IUser } from '../models/User.js'
 import { UAParser } from 'ua-parser-js'
 import ms, { StringValue } from 'ms'
 import { v4 as uuidv4 } from 'uuid'
 import { Request, Response } from 'express'
 import { TokenService } from './TokenService.js'
+import User from '../models/User.js'
 
 export class SessionService {
   static async createSessionWithTokens(
@@ -69,15 +70,15 @@ export class SessionService {
     session.refreshToken = await TokenService.hashToken(rawRefreshToken)
     session.refreshTokenVersion = refreshTokenVersion
 
-    console.log('Refresh token :', session.refreshToken)
-    console.log('Raw refresh token :', rawRefreshToken)
-    console.log('Session :', session)
-
     if (existingSessionId) {
       session.refreshTokenVersion = (session.refreshTokenVersion || 0) + 1
     }
 
     await user.save()
+
+    console.log('[REFRESH] Refresh token :', session.refreshToken)
+    console.log('[REFRESH] Raw refresh token :', rawRefreshToken)
+    console.log('[REFRESH] Session :', session)
 
     // Cookies
     const baseCookieOpts = {
@@ -123,38 +124,50 @@ export class SessionService {
   }
 
   static async cleanupExpiredSessions(user: IUser) {
-    user.loginHistory = user.loginHistory.filter(
-      (s) => s.expiresAt > new Date(),
+    await User.updateOne(
+      { _id: user._id },
+      {
+        $pull: {
+          loginHistory: {
+            expiresAt: { $lte: new Date() },
+          },
+        },
+      },
     )
-    await user.save()
   }
 
   static async revokeSession(user: IUser, sessionId: string) {
-    user.loginHistory = user.loginHistory.filter(
-      (session: LoginHistory) => session.sessionId !== sessionId,
+    await User.updateOne(
+      { _id: user._id },
+      {
+        $pull: {
+          loginHistory: { sessionId: sessionId },
+        },
+      },
     )
   }
 
   static async revokeAllSessions(user: IUser) {
-    user.loginHistory = []
+    await User.updateOne({ _id: user._id }, { $set: { loginHistory: [] } })
   }
 
   static getActiveSessions(user: IUser, currentSessionId?: string) {
+    const now = new Date()
     return user.loginHistory
-      .filter((session: LoginHistory) => session.expiresAt! > new Date())
-      .map((session: LoginHistory) => ({
-        sessionId: session.sessionId,
-        ip: session.ip,
-        location: session.location,
-        device:
-          session.browser && session.os
-            ? `${session.browser} on ${session.os}`
-            : session.userAgent || 'Unknown Device',
-        deviceType: session.deviceType,
-        browser: session.browser,
-        os: session.os,
-        lastActive: session.lastActive,
-        isCurrent: session.sessionId === currentSessionId,
+      .filter((s) => s.expiresAt! > now)
+      .sort((a, b) => b.lastActive.getTime() - a.lastActive.getTime())
+      .map((s) => ({
+        sessionId: s.sessionId,
+        ip: s.ip,
+        location: s.location,
+        deviceName:
+          s.browser && s.os
+            ? `${s.browser} on ${s.os}`
+            : s.userAgent || 'Unknown Device',
+        deviceType: s.deviceType,
+        lastActive: s.lastActive,
+        isCurrent: s.sessionId === currentSessionId,
+        expiresIn: s.expiresAt ? s.expiresAt.getTime() - now.getTime() : null,
       }))
   }
 }

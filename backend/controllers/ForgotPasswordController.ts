@@ -13,6 +13,7 @@ import {
   generateResetToken,
   resetTokenHash,
 } from '../helpers/AuthHelpers.js'
+import { assertUserExists } from '../helpers/General.js'
 // Emails
 import { sendResetPasswordEmail } from '../emails/SendMail.js'
 
@@ -136,9 +137,10 @@ export const resetPassword = asyncHandler(
     // 3. On cherche l'utilisateur
     const hashedToken = resetTokenHash(token)
     const user = await User.findOne({ 'resetPassword.token': hashedToken })
+    if (!assertUserExists(user, res, t)) return
 
     // 4. Vérification de l'email
-    if (!user || !bcrypt.compareSync(user.email, email)) {
+    if (!bcrypt.compareSync(user.email, email)) {
       return ApiResponse.error(res, t('auth:errors.invalid_token'), 400)
     }
     if (

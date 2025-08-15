@@ -1,6 +1,5 @@
 import { Mail, RefreshCw } from 'lucide-react'
 import type React from 'react'
-import { useState } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 
 import ResendSection from '../../components/ui/ResendSection'
@@ -30,31 +29,29 @@ const EmailVerificationPage: React.FC = () => {
     },
     validationSchema: emailVerificationSchema,
     validateOnBlur: true,
-    validateOnChange: false,
+    validateOnChange: true,
   })
 
   const errorMessage =
     emailVerificationState.error || resendVerificationEmailState.error
-  const [canResend, setCanResend] = useState(false)
 
   const handleVerification = async (token: string) => {
+    if (!form.validateForm()) return
+    form.clearErrors()
     emailVerificationState.resetError()
     resendVerificationEmailState.resetError()
 
     const result = await emailVerification({ token, email, rememberMe })
     if (result.success) {
       navigate('/home')
+      form.reset()
     }
   }
 
   const handleResendCode = async () => {
     emailVerificationState.resetError()
     resendVerificationEmailState.resetError()
-    if (!canResend) return
-    const result = await resendVerificationEmail(email)
-    if (result.success) {
-      setCanResend(false)
-    }
+    await resendVerificationEmail(email)
   }
 
   const handleBack = () => {
@@ -78,20 +75,23 @@ const EmailVerificationPage: React.FC = () => {
             <Mail className='text-primary-600 dark:text-primary-400 h-8 w-8' />
           </div>
         </div>
-        {errorMessage !== null && (
-          <ErrorMessage
-            message={errorMessage}
-            type='error'
-            onClose={() => {
-              emailVerificationState.resetError()
-              resendVerificationEmailState.resetError()
-            }}
-          />
-        )}
+        <ErrorMessage
+          message={errorMessage}
+          type='error'
+          onClose={() => {
+            emailVerificationState.resetError()
+            resendVerificationEmailState.resetError()
+          }}
+          isVisible={!!errorMessage}
+        />
         <div className='space-y-4'>
           <SixDigitCodeInput
             value={form.values.token}
             onChange={(value) => form.handleChange('token', value)}
+            loading={
+              emailVerificationState.loading ||
+              resendVerificationEmailState.loading
+            }
             disabled={
               emailVerificationState.loading ||
               resendVerificationEmailState.loading

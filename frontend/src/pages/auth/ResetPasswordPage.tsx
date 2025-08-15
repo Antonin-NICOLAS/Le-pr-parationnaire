@@ -171,7 +171,7 @@ const ResetPasswordPage: React.FC = () => {
             onClose={() => {
               resetPasswordState.resetError()
             }}
-            isVisible={resetPasswordState.error !== null}
+            isVisible={!!resetPasswordState.error}
           />
           <CustomInput
             id='new-password'

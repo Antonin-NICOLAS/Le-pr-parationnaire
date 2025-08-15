@@ -42,6 +42,7 @@ import {
   findCredentialById,
   updateCredentialCounter,
 } from '../helpers/WebAuthnHelpers.js'
+import { assertUserExists } from '../helpers/General.js'
 // Emails
 import { sendLoginEmail } from '../emails/SendMail.js'
 
@@ -73,8 +74,7 @@ export const generateRegistrationOpt = asyncHandler(
     const user = await User.findById(req.user._id).select(
       '+twoFactor.webauthn +authMethods.webauthn',
     )
-    if (!user)
-      return ApiResponse.error(res, t('auth:errors.user_not_found'), 404)
+    if (!assertUserExists(user, res, t)) return
 
     const container = getContainer(user, ctx)
 
@@ -161,8 +161,7 @@ export const verifyRegistration = asyncHandler(
     const user = await User.findById(req.user._id).select(
       '+twoFactor.webauthn +authMethods.webauthn',
     )
-    if (!user)
-      return ApiResponse.error(res, t('auth:errors.user_not_found'), 404)
+    if (!assertUserExists(user, res, t)) return
 
     const container = getContainer(user, ctx)
 
@@ -287,8 +286,7 @@ export const generateAuthenticationOpt = asyncHandler(
     const user = await User.findOne({ email }).select(
       '+twoFactor.webauthn +authMethods.webauthn',
     )
-    if (!user)
-      return ApiResponse.error(res, t('auth:errors.user_not_found'), 404)
+    if (!assertUserExists(user, res, t)) return
 
     const container = getContainer(user, ctx)
 
@@ -341,8 +339,7 @@ export const verifyAuthentication = asyncHandler(
     const user = await User.findOne({
       email: String(email || '').toLowerCase(),
     }).select('+twoFactor.webauthn +authMethods.webauthn')
-    if (!user)
-      return ApiResponse.error(res, t('auth:errors.user_not_found'), 404)
+    if (!assertUserExists(user, res, t)) return
 
     const container = getContainer(user, ctx)
 
@@ -480,8 +477,7 @@ export const nameWebAuthnCredential = asyncHandler(
     const user = await User.findById(req.user._id).select(
       '+twoFactor.webauthn +authMethods.webauthn',
     )
-    if (!user)
-      return ApiResponse.error(res, t('auth:errors.user_not_found'), 404)
+    if (!assertUserExists(user, res, t)) return
 
     if (
       !deviceName ||
@@ -521,8 +517,7 @@ export const removeWebAuthnCredential = asyncHandler(
     const user = await User.findById(req.user._id).select(
       '+twoFactor.webauthn +authMethods.webauthn',
     )
-    if (!user)
-      return ApiResponse.error(res, t('auth:errors.user_not_found'), 404)
+    if (!assertUserExists(user, res, t)) return
 
     const container = getContainer(user, ctx)
     const idx = container.credentials.findIndex(
@@ -590,8 +585,7 @@ export const getWebAuthnDevices = asyncHandler(
     const user = await User.findById(req.user._id).select(
       '+twoFactor.webauthn +authMethods.webauthn',
     )
-    if (!user)
-      return ApiResponse.error(res, t('auth:errors.user_not_found'), 404)
+    if (!assertUserExists(user, res, t)) return
 
     const container = getContainer(user, ctx)
     return ApiResponse.success(res, {
@@ -615,8 +609,7 @@ export const disableWebAuthn = asyncHandler(
     const user = await User.findById(req.user._id).select(
       '+twoFactor.webauthn +authMethods.webauthn',
     )
-    if (!user)
-      return ApiResponse.error(res, t('auth:errors.user_not_found'), 404)
+    if (!assertUserExists(user, res, t)) return
 
     const container = getContainer(user, ctx)
     if (!container.isEnabled) {
@@ -747,8 +740,7 @@ export const transferWebAuthnCredentials = asyncHandler(
     const user = await User.findById(req.user._id).select(
       '+twoFactor.webauthn +authMethods.webauthn',
     )
-    if (!user)
-      return ApiResponse.error(res, t('auth:errors.user_not_found'), 404)
+    if (!assertUserExists(user, res, t)) return
 
     const source = getContainer(user, src)
     const target = getContainer(user, dst)

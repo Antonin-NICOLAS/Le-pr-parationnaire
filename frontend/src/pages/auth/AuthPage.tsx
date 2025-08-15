@@ -22,6 +22,10 @@ const AuthPage: React.FC = () => {
   const { tab = 'login' } = useParams()
   const navigate = useNavigate()
   const location = useLocation()
+  const [direction, setDirection] = useState(1)
+  const [loginStep, setLoginStep] = useState<
+    'email' | 'password' | 'webauthn-choice'
+  >('email')
   const isLogin = tab === 'login'
   const {
     login,
@@ -34,9 +38,6 @@ const AuthPage: React.FC = () => {
   } = useAuth()
   const { resendCode } = useEmailTwoFactor()
   const { authenticate, authenticateState } = useWebAuthnTwoFactor()
-  const [loginStep, setLoginStep] = useState<
-    'email' | 'password' | 'webauthn-choice'
-  >('email')
   // Login state
   const loginForm = useFormHandler({
     initialValues: {
@@ -46,6 +47,7 @@ const AuthPage: React.FC = () => {
     },
     validationSchema:
       loginStep === 'email' ? loginStep1Schema : loginStep2Schema,
+    validateOnChange: true,
     validateOnBlur: true,
   })
 
@@ -61,13 +63,14 @@ const AuthPage: React.FC = () => {
       rememberMe: false,
     },
     validationSchema: registrationSchema,
+    validateOnChange: true,
     validateOnBlur: true,
   })
-  const [direction, setDirection] = useState(1)
 
   const handleEmailSubmit = async () => {
     if (!loginForm.validateForm()) return
     loginForm.clearErrors()
+    checkAuthStatusState.resetError()
     const result = await checkAuthStatus(loginForm.values.email)
     if (result.webauthn) {
       setLoginStep('webauthn-choice')
@@ -81,6 +84,7 @@ const AuthPage: React.FC = () => {
   const handlePasswordLogin = async () => {
     if (!loginForm.validateForm()) return
     loginForm.clearErrors()
+    loginState.resetError()
     const result = await login({
       email: loginForm.values.email,
       password: loginForm.values.password!,
@@ -88,6 +92,7 @@ const AuthPage: React.FC = () => {
     })
     if (result.success) {
       navigate('/home')
+      loginForm.reset()
     } else if (result.requiresTwoFactor || loginState.data?.requiresTwoFactor) {
       if (result.twoFactor.preferredMethod === 'email') {
         await resendCode(loginForm.values.email, 'login')
@@ -148,6 +153,7 @@ const AuthPage: React.FC = () => {
   const handleRegister = async () => {
     if (!registerForm.validateForm()) return
     registerForm.clearErrors()
+    registerState.resetError()
     const result = await register(registerForm.values)
     if (result.success) {
       navigate('/verify-email', {
@@ -157,6 +163,7 @@ const AuthPage: React.FC = () => {
             registerForm.values.rememberMe || registerState.data?.rememberMe,
         },
       })
+      registerForm.reset()
     }
   }
 
@@ -197,16 +204,17 @@ const AuthPage: React.FC = () => {
             className='space-y-6'
           >
             {loginStep === 'email' ? (
-              <div>
-                {checkAuthStatusState.error && (
-                  <ErrorMessage
-                    message={checkAuthStatusState.error}
-                    type='error'
-                    onClose={() => checkAuthStatusState.resetError()}
-                  />
-                )}
+              <div className='space-y-6'>
+                <ErrorMessage
+                  message={checkAuthStatusState.error}
+                  type='error'
+                  onClose={() => checkAuthStatusState.resetError()}
+                  isVisible={checkAuthStatusState.error !== null}
+                />
 
                 <CustomInput
+                  id='login-email'
+                  name='login-email'
                   type='email'
                   label='Email Address'
                   placeholder='Enter your email'
@@ -214,16 +222,13 @@ const AuthPage: React.FC = () => {
                   onChange={(e) =>
                     loginForm.handleChange('email', e.target.value)
                   }
-                  onBlur={() => loginForm.handleBlur('email')}
-                  error={
-                    loginForm.touched.email && loginForm.values.email
-                      ? loginForm.errors.email
-                      : undefined
-                  }
+                  error={loginForm.errors.email}
                   icon={Mail}
                   required
                   autoComplete='email'
                   autoFocus
+                  disabled={loginState.loading}
+                  onBlur={() => loginForm.handleBlur('email')}
                 />
               </div>
             ) : loginStep === 'password' ? (
@@ -233,14 +238,12 @@ const AuthPage: React.FC = () => {
                     Welcome back, <strong>{loginForm.values.email}</strong>
                   </p>
                 </div>
-
-                {loginState.error && (
-                  <ErrorMessage
-                    message={loginState.error}
-                    type='error'
-                    onClose={() => loginState.resetError()}
-                  />
-                )}
+                <ErrorMessage
+                  message={loginState.error}
+                  type='error'
+                  onClose={() => loginState.resetError()}
+                  isVisible={loginState.error !== null}
+                />
 
                 <CustomInput
                   type='email'
@@ -256,6 +259,8 @@ const AuthPage: React.FC = () => {
                 />
 
                 <CustomInput
+                  id='login-password'
+                  name='login-password'
                   type='password'
                   label='Password'
                   placeholder='Enter your password'
@@ -263,16 +268,13 @@ const AuthPage: React.FC = () => {
                   onChange={(e) =>
                     loginForm.handleChange('password', e.target.value)
                   }
-                  onBlur={() => loginForm.handleBlur('password')}
-                  error={
-                    loginForm.touched.password && loginForm.values.password
-                      ? loginForm.errors.password
-                      : undefined
-                  }
+                  error={loginForm.errors.password}
                   icon={Lock}
                   required
                   autoComplete='current-password'
                   autoFocus
+                  disabled={loginState.loading}
+                  onBlur={() => loginForm.handleBlur('password')}
                 />
 
                 <div className='flex items-center justify-between'>
@@ -302,12 +304,12 @@ const AuthPage: React.FC = () => {
                       variant='secondary'
                       size='lg'
                       fullWidth
+                      icon={Fingerprint}
                       onClick={() => {
                         setLoginStep('webauthn-choice')
                         setDirection(1)
                       }}
                     >
-                      <Fingerprint size={16} />
                       Use passkey instead
                     </PrimaryButton>
                   </div>
@@ -334,13 +336,12 @@ const AuthPage: React.FC = () => {
                     <strong>{loginForm.values.email}</strong>
                   </p>
                 </div>
-                {authenticateState.error && (
-                  <ErrorMessage
-                    message={authenticateState.error}
-                    type='error'
-                    onClose={() => authenticateState.resetError()}
-                  />
-                )}
+                <ErrorMessage
+                  message={authenticateState.error}
+                  type='error'
+                  onClose={() => authenticateState.resetError()}
+                  isVisible={authenticateState.error !== null}
+                />
                 <div className='space-y-4'>
                   <PrimaryButton
                     onClick={handleWebAuthnLogin}
@@ -371,6 +372,16 @@ const AuthPage: React.FC = () => {
           <PrimaryButton
             type='submit'
             loading={checkAuthStatusState.loading || loginState.loading}
+            disabled={
+              (loginStep === 'email' &&
+                (loginState.loading ||
+                  !Object.values(loginForm.values).some(Boolean))) ||
+              (loginStep === 'password' &&
+                (loginState.loading ||
+                  !loginForm.isValid ||
+                  !Object.values(loginForm.values).some(Boolean) ||
+                  !Object.values(loginForm.touched).some(Boolean)))
+            }
             fullWidth
             size='lg'
             icon={ArrowRight}
@@ -448,7 +459,7 @@ const AuthPage: React.FC = () => {
                 className={`relative flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors duration-300 ${
                   isLogin
                     ? 'text-gray-900 dark:text-white'
-                    : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
+                    : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 cursor-pointer'
                 }`}
               >
                 Sign In
@@ -464,7 +475,7 @@ const AuthPage: React.FC = () => {
                 className={`relative flex-1 rounded-lg px-4 py-2 text-sm font-medium transition-colors duration-300 ${
                   !isLogin
                     ? 'text-gray-900 dark:text-white'
-                    : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'
+                    : 'text-gray-600 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200 cursor-pointer'
                 }`}
               >
                 Sign Up
@@ -480,7 +491,7 @@ const AuthPage: React.FC = () => {
                 initial={{
                   x: isLogin ? -50 : 50,
                   opacity: 0,
-                  position: 'relative', // Change from absolute to relative
+                  position: 'relative',
                   width: '100%',
                 }}
                 animate={{
@@ -504,15 +515,16 @@ const AuthPage: React.FC = () => {
                     }
                     className='space-y-6'
                   >
-                    {registerState.error && (
-                      <ErrorMessage
-                        message={registerState.error}
-                        type='error'
-                        onClose={() => registerState.resetError()}
-                      />
-                    )}
+                    <ErrorMessage
+                      message={registerState.error}
+                      type='error'
+                      onClose={() => registerState.resetError()}
+                      isVisible={!!registerState.error}
+                    />
                     <div className='grid grid-cols-2 gap-4'>
                       <CustomInput
+                        name='firstName'
+                        id='firstName'
                         type='text'
                         label='First Name'
                         placeholder='John'
@@ -520,19 +532,18 @@ const AuthPage: React.FC = () => {
                         onChange={(e) =>
                           registerForm.handleChange('firstName', e.target.value)
                         }
-                        onBlur={() => registerForm.handleBlur('firstName')}
-                        error={
-                          registerForm.touched.firstName &&
-                          registerForm.values.firstName
-                            ? registerForm.errors.firstName
-                            : undefined
-                        }
-                        helperText='3-30 characters'
+                        error={registerForm.errors.firstName}
                         icon={User}
                         required
                         autoComplete='given-name'
+                        autoFocus
+                        disabled={registerState.loading}
+                        onBlur={() => registerForm.handleBlur('firstName')}
+                        helperText='3-30 characters'
                       />
                       <CustomInput
+                        id='lastName'
+                        name='lastName'
                         type='text'
                         label='Last Name'
                         placeholder='Doe'
@@ -540,21 +551,19 @@ const AuthPage: React.FC = () => {
                         onChange={(e) =>
                           registerForm.handleChange('lastName', e.target.value)
                         }
-                        onBlur={() => registerForm.handleBlur('lastName')}
-                        error={
-                          registerForm.touched.lastName &&
-                          registerForm.values.lastName
-                            ? registerForm.errors.lastName
-                            : undefined
-                        }
-                        helperText='3-30 characters'
+                        error={registerForm.errors.lastName}
                         icon={User}
                         required
-                        autoComplete='family-name'
+                        autoComplete='given-name'
+                        disabled={registerState.loading}
+                        onBlur={() => registerForm.handleBlur('lastName')}
+                        helperText='3-30 characters'
                       />
                     </div>
 
                     <CustomInput
+                      id='email'
+                      name='email'
                       type='email'
                       label='Email Address'
                       placeholder='john@example.com'
@@ -562,18 +571,17 @@ const AuthPage: React.FC = () => {
                       onChange={(e) =>
                         registerForm.handleChange('email', e.target.value)
                       }
-                      onBlur={() => registerForm.handleBlur('email')}
-                      error={
-                        registerForm.touched.email && registerForm.values.email
-                          ? registerForm.errors.email
-                          : undefined
-                      }
+                      error={registerForm.errors.email}
                       icon={Mail}
                       required
                       autoComplete='email'
+                      disabled={registerState.loading}
+                      onBlur={() => registerForm.handleBlur('email')}
                     />
 
                     <CustomInput
+                      id='register-password'
+                      name='register-password'
                       type='password'
                       label='Password'
                       placeholder='Create a strong password'
@@ -581,16 +589,13 @@ const AuthPage: React.FC = () => {
                       onChange={(e) =>
                         registerForm.handleChange('password', e.target.value)
                       }
-                      onBlur={() => registerForm.handleBlur('password')}
-                      error={
-                        registerForm.touched.password &&
-                        registerForm.values.password
-                          ? registerForm.errors.password
-                          : undefined
-                      }
+                      error={registerForm.errors.password}
                       icon={Lock}
                       required
                       autoComplete='new-password'
+                      autoFocus
+                      disabled={registerState.loading}
+                      onBlur={() => registerForm.handleBlur('password')}
                     />
 
                     {registerForm.values.password && (
@@ -602,6 +607,8 @@ const AuthPage: React.FC = () => {
                     )}
 
                     <CustomInput
+                      id='confirm-password'
+                      name='confirm-password'
                       type='password'
                       label='Confirm Password'
                       placeholder='Confirm your password'
@@ -612,16 +619,13 @@ const AuthPage: React.FC = () => {
                           e.target.value,
                         )
                       }
-                      onBlur={() => registerForm.handleBlur('confirmPassword')}
-                      error={
-                        registerForm.touched.confirmPassword &&
-                        registerForm.values.confirmPassword
-                          ? registerForm.errors.confirmPassword
-                          : undefined
-                      }
+                      error={registerForm.errors.confirmPassword}
                       icon={Lock}
                       required
                       autoComplete='new-password'
+                      autoFocus
+                      disabled={registerState.loading}
+                      onBlur={() => registerForm.handleBlur('confirmPassword')}
                     />
 
                     <div className='space-y-3'>
@@ -636,7 +640,7 @@ const AuthPage: React.FC = () => {
                             )
                           }
                           onBlur={() => registerForm.handleBlur('acceptTerms')}
-                          className='text-primary-600 focus:ring-primary-500 mt-1 rounded border-gray-300'
+                          className='text-primary-600 focus:ring-primary-500 mt-1 rounded border-gray-300 cursor-grab active:cursor-grabbing'
                           required
                         />
                         <span>
@@ -644,6 +648,9 @@ const AuthPage: React.FC = () => {
                           <button
                             type='button'
                             className='text-primary-600 hover:text-primary-700 dark:text-primary-400 underline'
+                            onClick={() => {
+                              // TODO: Open terms of service page
+                            }}
                           >
                             Terms of Service
                           </button>{' '}
@@ -651,6 +658,9 @@ const AuthPage: React.FC = () => {
                           <button
                             type='button'
                             className='text-primary-600 hover:text-primary-700 dark:text-primary-400 underline'
+                            onClick={() => {
+                              // TODO: Open privacy policy page
+                            }}
                           >
                             Privacy Policy
                           </button>
@@ -668,7 +678,7 @@ const AuthPage: React.FC = () => {
                             )
                           }
                           onBlur={() => registerForm.handleBlur('rememberMe')}
-                          className='text-primary-600 focus:ring-primary-500 rounded border-gray-300'
+                          className='text-primary-600 focus:ring-primary-500 rounded border-gray-300 cursor-grab active:cursor-grabbing'
                         />
                         Stay logged in
                       </label>
@@ -677,6 +687,12 @@ const AuthPage: React.FC = () => {
                     <PrimaryButton
                       type='submit'
                       loading={registerState.loading}
+                      disabled={
+                        !registerForm.isValid ||
+                        registerState.loading ||
+                        !Object.values(registerForm.values).some(Boolean) ||
+                        !Object.values(registerForm.touched).some(Boolean)
+                      }
                       fullWidth
                       size='lg'
                       icon={ArrowRight}

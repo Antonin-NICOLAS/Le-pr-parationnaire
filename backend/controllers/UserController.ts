@@ -16,6 +16,7 @@ import {
   sendChangeEmailStep1,
   sendChangeEmailStep2,
 } from '../emails/SendMail.js'
+import { assertUserExists } from '../helpers/General.js'
 
 export const changePassword = asyncHandler(
   async (req: Request, res: Response) => {
@@ -57,9 +58,7 @@ export const changeEmailStep1 = asyncHandler(
 
     const user = await User.findById(req.user._id)
 
-    if (!user) {
-      return ApiResponse.error(res, t('auth:errors.user_not_found'), 404)
-    }
+    if (!assertUserExists(user, res, t)) return
 
     // 1. Generate a verification code
     await handleUnverifiedUser(user)
@@ -87,9 +86,7 @@ export const changeEmailStep3 = asyncHandler(
     const user = await User.findById(req.user._id)
     const { email } = req.body
 
-    if (!user) {
-      return ApiResponse.error(res, t('auth:errors.user_not_found'), 404)
-    }
+    if (!assertUserExists(user, res, t)) return
 
     // 1. Validation de l'email rentré
     if (!email || !validateEmail(email)) {
@@ -130,9 +127,7 @@ export const changeEmailStep2Step4 = asyncHandler(
     const user = await User.findById(req.user._id)
     const { code } = req.body
 
-    if (!user) {
-      return ApiResponse.error(res, t('auth:errors.user_not_found'), 404)
-    }
+    if (!assertUserExists(user, res, t)) return
 
     // 1. Vérification du code
     if (!code || code.length !== 6 || code !== user.emailVerification.token) {

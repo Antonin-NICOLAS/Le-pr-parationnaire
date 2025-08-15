@@ -1,5 +1,5 @@
 import bcrypt from 'bcrypt'
-import CryptoJS from 'crypto-js'
+import crypto from 'crypto'
 import { UAParser } from 'ua-parser-js'
 import type { IUser } from '../models/User.js'
 import { generateSecureCode } from './2FAHelpers.js'
@@ -75,9 +75,9 @@ export async function findLocation(
 }
 
 export function generateResetToken(): string {
-  return CryptoJS.lib.WordArray.random(32).toString()
+  return crypto.randomBytes(32).toString('hex')
 }
 
 export function resetTokenHash(token: string): string {
-  return CryptoJS.SHA256(token).toString()
+  return crypto.createHash('sha256').update(token).digest('hex')
 }

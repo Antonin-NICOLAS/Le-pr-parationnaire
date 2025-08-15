@@ -1,4 +1,5 @@
 import type { UserDocument } from '../models/User.js'
+import type { TFunction } from 'i18next'
 
 declare global {
   namespace Express {
@@ -6,7 +7,7 @@ declare global {
       user?: UserDocument
       token?: string
       language?: string
-      t: (key: string) => string
+      t: TFunction
     }
   }
 }

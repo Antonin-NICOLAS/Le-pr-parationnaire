@@ -17,8 +17,8 @@ import {
 } from '../controllers/WebAuthnController.js'
 
 // Middlewares
-import { authenticate } from '../middlewares/VerifyAuth.js'
-import { rateLimiterMiddleware } from '../middlewares/RateLimiter.js'
+import { authenticateFull } from '../middlewares/VerifyAuth.js'
+import { NormalRL } from '../middlewares/RateLimiter.js'
 
 // Router
 const router = express.Router()
@@ -36,34 +36,26 @@ router.use(
 // WebAuthn Registration
 router.post(
   '/verify-registration',
-  rateLimiterMiddleware,
-  authenticate,
+  NormalRL,
+  authenticateFull,
   verifyRegistration,
 )
 
 router.get(
   '/generate-registration',
-  rateLimiterMiddleware,
-  authenticate,
+  NormalRL,
+  authenticateFull,
   generateRegistrationOpt,
 )
 // WebAuthn Authentication
-router.post(
-  '/verify-authentication',
-  rateLimiterMiddleware,
-  verifyAuthentication,
-)
-router.get(
-  '/generate-authentication',
-  rateLimiterMiddleware,
-  generateAuthenticationOpt,
-)
+router.post('/verify-authentication', NormalRL, verifyAuthentication)
+router.get('/generate-authentication', NormalRL, generateAuthenticationOpt)
 // WebAuthn Credential Management
-router.post('/transfer', authenticate, transferWebAuthnCredentials)
-router.post('/set-name', authenticate, nameWebAuthnCredential)
-router.post('/disable', rateLimiterMiddleware, authenticate, disableWebAuthn)
-router.get('/devices', authenticate, getWebAuthnDevices)
+router.post('/transfer', authenticateFull, transferWebAuthnCredentials)
+router.post('/set-name', authenticateFull, nameWebAuthnCredential)
+router.post('/disable', NormalRL, authenticateFull, disableWebAuthn)
+router.get('/devices', authenticateFull, getWebAuthnDevices)
 
-router.delete('/credential/:id', authenticate, removeWebAuthnCredential)
+router.delete('/credential/:id', authenticateFull, removeWebAuthnCredential)
 
 export default router
