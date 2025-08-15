@@ -11,10 +11,6 @@ import {
   login,
   logout,
   checkSession,
-  forgotPassword,
-  resendForgotPassword,
-  verifyResetToken,
-  resetPassword,
   verifyEmail,
   resendVerificationEmail,
   getActiveSessions,
@@ -57,16 +53,6 @@ router.post(
   rateLimiterMiddleware,
   resendVerificationEmail,
 )
-
-// Password Flow
-router.post('/forgot-password', rateLimiterMiddleware, forgotPassword)
-router.post(
-  '/resend-forgot-password',
-  rateLimiterMiddleware,
-  resendForgotPassword,
-)
-router.post('/verify-reset-token', rateLimiterMiddleware, verifyResetToken)
-router.post('/reset-password', resetPassword)
 
 // Session Management
 router.get('/active-sessions', authenticate, getActiveSessions)

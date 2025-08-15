@@ -11,6 +11,7 @@ import dotenv from 'dotenv'
 dotenv.config()
 
 import AuthRoutes from '../routes/AuthRoutes.js'
+import ForgotPasswordRoutes from '../routes/ForgotPasswordRoutes.js'
 import UserRoutes from '../routes/UserRoutes.js'
 import TwoFactorRoutes from '../routes/TwoFactorRoutes.js'
 import WebAuthnRoutes from '../routes/WebAuthnRoutes.js'
@@ -66,6 +67,7 @@ app.get('/', (req, res) => {
 })
 
 app.use('/auth', AuthRoutes)
+app.use('/auth/forgot-password', ForgotPasswordRoutes)
 app.use('/auth/2fa', TwoFactorRoutes)
 app.use('/auth/webauthn', WebAuthnRoutes)
 app.use('/user', UserRoutes)

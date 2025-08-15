@@ -1,13 +1,8 @@
-import jwt, { type SignOptions } from 'jsonwebtoken'
 import bcrypt from 'bcrypt'
 import CryptoJS from 'crypto-js'
 import { UAParser } from 'ua-parser-js'
-import ms, { StringValue } from 'ms'
-import { v4 as uuidv4 } from 'uuid'
-import { Response } from 'express'
 import type { IUser } from '../models/User.js'
 import { generateSecureCode } from './2FAHelpers.js'
-import { TokenService } from '../services/TokenService.js'
 
 export async function handleUnverifiedUser(user: IUser) {
   if (
@@ -81,4 +76,8 @@ export async function findLocation(
 
 export function generateResetToken(): string {
   return CryptoJS.lib.WordArray.random(32).toString()
+}
+
+export function resetTokenHash(token: string): string {
+  return CryptoJS.SHA256(token).toString()
 }

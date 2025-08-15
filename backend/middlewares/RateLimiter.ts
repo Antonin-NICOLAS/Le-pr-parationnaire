@@ -60,11 +60,7 @@ const rateLimiterMiddleware = (
     })
 }
 
-const strictRateLimiterMiddleware = (
-  req: Request,
-  res: Response,
-  next: NextFunction,
-) => {
+const StrictRL = (req: Request, res: Response, next: NextFunction) => {
   const { t } = req
   strictRateLimiter
     .consume(req.ip ?? '')
@@ -103,8 +99,4 @@ const refreshTokenRateLimiterMiddleware = (
     })
 }
 
-export {
-  rateLimiterMiddleware,
-  strictRateLimiterMiddleware,
-  refreshTokenRateLimiterMiddleware,
-}
+export { rateLimiterMiddleware, StrictRL, refreshTokenRateLimiterMiddleware }

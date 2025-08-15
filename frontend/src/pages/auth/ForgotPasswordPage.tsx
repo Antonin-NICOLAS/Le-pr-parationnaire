@@ -14,15 +14,7 @@ import ResendSection from '../../components/ui/ResendSection'
 const ForgotPasswordPage: React.FC = () => {
   const navigate = useNavigate()
   const [isSubmitted, setIsSubmitted] = useState(false)
-  const [canResend, setCanResend] = useState(false)
-  const {
-    forgotPassword,
-    forgotPasswordState,
-    resendForgotPassword,
-    resendForgotPasswordState,
-  } = useForgotPassword()
-  const errorMessage =
-    forgotPasswordState.error || resendForgotPasswordState.error
+  const { forgotPassword, forgotPasswordState } = useForgotPassword()
 
   const form = useFormHandler({
     initialValues: {
@@ -30,27 +22,17 @@ const ForgotPasswordPage: React.FC = () => {
     },
     validationSchema: emailFormSchema,
     validateOnChange: true,
-    validateOnBlur: false,
+    validateOnBlur: true,
   })
 
-  const handleSubmit = async (values: { email: string }) => {
+  const handleSubmit = async () => {
     if (!form.validateForm()) return
+    form.clearErrors()
     forgotPasswordState.resetError()
-    resendForgotPasswordState.resetError()
-    const result = await forgotPassword(values.email)
+    const result = await forgotPassword(form.values.email)
     if (result.success) {
       setIsSubmitted(true)
-      setCanResend(false)
-    }
-  }
-
-  const handleResend = async () => {
-    if (!form.validateForm()) return
-    resendForgotPasswordState.resetError()
-    if (!canResend) return
-    const result = await resendForgotPassword(form.values.email)
-    if (result.success) {
-      setCanResend(false)
+      form.reset()
     }
   }
 
@@ -77,25 +59,30 @@ const ForgotPasswordPage: React.FC = () => {
               If an account with that email exists, you'll receive password
               reset instructions shortly.
             </p>
-
-            <div className='bg-deg-gray-50 border-deg-gray-200 rounded-lg border p-4'>
-              <h3 className='text-deg-gray-900 mb-2 font-medium'>
-                What's next?
-              </h3>
-              <ul className='text-deg-gray-600 space-y-1 text-left text-sm'>
-                <li>• Check your email inbox</li>
-                <li>• Look for an email from our team</li>
-                <li>• Click the reset link in the email</li>
-                <li>• Create your new password</li>
-              </ul>
-            </div>
+            <ErrorMessage
+              type='info'
+              title="What's Next?"
+              message={
+                <ul className='space-y-1'>
+                  <li>• Check your email inbox</li>
+                  <li>• Look for an email from our team</li>
+                  <li>• Click the reset link in the email</li>
+                  <li>• Create your new password</li>
+                </ul>
+              }
+            />
+            <ErrorMessage
+              type='warning'
+              title='Availability'
+              message='This link will expire in 1 hour for security reasons.'
+            />
           </div>
 
           <ResendSection
             countdownSeconds={60}
             icon={RefreshCw}
-            onResend={handleResend}
-            loading={resendForgotPasswordState.loading}
+            onResend={handleSubmit}
+            loading={forgotPasswordState.loading}
             variant='block'
             align='center'
           />
@@ -122,43 +109,43 @@ const ForgotPasswordPage: React.FC = () => {
       showBackButton
       onBack={handleBack}
     >
-      {errorMessage && (
+      <form
+        onSubmit={(e) => form.handleSubmit(handleSubmit)(e)}
+        className='space-y-6'
+      >
         <ErrorMessage
-          message={errorMessage}
+          message={forgotPasswordState.error}
           type='error'
           onClose={() => {
             forgotPasswordState.resetError()
-            resendForgotPasswordState.resetError()
           }}
+          isVisible={forgotPasswordState.error !== null}
         />
-      )}
-      <form onSubmit={form.handleSubmit(handleSubmit)} className='space-y-6'>
         <CustomInput
           id='forgot-email'
+          name='forgot-email'
           type='email'
           label='Email Address'
           placeholder='Enter your email address'
           value={form.values.email}
           onChange={(e) => form.handleChange('email', e.target.value)}
-          error={
-            form.touched.email && form.values.email
-              ? form.errors.email
-              : undefined
-          }
+          error={form.touched.email ? form.errors.email : undefined}
           icon={Mail}
           required
           autoComplete='email'
           autoFocus
-          disabled={
-            forgotPasswordState.loading || resendForgotPasswordState.loading
-          }
+          disabled={forgotPasswordState.loading}
           onBlur={() => form.handleBlur('email')}
         />
 
         <PrimaryButton
           type='submit'
           loading={forgotPasswordState.loading}
-          disabled={forgotPasswordState.loading}
+          disabled={
+            !form.isValid ||
+            forgotPasswordState.loading ||
+            !Object.values(form.values).some(Boolean)
+          }
           fullWidth
           size='lg'
         >

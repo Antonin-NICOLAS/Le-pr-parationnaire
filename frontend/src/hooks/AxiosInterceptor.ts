@@ -9,7 +9,6 @@ const AxiosInterceptor = () => {
   const navigate = useNavigate()
   const { resendVerificationEmail, logout } = useAuth()
 
-  // Utilisation de useRef pour les variables partagées entre les instances
   const refreshState = useRef({
     isRefreshing: false,
     failedQueue: [] as Array<{
@@ -95,7 +94,6 @@ const AxiosInterceptor = () => {
           } catch (refreshError) {
             processQueue(refreshError)
 
-            // Gestion spécifique des erreurs
             if (axios.isAxiosError(refreshError)) {
               if (refreshError.response?.status === 429) {
                 toast.error('Trop de tentatives. Veuillez réessayer plus tard.')
@@ -104,7 +102,6 @@ const AxiosInterceptor = () => {
               }
             }
 
-            // Logout unique même pour plusieurs erreurs
             await handleLogout()
             return Promise.reject(refreshError)
           } finally {

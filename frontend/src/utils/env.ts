@@ -1,5 +1,9 @@
 export const VITE_AUTH =
   import.meta.env.VITE_NODE_ENV === 'development' ? '/auth' : '/api/auth'
+export const VITE_FORGOT_PASSWORD =
+  import.meta.env.VITE_NODE_ENV === 'development'
+    ? '/auth/forgot-password'
+    : '/api/auth/forgot-password'
 export const VITE_USER =
   import.meta.env.VITE_NODE_ENV === 'development' ? '/user' : '/api/user'
 export const VITE_2FA =

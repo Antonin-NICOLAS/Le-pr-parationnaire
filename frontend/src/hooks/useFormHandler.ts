@@ -92,6 +92,17 @@ export function useFormHandler<T extends Record<string, any>>({
     return false
   }, [values, validationSchema])
 
+  const handleChange = useCallback(
+    (field: string, value: any) => {
+      setValues((prev) => ({ ...prev, [field]: value }))
+
+      if (validateOnChange && touched[field]) {
+        validateField(field, value)
+      }
+    },
+    [validateOnChange, validateField, touched],
+  )
+
   const handleBlur = useCallback(
     (field: string) => {
       setTouched((prev) => ({ ...prev, [field]: true }))
@@ -101,18 +112,6 @@ export function useFormHandler<T extends Record<string, any>>({
       }
     },
     [validateOnBlur, validateField, values, initialValues],
-  )
-
-  const handleChange = useCallback(
-    (field: string, value: any) => {
-      setValues((prev) => ({ ...prev, [field]: value }))
-      setTouched((prev) => ({ ...prev, [field]: true }))
-
-      if (validateOnChange) {
-        validateField(field, value)
-      }
-    },
-    [validateOnChange, validateField],
   )
 
   const handleSubmit = useCallback(

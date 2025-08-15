@@ -1,68 +1,54 @@
 import axios from 'axios'
 
-import { VITE_AUTH } from '../../utils/env'
+import { VITE_FORGOT_PASSWORD } from '../../utils/env'
 import { useApiCall } from '../useApiCall'
 
 // API functions
 const forgotPasswordApi = (email: string) =>
   axios.post(
-    `${VITE_AUTH}/forgot-password`,
+    `${VITE_FORGOT_PASSWORD}/send`,
     { email },
     { withCredentials: true },
   )
 
-const resendForgotPasswordApi = (email: string) =>
+const verifyResetTokenApi = (token: string) =>
   axios.post(
-    `${VITE_AUTH}/resend-forgot-password`,
-    { email },
-    { withCredentials: true },
-  )
-
-const verifyTokenApi = (token: string) =>
-  axios.post(
-    `${VITE_AUTH}/verify-reset-token`,
+    `${VITE_FORGOT_PASSWORD}/verify`,
     { token },
     { withCredentials: true },
   )
 
 const resetPasswordApi = (email: string, token: string, newPassword: string) =>
   axios.post(
-    `${VITE_AUTH}/reset-password`,
+    `${VITE_FORGOT_PASSWORD}/reset`,
     { email, token, newPassword },
     { withCredentials: true },
   )
 
 const useForgotPassword = () => {
   const forgotPassword = useApiCall(forgotPasswordApi, {
+    errorMessage: "Erreur lors de l'envoi du courriel de réinitialisation.",
+    showErrorToast: true,
     showSuccessToast: false,
-    successMessage:
-      "Si elle est enregistrée, un courriel de réinitialisation a été envoyé à l'adresse mail fournie.",
-    errorMessage: "Erreur lors de l'envoi du courriel de réinitialisation.",
   })
 
-  const resendForgotPassword = useApiCall(resendForgotPasswordApi, {
-    successMessage:
-      "Si elle est enregistrée, un courriel de réinitialisation a été envoyé à l'adresse mail fournie.",
-    errorMessage: "Erreur lors de l'envoi du courriel de réinitialisation.",
-  })
-
-  const verifyToken = useApiCall(verifyTokenApi, {
+  const verifyResetToken = useApiCall(verifyResetTokenApi, {
     successMessage: 'Le token de réinitialisation est valide.',
     showErrorToast: false,
+    showSuccessToast: true,
   })
 
   const resetPassword = useApiCall(resetPasswordApi, {
     successMessage: 'Votre mot de passe a été réinitialisé.',
-    errorMessage: 'Erreur lors de la réinitialisation du mot de passe.',
+    showSuccessToast: true,
+    showErrorToast: false,
   })
 
   return {
     forgotPassword: forgotPassword.execute,
     forgotPasswordState: forgotPassword,
-    resendForgotPassword: resendForgotPassword.execute,
-    resendForgotPasswordState: resendForgotPassword,
-    verifyToken: verifyToken.execute,
-    verifyTokenState: verifyToken,
+    verifyResetToken: verifyResetToken.execute,
+    verifyResetTokenState: verifyResetToken,
     resetPassword: resetPassword.execute,
     resetPasswordState: resetPassword,
   }

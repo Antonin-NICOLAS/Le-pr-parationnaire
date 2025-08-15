@@ -453,7 +453,7 @@ const ResetPassword = (t: TFunction, user: IUser, link: string) => {
                                   >
                                     <p style="margin: 0">
                                       <em
-                                        >(Ce lien expirera dans 24 heures pour
+                                        >(Ce lien expirera dans 1 heure pour
                                         des raisons de sécurité)</em
                                       >
                                     </p>

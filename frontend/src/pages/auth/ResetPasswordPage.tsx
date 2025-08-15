@@ -15,8 +15,12 @@ const ResetPasswordPage: React.FC = () => {
   const navigate = useNavigate()
   const [isSuccess, setIsSuccess] = useState(false)
   const [tokenValid, setTokenValid] = useState<boolean | null>(true)
-  const { verifyToken, verifyTokenState, resetPassword, resetPasswordState } =
-    useForgotPassword()
+  const {
+    verifyResetToken,
+    verifyResetTokenState,
+    resetPassword,
+    resetPasswordState,
+  } = useForgotPassword()
   const [searchParams] = useSearchParams()
   const token = searchParams.get('token')
   const email = searchParams.get('email')
@@ -37,7 +41,7 @@ const ResetPasswordPage: React.FC = () => {
         setTokenValid(false)
         return
       }
-      const result = await verifyToken(token)
+      const result = await verifyResetToken(token)
       if (result.success) {
         setTokenValid(true)
       } else {
@@ -48,14 +52,18 @@ const ResetPasswordPage: React.FC = () => {
     validateToken()
   }, [])
 
-  const handleSubmit = async (values: { newPassword: string }) => {
-    const result = await resetPassword(email, token, values.newPassword)
+  const handleSubmit = async () => {
+    if (!form.validateForm()) return
+    form.clearErrors()
+    resetPasswordState.resetError()
+    const result = await resetPassword(email, token, form.values.newPassword)
     if (result.success) {
       setIsSuccess(true)
+      form.reset()
     }
   }
 
-  if (tokenValid === null || verifyTokenState.loading) {
+  if (tokenValid === null || verifyResetTokenState.loading) {
     return (
       <AuthLayout
         title='Validating Reset Link'
@@ -142,12 +150,12 @@ const ResetPasswordPage: React.FC = () => {
             <Lock className='text-primary-600 dark:text-primary-400 h-8 w-8' />
           </div>
         </div>
-        {verifyTokenState.data && verifyTokenState.data.user && (
+        {verifyResetTokenState.data && verifyResetTokenState.data.user && (
           <p className='mb-4 text-gray-700 dark:text-gray-400'>
             Hello{' '}
             <strong>
-              {verifyTokenState.data.user.firstName}{' '}
-              {verifyTokenState.data.user.lastName}
+              {verifyResetTokenState.data.user.firstName}{' '}
+              {verifyResetTokenState.data.user.lastName}
             </strong>
             , choose a new password for your account.
           </p>
@@ -157,21 +165,28 @@ const ResetPasswordPage: React.FC = () => {
           onSubmit={(e) => form.handleSubmit(handleSubmit)(e)}
           className='space-y-6'
         >
+          <ErrorMessage
+            message={resetPasswordState.error}
+            type='error'
+            onClose={() => {
+              resetPasswordState.resetError()
+            }}
+            isVisible={resetPasswordState.error !== null}
+          />
           <CustomInput
+            id='new-password'
+            name='new-password'
             type='password'
             label='New Password'
             placeholder='Enter your new password'
             value={form.values.newPassword}
             onChange={(e) => form.handleChange('newPassword', e.target.value)}
             error={
-              form.touched.newPassword && form.values.newPassword
-                ? form.errors.newPassword
-                : undefined
+              form.touched.newPassword ? form.errors.newPassword : undefined
             }
             icon={Lock}
             required
             autoComplete='new-password'
-            autoFocus
             disabled={resetPasswordState.loading}
             onBlur={() => form.handleBlur('newPassword')}
           />
@@ -183,20 +198,6 @@ const ResetPasswordPage: React.FC = () => {
             />
           )}
 
-          {form.errors.confirmPassword && form.values.confirmPassword && (
-            <div
-              className={`text-sm ${
-                form.values.newPassword === form.values.confirmPassword
-                  ? 'text-green-600'
-                  : 'text-red-600'
-              }`}
-            >
-              {form.values.newPassword === form.values.confirmPassword
-                ? '✓ Passwords match'
-                : '✗ Passwords do not match'}
-            </div>
-          )}
-
           <CustomInput
             type='password'
             label='Confirm New Password'
@@ -206,14 +207,13 @@ const ResetPasswordPage: React.FC = () => {
               form.handleChange('confirmPassword', e.target.value)
             }
             error={
-              form.touched.confirmPassword && form.values.confirmPassword
+              form.touched.confirmPassword
                 ? form.errors.confirmPassword
                 : undefined
             }
             icon={Lock}
             required
             autoComplete='new-password'
-            autoFocus
             disabled={resetPasswordState.loading}
             onBlur={() => form.handleBlur('confirmPassword')}
           />
@@ -221,6 +221,11 @@ const ResetPasswordPage: React.FC = () => {
           <PrimaryButton
             type='submit'
             loading={resetPasswordState.loading}
+            disabled={
+              !form.isValid ||
+              resetPasswordState.loading ||
+              !Object.values(form.values).some(Boolean)
+            }
             fullWidth
             size='lg'
           >
