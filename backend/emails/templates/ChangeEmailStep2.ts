@@ -1,9 +1,14 @@
 import { TFunction } from 'i18next'
-import { IUser } from '../../models/User.js'
+import { LeanUser } from '../../models/User.js'
 import header from './components/header.js'
 import footer from './components/footer.js'
 
-const ChangeEmailStep2 = (t: TFunction, user: IUser, code: string) => {
+const ChangeEmailStep2 = (
+  t: TFunction,
+  user: LeanUser,
+  code: string,
+  expiration: string,
+) => {
   const template = `
       <!DOCTYPE html>
       <html
@@ -460,7 +465,7 @@ const ChangeEmailStep2 = (t: TFunction, user: IUser, code: string) => {
                                         >
                                           <p style="margin: 0">
                                             <strong>⏱ Validité :</strong> 1 heure
-                                            (jusqu’à {expiration})<br /><strong
+                                            (jusqu’à ${expiration})<br /><strong
                                               >⚠️ Sécurité :</strong
                                             >&nbsp;Ne partagez jamais ce code, même
                                             avec notre équipe.

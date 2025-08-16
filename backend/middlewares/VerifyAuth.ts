@@ -34,11 +34,7 @@ const authenticateLean = async (
     }
 
     // 3. Récupérer l'utilisateur avec les informations de session
-    const user = await User.findById(decoded.id)
-      .select(
-        '-resetPassword.token -emailVerification.token -twoFactor.email.token',
-      )
-      .lean()
+    const user = await User.findById(decoded.id).lean()
 
     if (!user) {
       return ApiResponse.error(res, req.t('auth:errors.user_not_found'), 401)
@@ -93,9 +89,7 @@ const authenticateFull = async (
     }
 
     // 3. Récupérer l'utilisateur avec les informations de session
-    const user = await User.findById(decoded.id).select(
-      '-resetPassword.token -emailVerification.token -twoFactor.email.token',
-    )
+    const user = await User.findById(decoded.id)
 
     if (!user) {
       return ApiResponse.error(res, req.t('auth:errors.user_not_found'), 401)

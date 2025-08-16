@@ -1,5 +1,4 @@
 import User, { type IUser } from '../models/User.js'
-import mongoose from 'mongoose'
 import { asyncHandler } from '../helpers/AsyncHandler.js'
 import { ApiResponse } from '../helpers/ApiResponse.js'
 import { SessionService } from '../services/SessionService.js'
@@ -15,7 +14,6 @@ import {
   hashEmailCode,
   compareEmailCode,
   validatePreferredMethod,
-  validateSixDigitCode,
   isCodeExpired,
   generateSecureCode,
   getErrorMessageForMethod,
@@ -28,11 +26,7 @@ import type {
   VerifiedAuthenticationResponse,
   VerifyAuthenticationResponseOpts,
 } from '@simplewebauthn/server'
-import {
-  comparePassword,
-  findLocation,
-  getDeviceInfo,
-} from '../helpers/AuthHelpers.js'
+import { comparePassword, getDeviceInfo } from '../helpers/AuthHelpers.js'
 import { assertUserExists } from '../helpers/General.js'
 // Emails
 import { sendTwoFactorEmail, sendLoginEmail } from '../emails/SendMail.js'
@@ -277,10 +271,6 @@ export const enableTwoFactorApp = asyncHandler(
     const { t } = req
     const { code } = req.body
 
-    if (!validateSixDigitCode(code)) {
-      return ApiResponse.error(res, t('auth:errors.2fa.invalid_code'), 400)
-    }
-
     const user = req.user
 
     if (!verifyTwoFactorCode(user.twoFactor.app.secret, code)) {
@@ -338,11 +328,6 @@ export const enableTwoFactorEmail = asyncHandler(
   async (req: Request, res: Response) => {
     const { t } = req
     const { code } = req.body
-
-    // 1. Validation du code
-    if (!validateSixDigitCode(code)) {
-      return ApiResponse.error(res, t('auth:errors.2fa.invalid_code'), 400)
-    }
 
     const user = req.user
     const token = user.twoFactor?.email?.token
@@ -612,6 +597,11 @@ export const twoFactorLogin = asyncHandler(
       { email },
       {
         email: 1,
+        firstName: 1,
+        lastName: 1,
+        tokenVersion: 1,
+        language: 1,
+        role: 1,
         'twoFactor.isEnabled': 1,
         'twoFactor.app': 1,
         'twoFactor.email': 1,
@@ -633,66 +623,50 @@ export const twoFactorLogin = asyncHandler(
       return ApiResponse.error(res, verificationResult.errorMessage, 400)
     }
 
-    const session = await mongoose.startSession()
-    session.startTransaction()
-    try {
-      // 5.1 Mise à jour utilisateur (backup code si nécessaire)
-      const updateOps = {
-        $set: { lastLogin: new Date() },
-        ...(method === 'backup_code' && {
-          $set: { 'twoFactor.backupCodes.$[elem].used': true },
-        }),
-      }
-
-      const updateOptions = {
-        session,
-        ...(method === 'backup_code' && {
-          arrayFilters: [{ 'elem.code': value, 'elem.used': false }],
-        }),
-      }
-      await User.updateOne({ _id: user._id }, updateOps, updateOptions)
-
-      // 5.2 Création session et tokens
-      const {
-        accessToken,
-        refreshToken,
-        session: userSession,
-      } = await SessionService.createSessionWithTokens(
-        user,
-        req,
-        res,
-        rememberMe,
-      )
-
-      await session.commitTransaction()
-
-      const deviceInfo = getDeviceInfo(userSession.userAgent)
-      const localisation = await findLocation(
-        t,
-        i18next.language,
-        userSession.ip,
-      )
-
-      await sendLoginEmail(
-        t as TFunction,
-        { email: user.email } as any,
-        userSession.ip,
-        deviceInfo,
-        localisation,
-      )
-
-      return ApiResponse.success(
-        res,
-        { accessToken, refreshToken },
-        t('auth:success.logged_in'),
-        200,
-      )
-    } catch (error) {
-      await session.abortTransaction()
-      throw error
-    } finally {
-      session.endSession()
+    // 5.1 Mise à jour utilisateur (backup code si nécessaire)
+    const updateOps = {
+      $set: { lastLogin: new Date() },
+      ...(method === 'backup_code' && {
+        $set: { 'twoFactor.backupCodes.$[elem].used': true },
+      }),
     }
+
+    const updateOptions = {
+      ...(method === 'backup_code' && {
+        arrayFilters: [{ 'elem.code': value, 'elem.used': false }],
+      }),
+    }
+    await User.updateOne({ _id: user._id }, updateOps, updateOptions)
+
+    // 5.2 Création session et tokens
+    const {
+      accessToken,
+      refreshToken,
+      session: userSession,
+    } = await SessionService.createSessionWithTokens(
+      t,
+      user,
+      req,
+      res,
+      rememberMe,
+    )
+
+    const deviceInfo = getDeviceInfo(userSession.userAgent || '')
+
+    await sendLoginEmail(
+      t as TFunction,
+      user,
+      userSession.ip,
+      deviceInfo,
+      userSession.location as string,
+    )
+
+    return ApiResponse.success(
+      res,
+      { accessToken, refreshToken },
+      t('auth:success.logged_in'),
+      200,
+    )
   },
 )
 

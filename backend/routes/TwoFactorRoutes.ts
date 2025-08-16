@@ -21,6 +21,8 @@ import {
 // Middlewares
 import { authenticateLean } from '../middlewares/VerifyAuth.js'
 import { NormalRL } from '../middlewares/RateLimiter.js'
+import { validate } from '../middlewares/Validate.js'
+import { sixDigitCodeSchema } from '../helpers/Validators.js'
 
 // Router
 const router = express.Router()
@@ -49,13 +51,23 @@ router.post('/disable', authenticateLean, disableTwoFactor)
 
 // Email 2FA
 router.post('/email/config', NormalRL, authenticateLean, configTwoFactorEmail)
-router.post('/email/enable', authenticateLean, enableTwoFactorEmail)
+router.post(
+  '/email/enable',
+  authenticateLean,
+  validate(sixDigitCodeSchema),
+  enableTwoFactorEmail,
+)
 router.post('/email/disable', authenticateLean, disableTwoFactorEmail)
 router.post('/email/resend/:context', NormalRL, authIfNeeded, resendEmailCode)
 
 // App 2FA
 router.post('/app/config', NormalRL, authenticateLean, configTwoFactorApp)
-router.post('/app/enable', authenticateLean, enableTwoFactorApp)
+router.post(
+  '/app/enable',
+  authenticateLean,
+  validate(sixDigitCodeSchema),
+  enableTwoFactorApp,
+)
 router.post('/app/disable', authenticateLean, disableTwoFactorApp)
 
 export default router

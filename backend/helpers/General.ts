@@ -23,7 +23,7 @@ export async function handleUnverifiedUser(user: IUser) {
     user.emailVerification.expiration < new Date()
   ) {
     const token = generateSecureCode()
-    const expiration = new Date(Date.now() + 24 * 60 * 60 * 1000)
+    const expiration = new Date(Date.now() + 1 * 60 * 60 * 1000)
     await User.updateOne(
       { _id: user._id },
       {
@@ -33,7 +33,10 @@ export async function handleUnverifiedUser(user: IUser) {
         },
       },
     )
-    return token
+    return { token, expiration }
   }
-  return user.emailVerification.token
+  return {
+    token: user.emailVerification.token,
+    expiration: user.emailVerification.expiration,
+  }
 }

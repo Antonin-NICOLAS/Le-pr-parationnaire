@@ -1,11 +1,11 @@
 import { TFunction } from 'i18next'
-import { IUser } from '../../models/User.js'
+import { LeanUser } from '../../models/User.js'
 import header from './components/header.js'
 import footer from './components/footer.js'
 
 const LogIn = (
   t: TFunction,
-  user: IUser,
+  user: LeanUser,
   loginDate: string,
   deviceInfo: string,
   ipAddress: string,

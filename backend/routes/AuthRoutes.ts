@@ -1,6 +1,7 @@
 import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
+import z from 'zod'
 dotenv.config()
 
 // Controllers
@@ -17,6 +18,13 @@ import {
 
 // Middlewares
 import { authenticateLean } from '../middlewares/VerifyAuth.js'
+import { validate } from '../middlewares/Validate.js'
+import {
+  registrationSchema,
+  loginSchema,
+  emailVerificationSchema,
+  emailSchema,
+} from '../helpers/Validators.js'
 import {
   NormalRL,
   StrictRL,
@@ -40,12 +48,22 @@ router.post('/refresh', refreshTokenRL, refreshToken)
 
 // Authentication Flow
 router.get('/status', NormalRL, checkAuthStatus)
-router.post('/login', NormalRL, login)
+router.post('/login', NormalRL, validate(loginSchema), login)
 router.post('/logout', logout)
 
 // Registration Flow
-router.post('/register', NormalRL, register)
-router.post('/verify-email', NormalRL, emailVerification)
-router.post('/resend-verification-email', StrictRL, resendVerificationEmail)
+router.post('/register', NormalRL, validate(registrationSchema), register)
+router.post(
+  '/verify-email',
+  NormalRL,
+  validate(emailVerificationSchema),
+  emailVerification,
+)
+router.post(
+  '/resend-verification-email',
+  StrictRL,
+  validate(z.object({ email: emailSchema })),
+  resendVerificationEmail,
+)
 
 export default router

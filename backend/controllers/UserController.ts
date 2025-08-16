@@ -3,14 +3,9 @@ import { logout } from './AuthController.js'
 import { asyncHandler } from '../helpers/AsyncHandler.js'
 import { ApiResponse } from '../helpers/ApiResponse.js'
 import { NextFunction, Request, Response } from 'express'
-import { TFunction } from 'i18next'
+import i18next, { TFunction } from 'i18next'
 // Helpers
-import {
-  hashPassword,
-  comparePassword,
-  validatePassword,
-  validateEmail,
-} from '../helpers/AuthHelpers.js'
+import { hashPassword, comparePassword } from '../helpers/AuthHelpers.js'
 import {
   sendChangeEmailStep1,
   sendChangeEmailStep2,
@@ -24,20 +19,10 @@ export const changePassword = asyncHandler(
     const { currentPassword, newPassword } = req.body
     const user = req.user
 
-    // 1. Validation des champs
-    if (!currentPassword || !newPassword) {
-      return ApiResponse.error(res, t('auth:errors.missing_fields'), 400)
-    }
-
     // 2. Vérification de l'ancien mot de passe
     const isMatch = await comparePassword(currentPassword, user.password)
     if (!isMatch) {
       return ApiResponse.error(res, t('auth:errors.password_incorrect'), 400)
-    }
-
-    // 3. Vérification du nouveau mot de passe
-    if (!validatePassword(newPassword)) {
-      return ApiResponse.error(res, t('auth:errors.invalid_password'), 400)
     }
 
     // 4. Vérification si le mot de passe est similaire à l'ancien
@@ -65,9 +50,9 @@ export const changeEmailStep1 = asyncHandler(
 
     const user = req.user
 
-    const code = await handleUnverifiedUser(user)
+    const { token, expiration } = await handleUnverifiedUser(user)
 
-    if (!code) {
+    if (!token) {
       return ApiResponse.error(
         res,
         t('auth:errors.token_generation_failed'),
@@ -75,7 +60,15 @@ export const changeEmailStep1 = asyncHandler(
       )
     }
 
-    await sendChangeEmailStep1(t as TFunction, user, code)
+    await sendChangeEmailStep1(
+      t as TFunction,
+      user,
+      token,
+      expiration.toLocaleString(i18next.language, {
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+    )
 
     return ApiResponse.success(
       res,
@@ -93,18 +86,11 @@ export const changeEmailStep3 = asyncHandler(
     const user = req.user
     const { email } = req.body
 
-    // 1. Validation de l'email rentré
-    if (!email || !validateEmail(email)) {
-      return ApiResponse.error(res, t('auth:errors.invalid_email'), 400)
-    }
-
-    // 2. Vérification si l'email existe déjà
     const emailExists = await User.exists({ email })
     if (emailExists) {
       return ApiResponse.error(res, t('auth:errors.email_exists'), 400)
     }
 
-    // 3. Mise à jour atomique
     const token = generateSecureCode()
     const expiration = new Date(Date.now() + 24 * 60 * 60 * 1000)
 
@@ -120,8 +106,15 @@ export const changeEmailStep3 = asyncHandler(
       },
     )
 
-    // 4. Envoi du code de vérification à la nouvelle adresse email
-    await sendChangeEmailStep2(t as TFunction, { ...user, email }, token)
+    await sendChangeEmailStep2(
+      t as TFunction,
+      { ...user, email },
+      token,
+      expiration.toLocaleString(i18next.language, {
+        hour: '2-digit',
+        minute: '2-digit',
+      }),
+    )
     return ApiResponse.success(
       res,
       {},
@@ -138,7 +131,7 @@ export const changeEmailStep2Step4 = asyncHandler(
     const { code } = req.body
 
     // 1. Vérification du code
-    if (!code || code.length !== 6 || code !== user.emailVerification.token) {
+    if (code !== user.emailVerification.token) {
       return ApiResponse.error(res, t('auth:errors.invalid_code'), 400)
     }
 

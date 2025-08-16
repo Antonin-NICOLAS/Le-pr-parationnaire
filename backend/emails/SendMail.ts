@@ -9,10 +9,11 @@ import EmailTwoFactorActivation from './templates/EmailTwoFactorActivation.js'
 import EmailTwoFactorDeactivation from './templates/EmailTwoFactorDeactivation.js'
 // Types
 import type { TFunction } from 'i18next'
-import type { IUser } from '../models/User.js'
+import type { LeanUser } from '../models/User.js'
 
 // .env
 import dotenv from 'dotenv'
+import e from 'express'
 dotenv.config()
 
 const transporter = nodemailer.createTransport({
@@ -29,7 +30,7 @@ const transporter = nodemailer.createTransport({
 
 export const sendLoginEmail = async (
   t: TFunction,
-  user: IUser,
+  user: LeanUser,
   ipAddress: string,
   deviceInfo: string,
   location: string,
@@ -62,7 +63,7 @@ export const sendLoginEmail = async (
 
 export const sendVerificationEmail = async (
   t: TFunction,
-  user: IUser,
+  user: LeanUser,
   verificationCode: string,
 ) => {
   const mailOptions = {
@@ -102,7 +103,7 @@ export const sendWelcomeEmail = async (
 
 export const sendResetPasswordEmail = async (
   t: TFunction,
-  user: IUser,
+  user: LeanUser,
   resetUrl: string,
 ) => {
   const mailOptions = {
@@ -122,7 +123,7 @@ export const sendResetPasswordEmail = async (
 
 export const sendResetPasswordSuccessfulEmail = async (
   t: TFunction,
-  user: IUser,
+  user: LeanUser,
 ) => {
   const mailOptions = {
     from: process.env.NODEMAILER_USER,
@@ -142,7 +143,7 @@ export const sendResetPasswordSuccessfulEmail = async (
 // Email des codes de secours 2FA
 export const sendTwoFactorBackupCodesEmail = async (
   t: TFunction,
-  user: IUser,
+  user: LeanUser,
   backupCodes: string[],
 ) => {
   const mailOptions = {
@@ -163,7 +164,7 @@ export const sendTwoFactorBackupCodesEmail = async (
 // Envoyer un code 2FA par email
 export const sendTwoFactorEmail = async (
   t: TFunction,
-  user: IUser,
+  user: LeanUser,
   code: string,
   expiration: string,
   context: 'config' | 'login' | 'disable' = 'config',
@@ -172,9 +173,12 @@ export const sendTwoFactorEmail = async (
     from: process.env.NODEMAILER_USER,
     to: user.email,
     subject: t('emails:email2FAcode.subject'),
-    html: context === 'config' ? EmailTwoFactorActivation(t, user, code, expiration) :
-         context === 'login' ? EmailTwoFactorLogin(t, user, code, expiration) :
-         EmailTwoFactorDeactivation(t, user, code, expiration),
+    html:
+      context === 'config'
+        ? EmailTwoFactorActivation(t, user, code, expiration)
+        : context === 'login'
+        ? EmailTwoFactorLogin(t, user, code, expiration)
+        : EmailTwoFactorDeactivation(t, user, code, expiration),
   }
   try {
     await transporter.sendMail(mailOptions)
@@ -187,14 +191,15 @@ export const sendTwoFactorEmail = async (
 // Envoyer un code de changement d'email
 export const sendChangeEmailStep1 = async (
   t: TFunction,
-  user: IUser,
+  user: LeanUser,
   verificationCode: string,
+  expiration: string,
 ) => {
   const mailOptions = {
     from: process.env.NODEMAILER_USER,
     to: user.email,
     subject: t('emails:emailchange1.subject'),
-    html: ChangeEmailStep1(t, user, verificationCode),
+    html: ChangeEmailStep1(t, user, verificationCode, expiration),
   }
   try {
     await transporter.sendMail(mailOptions)
@@ -209,14 +214,15 @@ export const sendChangeEmailStep1 = async (
 
 export const sendChangeEmailStep2 = async (
   t: TFunction,
-  user: IUser,
+  user: LeanUser,
   verificationCode: string,
+  expiration: string,
 ) => {
   const mailOptions = {
     from: process.env.NODEMAILER_USER,
     to: user.email,
     subject: t('emails:emailchange2.subject'),
-    html: ChangeEmailStep2(t, user, verificationCode),
+    html: ChangeEmailStep2(t, user, verificationCode, expiration),
   }
   try {
     await transporter.sendMail(mailOptions)

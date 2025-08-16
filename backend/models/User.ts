@@ -1,6 +1,69 @@
 import mongoose, { Document, Schema } from 'mongoose'
 import type { AuthenticatorTransportFuture } from '@simplewebauthn/server'
 
+export type LeanUser = Pick<
+  IUser,
+  | '_id'
+  | 'firstName'
+  | 'lastName'
+  | 'avatarUrl'
+  | 'email'
+  | 'password'
+  | 'tokenVersion'
+  | 'lastLogin'
+  | 'lastEmailChange'
+  | 'role'
+  | 'language'
+  | 'theme'
+  | 'createdAt'
+> & {
+  emailVerification: {
+    token?: string
+    expiration?: Date
+    isVerified: boolean
+  }
+  resetPassword: {
+    token?: string
+    expiration?: Date
+  }
+  authMethods: {
+    password: {
+      isEnabled: boolean
+    }
+    webauthn: {
+      isEnabled: boolean
+      challenge?: string
+      expiration?: Date
+      credentials: WebAuthnCredential[]
+    }
+  }
+  twoFactor: {
+    isEnabled: boolean
+    email: {
+      isEnabled: boolean
+      token?: string
+      expiration?: Date
+    }
+    app: {
+      isEnabled: boolean
+      secret?: string
+    }
+    webauthn: {
+      isEnabled: boolean
+      challenge?: string
+      expiration?: Date
+      credentials: WebAuthnCredential[]
+    }
+    preferredMethod: 'email' | 'app' | 'webauthn' | 'none'
+    backupCodes: BackupCode[]
+    securityQuestions: {
+      question: string
+      answer: string
+      undefined?: boolean
+    }[]
+  }
+}
+
 export type BackupCode = {
   code: string
   used: boolean

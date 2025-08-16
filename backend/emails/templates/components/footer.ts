@@ -1,6 +1,6 @@
 import { TFunction } from 'i18next'
-import { IUser } from '../../../models/User.js'
-const footer = (t: TFunction, user: IUser) => `
+import { LeanUser } from '../../../models/User.js'
+const footer = (t: TFunction, user: LeanUser) => `
             <table
               class="row row-3"
               align="center"

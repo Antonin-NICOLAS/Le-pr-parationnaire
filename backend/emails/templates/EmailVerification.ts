@@ -1,9 +1,9 @@
 import { TFunction } from 'i18next'
-import { IUser } from '../../models/User.js'
+import { LeanUser } from '../../models/User.js'
 import header from './components/header.js'
 import footer from './components/footer.js'
 
-const EmailVerification = (t: TFunction, user: IUser, code: string) => {
+const EmailVerification = (t: TFunction, user: LeanUser, code: string) => {
   const template = `
       <!DOCTYPE html>
       <html

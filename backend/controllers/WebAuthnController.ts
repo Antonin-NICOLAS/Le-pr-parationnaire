@@ -1,10 +1,9 @@
 import User from '../models/User.js'
-import mongoose from 'mongoose'
 import { asyncHandler } from '../helpers/AsyncHandler.js'
 import { ApiResponse } from '../helpers/ApiResponse.js'
 import { SessionService } from '../services/SessionService.js'
 import type { Request, Response } from 'express'
-import i18next, { TFunction } from 'i18next'
+import { TFunction } from 'i18next'
 // WebAuthn
 import {
   generateAuthenticationOptions,
@@ -26,11 +25,7 @@ import type {
 } from '@simplewebauthn/server'
 
 // Helpers
-import {
-  comparePassword,
-  getDeviceInfo,
-  findLocation,
-} from '../helpers/AuthHelpers.js'
+import { comparePassword, getDeviceInfo } from '../helpers/AuthHelpers.js'
 import {
   generateBackupCodes,
   rotateBackupCodes,
@@ -415,53 +410,35 @@ export const verifyAuthentication = asyncHandler(
     }
 
     // 6. Create session
-    const session = await mongoose.startSession()
-    session.startTransaction()
+    const {
+      accessToken,
+      refreshToken,
+      session: userSession,
+    } = await SessionService.createSessionWithTokens(
+      t,
+      user,
+      req,
+      res,
+      rememberMe,
+    )
 
-    try {
-      const {
-        accessToken,
-        refreshToken,
-        session: userSession,
-      } = await SessionService.createSessionWithTokens(
-        user,
-        req,
-        res,
-        rememberMe,
-      )
+    const deviceInfo = getDeviceInfo(userSession.userAgent || '')
 
-      user.lastLogin = new Date()
-      await user.save({ session })
-      await session.commitTransaction()
+    // 7. Send login email notification
+    await sendLoginEmail(
+      t as TFunction,
+      user,
+      userSession.ip,
+      deviceInfo,
+      userSession.location as string,
+    )
 
-      const deviceInfo = getDeviceInfo(userSession.userAgent)
-      const localisation = await findLocation(
-        t,
-        i18next.language,
-        userSession.ip,
-      )
-
-      // 7. Send login email notification
-      await sendLoginEmail(
-        t as TFunction,
-        user,
-        userSession.ip,
-        deviceInfo,
-        localisation,
-      )
-
-      return ApiResponse.success(
-        res,
-        { accessToken, refreshToken },
-        t('auth:success.logged_in'),
-        200,
-      )
-    } catch (error) {
-      await session.abortTransaction()
-      throw error
-    } finally {
-      session.endSession()
-    }
+    return ApiResponse.success(
+      res,
+      { accessToken, refreshToken },
+      t('auth:success.logged_in'),
+      200,
+    )
   },
 )
 

@@ -97,6 +97,7 @@ export const verificationCodeSchema = z
 
 export const backupCodeSchema = z
   .string()
+  .toUpperCase()
   .regex(/^[a-zA-Z0-9]{8}$/, 'Invalid backup code format')
   .length(8, 'Backup code must be 8 characters')
 

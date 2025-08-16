@@ -1,11 +1,11 @@
 import { TFunction } from 'i18next'
-import { IUser } from '../../models/User.js'
+import { LeanUser } from '../../models/User.js'
 import header from './components/header.js'
 import footer from './components/footer.js'
 
 const EmailTwoFactorActivation = (
   t: TFunction,
-  user: IUser,
+  user: LeanUser,
   code: string,
   expiration: string,
 ) => {

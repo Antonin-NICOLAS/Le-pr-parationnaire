@@ -4,6 +4,7 @@ import crypto from 'crypto'
 import bcrypt from 'bcrypt'
 import { IUser, BackupCode } from '../models/User.js'
 import { TFunction } from 'i18next'
+import { validate6DigitCode } from './Validators.js'
 
 // APP
 export function generateTwoFactorSecret() {
@@ -20,7 +21,7 @@ export async function generateQRCode(secret: speakeasy.GeneratedSecret) {
 }
 
 export function verifyTwoFactorCode(secret: string, token: string) {
-  if (!token || token.length !== 6 || !/^\d+$/.test(token)) {
+  if (!validate6DigitCode(token)) {
     return false
   }
 
@@ -83,10 +84,6 @@ export function validatePreferredMethod(
   method: string,
 ): method is 'app' | 'email' | 'webauthn' {
   return ['app', 'email', 'webauthn'].includes(method)
-}
-
-export function validateSixDigitCode(code: string): boolean {
-  return Boolean(code && code.length === 6 && /^\d+$/.test(code))
 }
 
 type MethodType = 'password' | 'email' | 'app' | 'webauthn' | 'backup_code'

@@ -1,9 +1,9 @@
 import { TFunction } from 'i18next'
-import { IUser } from '../../models/User.js'
+import { LeanUser } from '../../models/User.js'
 import header from './components/header.js'
 import footer from './components/footer.js'
 
-const ResetPassword = (t: TFunction, user: IUser, link: string) => {
+const ResetPassword = (t: TFunction, user: LeanUser, link: string) => {
   const template = `
     <!DOCTYPE html>
 <html

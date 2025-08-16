@@ -11,20 +11,6 @@ export async function comparePassword(password: string, hashed: string) {
   return await bcrypt.compare(password, hashed)
 }
 
-export function validateEmail(email: string) {
-  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-  return emailRegex.test(email)
-}
-
-export function validateName(name: string) {
-  return name.length >= 3 && name.length <= 30
-}
-
-export function validatePassword(password: string) {
-  const passwordRegex = /^(?=.*[A-Z])(?=.*[a-z])(?=.*\d)(?=.*[\W_]).{8,}$/
-  return passwordRegex.test(password)
-}
-
 export function getDeviceInfo(userAgent: string): string {
   const parser = new UAParser(userAgent)
   const device = parser.getDevice()

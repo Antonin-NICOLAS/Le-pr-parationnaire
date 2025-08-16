@@ -1,6 +1,7 @@
 import express from 'express'
 import cors from 'cors'
 import dotenv from 'dotenv'
+import z from 'zod'
 dotenv.config()
 
 // Controllers
@@ -18,6 +19,12 @@ import {
   authenticateFull,
 } from '../middlewares/VerifyAuth.js'
 import { NormalRL } from '../middlewares/RateLimiter.js'
+import { validate } from '../middlewares/Validate.js'
+import {
+  changePasswordSchema,
+  emailSchema,
+  sixDigitCodeSchema,
+} from '../helpers/Validators.js'
 
 // Router
 const router = express.Router()
@@ -32,18 +39,44 @@ router.use(
 
 // Routes
 // Modifiez vos routes comme suit :
-router.post('/change-password', NormalRL, authenticateLean, changePassword)
+router.post(
+  '/change-password',
+  NormalRL,
+  validate(changePasswordSchema),
+  authenticateLean,
+  changePassword,
+)
 router.post('/change-email/step1', NormalRL, authenticateLean, changeEmailStep1)
 router.post(
   '/change-email/step2',
   NormalRL,
+  validate(
+    z.object({
+      code: sixDigitCodeSchema,
+    }),
+  ),
   authenticateLean,
   changeEmailStep2Step4,
 )
-router.post('/change-email/step3', NormalRL, authenticateLean, changeEmailStep3)
+router.post(
+  '/change-email/step3',
+  NormalRL,
+  validate(
+    z.object({
+      email: emailSchema,
+    }),
+  ),
+  authenticateLean,
+  changeEmailStep3,
+)
 router.post(
   '/change-email/step4',
   NormalRL,
+  validate(
+    z.object({
+      code: sixDigitCodeSchema,
+    }),
+  ),
   authenticateLean,
   changeEmailStep2Step4,
 )

@@ -1,4 +1,4 @@
-import { IUser, BackupCode } from '../models/User.js'
+import { LeanUser } from '../models/User.js'
 import { UAParser } from 'ua-parser-js'
 import ms, { StringValue } from 'ms'
 import { v4 as uuidv4 } from 'uuid'
@@ -7,27 +7,31 @@ import { TokenService } from './TokenService.js'
 import { Schema } from 'mongoose'
 import Session from '../models/Session.js'
 import User from '../models/User.js'
+import i18next, { type TFunction } from 'i18next'
+import { findLocation } from '../helpers/AuthHelpers.js'
 
-type LeanUser = Pick<IUser, '_id' | 'email' | 'role' | 'tokenVersion'> & {
-  twoFactor?: {
-    isEnabled: boolean
-    app?: { isEnabled: boolean; secret?: string }
-    email?: { isEnabled: boolean; token?: string; expiration?: Date }
-    backupCodes?: BackupCode[]
-  }
+function getClientIp(req: any): string {
+  const forwarded = req?.headers?.['x-forwarded-for']
+  return (
+    req?.ip ||
+    (Array.isArray(forwarded) ? forwarded[0] : forwarded) ||
+    req?.socket?.remoteAddress ||
+    ''
+  )
 }
 
 export class SessionService {
   static async createSessionWithTokens(
+    t: TFunction,
     user: LeanUser,
     req: Request,
     res: Response,
     rememberMe: boolean,
     existingSessionId?: string,
   ) {
-    const ip =
-      req.ip || req.headers['x-forwarded-for'] || req.connection.remoteAddress
-    const userAgent = req.headers['user-agent'] || ''
+    const ip = getClientIp(req)
+    const location = await findLocation(t, i18next.language, ip)
+    const userAgent = req.headers['user-agent']
     const uaResult = new UAParser(userAgent).getResult()
 
     const accessTokenDuration = process.env.ACCESS_TOKEN_DURATION as StringValue
@@ -52,6 +56,7 @@ export class SessionService {
     let session
 
     if (existingSession) {
+      console.log('session existante :', existingSession)
       refreshTokenVersion = (existingSession.refreshTokenVersion || 0) + 1
       session = {
         ...existingSession.toObject(),
@@ -68,6 +73,7 @@ export class SessionService {
         deviceType: uaResult.device.type || 'Desktop',
         browser: uaResult.browser.name || 'inconnu',
         os: uaResult.os.name || 'inconnu',
+        location: location || '',
         lastActive: now,
         expiresAt,
         refreshTokenVersion,
@@ -80,6 +86,9 @@ export class SessionService {
       session.refreshTokenVersion,
     )
     const hashedRefreshToken = await TokenService.hashToken(rawRefreshToken)
+    console.log('rawRefreshToken created:', rawRefreshToken)
+    console.log('hashedRefreshToken created:', hashedRefreshToken)
+
     const accessToken = TokenService.generateAccessToken(
       user,
       accessTokenDuration,
@@ -172,6 +181,8 @@ export class SessionService {
       userId,
       expiresAt: { $gt: now },
     }).sort({ lastActive: -1 })
+
+    console.log(sessions)
 
     return sessions.map((s) => ({
       sessionId: s.sessionId,
