@@ -194,7 +194,9 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
 
             <SixDigitCodeInput
               value={verificationCode}
+              onComplete={handleVerifyCode}
               onChange={setVerificationCode}
+              loading={enableAppState.loading}
               disabled={enableAppState.loading}
               autoFocus
             />
