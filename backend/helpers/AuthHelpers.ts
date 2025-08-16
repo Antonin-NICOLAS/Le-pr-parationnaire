@@ -1,22 +1,6 @@
 import bcrypt from 'bcrypt'
 import crypto from 'crypto'
 import { UAParser } from 'ua-parser-js'
-import type { IUser } from '../models/User.js'
-import { generateSecureCode } from './2FAHelpers.js'
-
-export async function handleUnverifiedUser(user: IUser) {
-  if (
-    !user.emailVerification.token ||
-    !user.emailVerification.expiration ||
-    user.emailVerification.expiration < new Date()
-  ) {
-    user.emailVerification.token = generateSecureCode()
-    user.emailVerification.expiration = new Date(
-      Date.now() + 24 * 60 * 60 * 1000,
-    )
-    await user.save()
-  }
-}
 
 export async function hashPassword(password: string) {
   const salt = await bcrypt.genSalt(10)

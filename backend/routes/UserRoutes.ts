@@ -13,7 +13,10 @@ import {
 } from '../controllers/UserController.js'
 
 // Middlewares
-import { authenticateFull } from '../middlewares/VerifyAuth.js'
+import {
+  authenticateLean,
+  authenticateFull,
+} from '../middlewares/VerifyAuth.js'
 import { NormalRL } from '../middlewares/RateLimiter.js'
 
 // Router
@@ -28,19 +31,20 @@ router.use(
 )
 
 // Routes
-router.post('/change-password', NormalRL, authenticateFull, changePassword)
-router.post('/change-email/step1', NormalRL, authenticateFull, changeEmailStep1)
+// Modifiez vos routes comme suit :
+router.post('/change-password', NormalRL, authenticateLean, changePassword)
+router.post('/change-email/step1', NormalRL, authenticateLean, changeEmailStep1)
 router.post(
   '/change-email/step2',
   NormalRL,
-  authenticateFull,
+  authenticateLean,
   changeEmailStep2Step4,
 )
-router.post('/change-email/step3', NormalRL, authenticateFull, changeEmailStep3)
+router.post('/change-email/step3', NormalRL, authenticateLean, changeEmailStep3)
 router.post(
   '/change-email/step4',
   NormalRL,
-  authenticateFull,
+  authenticateLean,
   changeEmailStep2Step4,
 )
 

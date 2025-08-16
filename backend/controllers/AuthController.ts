@@ -8,7 +8,6 @@ import { Request, Response } from 'express'
 import i18next, { TFunction } from 'i18next'
 // Helpers
 import {
-  handleUnverifiedUser,
   hashPassword,
   comparePassword,
   validateEmail,
@@ -21,7 +20,7 @@ import {
 import { sendVerificationEmail, sendLoginEmail } from '../emails/SendMail.js'
 import { TokenService } from '../services/TokenService.js'
 import { generateSecureCode } from '../helpers/2FAHelpers.js'
-import { assertUserExists } from '../helpers/General.js'
+import { assertUserExists, handleUnverifiedUser } from '../helpers/General.js'
 
 export const refreshToken = asyncHandler(
   async (req: Request, res: Response) => {

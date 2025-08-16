@@ -6,7 +6,6 @@ import { NextFunction, Request, Response } from 'express'
 import { TFunction } from 'i18next'
 // Helpers
 import {
-  handleUnverifiedUser,
   hashPassword,
   comparePassword,
   validatePassword,
@@ -16,7 +15,8 @@ import {
   sendChangeEmailStep1,
   sendChangeEmailStep2,
 } from '../emails/SendMail.js'
-import { assertUserExists } from '../helpers/General.js'
+import { generateSecureCode } from '../helpers/2FAHelpers.js'
+import { handleUnverifiedUser } from '../helpers/General.js'
 
 export const changePassword = asyncHandler(
   async (req: Request, res: Response) => {
@@ -40,10 +40,17 @@ export const changePassword = asyncHandler(
       return ApiResponse.error(res, t('auth:errors.invalid_password'), 400)
     }
 
-    // 4. Mise à jour du mot de passe
-    await User.findByIdAndUpdate(user._id, {
-      password: await hashPassword(newPassword),
-    })
+    // 4. Vérification si le mot de passe est similaire à l'ancien
+    const isSimilar = await comparePassword(newPassword, user.password)
+    if (isSimilar) {
+      return ApiResponse.error(res, t('auth:errors.similar_password'), 400)
+    }
+
+    // 5. Mise à jour du mot de passe
+    await User.updateOne(
+      { _id: user._id },
+      { $set: { password: await hashPassword(newPassword) } },
+    )
 
     return ApiResponse.success(res, {}, t('auth:success.password_changed'), 200)
   },
@@ -56,19 +63,19 @@ export const changeEmailStep1 = asyncHandler(
   async (req: Request, res: Response) => {
     const { t } = req
 
-    const user = await User.findById(req.user._id)
+    const user = req.user
 
-    if (!assertUserExists(user, res, t)) return
+    const code = await handleUnverifiedUser(user)
 
-    // 1. Generate a verification code
-    await handleUnverifiedUser(user)
+    if (!code) {
+      return ApiResponse.error(
+        res,
+        t('auth:errors.token_generation_failed'),
+        500,
+      )
+    }
 
-    // 2. Send email with verification code
-    await sendChangeEmailStep1(
-      t as TFunction,
-      user,
-      user.emailVerification.token!,
-    )
+    await sendChangeEmailStep1(t as TFunction, user, code)
 
     return ApiResponse.success(
       res,
@@ -83,10 +90,8 @@ export const changeEmailStep1 = asyncHandler(
 export const changeEmailStep3 = asyncHandler(
   async (req: Request, res: Response) => {
     const { t } = req
-    const user = await User.findById(req.user._id)
+    const user = req.user
     const { email } = req.body
-
-    if (!assertUserExists(user, res, t)) return
 
     // 1. Validation de l'email rentré
     if (!email || !validateEmail(email)) {
@@ -94,24 +99,29 @@ export const changeEmailStep3 = asyncHandler(
     }
 
     // 2. Vérification si l'email existe déjà
-    const existingUser = await User.findOne({ email })
-    if (existingUser) {
+    const emailExists = await User.exists({ email })
+    if (emailExists) {
       return ApiResponse.error(res, t('auth:errors.email_exists'), 400)
     }
 
-    user.email = email
-    user.emailVerification.isVerified = false
+    // 3. Mise à jour atomique
+    const token = generateSecureCode()
+    const expiration = new Date(Date.now() + 24 * 60 * 60 * 1000)
 
-    // 3. Génération d'un code OTP
-    await handleUnverifiedUser(user)
-    await user.save()
-
-    // 5. Envoi du code de vérification à la nouvelle adresse email
-    await sendChangeEmailStep2(
-      t as TFunction,
-      user,
-      user.emailVerification.token!,
+    await User.updateOne(
+      { _id: user._id },
+      {
+        $set: {
+          email,
+          'emailVerification.token': token,
+          'emailVerification.expiration': expiration,
+          'emailVerification.isVerified': false,
+        },
+      },
     )
+
+    // 4. Envoi du code de vérification à la nouvelle adresse email
+    await sendChangeEmailStep2(t as TFunction, { ...user, email }, token)
     return ApiResponse.success(
       res,
       {},
@@ -124,21 +134,25 @@ export const changeEmailStep3 = asyncHandler(
 export const changeEmailStep2Step4 = asyncHandler(
   async (req: Request, res: Response) => {
     const { t } = req
-    const user = await User.findById(req.user._id)
+    const user = req.user
     const { code } = req.body
-
-    if (!assertUserExists(user, res, t)) return
 
     // 1. Vérification du code
     if (!code || code.length !== 6 || code !== user.emailVerification.token) {
       return ApiResponse.error(res, t('auth:errors.invalid_code'), 400)
     }
 
-    // 2. Mise à jour de l'email de l'utilisateur
-    user.emailVerification.isVerified = true
-    user.emailVerification.token = undefined
-    user.emailVerification.expiration = undefined
-    await user.save()
+    // 2. Mise à jour atomique
+    await User.updateOne(
+      { _id: user._id },
+      {
+        $set: {
+          'emailVerification.isVerified': true,
+          'emailVerification.token': undefined,
+          'emailVerification.expiration': undefined,
+        },
+      },
+    )
 
     return ApiResponse.success(res, {}, t('auth:success.email_verified'), 200)
   },
