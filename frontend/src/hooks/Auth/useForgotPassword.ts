@@ -18,10 +18,15 @@ const verifyResetTokenApi = (token: string) =>
     { withCredentials: true },
   )
 
-const resetPasswordApi = (email: string, token: string, newPassword: string) =>
+const resetPasswordApi = (
+  email: string,
+  token: string,
+  newPassword: string,
+  confirmPassword: string,
+) =>
   axios.post(
     `${VITE_FORGOT_PASSWORD}/reset`,
-    { email, token, newPassword },
+    { email, token, newPassword, confirmPassword },
     { withCredentials: true },
   )
 

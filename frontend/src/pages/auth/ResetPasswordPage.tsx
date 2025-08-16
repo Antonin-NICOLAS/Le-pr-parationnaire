@@ -56,7 +56,12 @@ const ResetPasswordPage: React.FC = () => {
     if (!form.validateForm()) return
     form.clearErrors()
     resetPasswordState.resetError()
-    const result = await resetPassword(email, token, form.values.newPassword)
+    const result = await resetPassword(
+      email,
+      token,
+      form.values.newPassword,
+      form.values.confirmPassword,
+    )
     if (result.success) {
       setIsSuccess(true)
       form.reset()
