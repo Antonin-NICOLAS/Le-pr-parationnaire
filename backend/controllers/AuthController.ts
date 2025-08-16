@@ -1,4 +1,5 @@
 import User from '../models/User.js'
+import Session from '../models/Session.js'
 import mongoose from 'mongoose'
 import { asyncHandler } from '../helpers/AsyncHandler.js'
 import { ApiResponse } from '../helpers/ApiResponse.js'
@@ -38,32 +39,36 @@ export const refreshToken = asyncHandler(
     session.startTransaction()
 
     try {
-      const user = await User.findOne({
-        'loginHistory.sessionId': sessionId,
+      // 1. Trouver la session
+      const userSession = await Session.findOne({
+        sessionId,
       }).session(session)
 
-      if (!user) {
+      if (!userSession) {
         await session.abortTransaction()
         return ApiResponse.error(res, t('auth:errors.session_not_found'), 404)
       }
 
-      const userSession = user.loginHistory.find(
-        (s) => s.sessionId === sessionId,
-      )
-      console.log('[REFRESH] userSession:', userSession)
-
-      if (!userSession || !userSession.refreshToken) {
-        await session.abortTransaction()
-        return ApiResponse.error(res, t('auth:errors.session_expired'), 401)
-      }
-
-      console.log('[REFRESH] Refresh token :', userSession.refreshToken)
-
-      // 3. Vérifier l'expiration
+      // 2. Vérifier l'expiration
       if (userSession.expiresAt.getTime() < Date.now()) {
         await session.abortTransaction()
         return ApiResponse.error(res, t('auth:errors.session_expired'), 401)
       }
+
+      // 3. Vérifier le token
+      const isValid = await TokenService.compareTokens(
+        rawRefreshToken,
+        userSession.refreshToken || '',
+      )
+
+      if (!isValid) {
+        await Session.deleteOne({ sessionId }).session(session)
+        await session.commitTransaction()
+        return ApiResponse.error(res, t('common:errors.bad_request'), 401)
+      }
+      console.log('[REFRESH] userSession:', userSession)
+
+      console.log('[REFRESH] Refresh token :', userSession.refreshToken)
 
       console.log(
         '[REFRESH] Session expirée à :',
@@ -71,26 +76,19 @@ export const refreshToken = asyncHandler(
         userSession.expiresAt.getTime() < Date.now(),
       )
 
-      // 4. Vérifier le token
-      const isValid = await TokenService.compareTokens(
-        rawRefreshToken,
-        userSession.refreshToken,
+      // 4. Trouver l'utilisateur
+      const user = await User.findOne(
+        { _id: userSession.userId },
+        { email: 1, role: 1, tokenVersion: 1 },
       )
+        .session(session)
+        .lean()
 
-      if (!isValid) {
-        await User.updateOne(
-          { _id: user._id },
-          { $pull: { loginHistory: { sessionId } } },
-        ).session(session)
-        await session.commitTransaction()
-        return ApiResponse.error(res, t('common:errors.bad_request'), 401)
+      if (!assertUserExists(user, res, t)) {
+        return
       }
 
-      // 5. Mettre à jour lastActive AVANT la génération des tokens
-      userSession.lastActive = new Date()
-      await user.save({ session })
-
-      // 6. Générer nouveaux tokens
+      // 5. Génération des cookies
       const rememberMe = userSession.expiresAt.getTime() > Date.now() + ms('1d')
       const { accessToken } = await SessionService.createSessionWithTokens(
         user,
@@ -148,8 +146,9 @@ export const checkAuthStatus = asyncHandler(
     let isLoginWithWebAuthn = false
 
     // 1. Vérification de l'email
-    if (email && validateEmail(decodeURIComponent(email as string))) {
-      const user = await User.findOne({ email })
+    const rawEmail = decodeURIComponent(email as string)
+    if (rawEmail && validateEmail(rawEmail)) {
+      const user = await User.findOne({ email: rawEmail })
       if (user) {
         isLoginWithWebAuthn = user.authMethods.webauthn.isEnabled || false
       }
@@ -165,31 +164,48 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
   const { email, password, rememberMe } = req.body
   const { t } = req
 
-  // 1. Check if email and password are provided
+  // 1. Validation des entrées
   if (!email || !password) {
     return ApiResponse.error(res, t('auth:errors.missing_credentials'), 400)
   }
 
-  // 2. Validate email format
   if (!validateEmail(email)) {
     return ApiResponse.error(res, t('auth:errors.invalid_email'), 400)
   }
 
-  // 3. Check if user exists and password matches
-  const user = await User.findOne({ email })
-  const isMatch = user && (await comparePassword(password, user.password))
-  if (!user || !isMatch) {
+  // 2. Récupération utilisateur avec projection minimale
+  const user = await User.findOne(
+    { email },
+    {
+      email: 1,
+      password: 1,
+      'emailVerification.isVerified': 1,
+      'emailVerification.token': 1,
+      'emailVerification.expiration': 1,
+      'twoFactor.isEnabled': 1,
+      'twoFactor.email.isEnabled': 1,
+      'twoFactor.app.isEnabled': 1,
+      'twoFactor.webauthn.isEnabled': 1,
+      'twoFactor.preferredMethod': 1,
+      role: 1,
+      tokenVersion: 1,
+    },
+  ).lean()
+
+  if (!user) {
     return ApiResponse.error(res, t('auth:errors.invalid_credentials'), 404)
   }
 
-  //5. Check if user is verified
+  // 3. Vérification du mot de passe
+  const isMatch = await comparePassword(password, user.password)
+  if (!isMatch) {
+    return ApiResponse.error(res, t('auth:errors.invalid_credentials'), 404)
+  }
+
+  // 4. Check if user is verified
   if (!user.emailVerification.isVerified) {
-    await handleUnverifiedUser(user)
-    await sendVerificationEmail(
-      t as TFunction,
-      user,
-      user.emailVerification.token!,
-    )
+    const token = await handleUnverifiedUser(user)
+    await sendVerificationEmail(t as TFunction, user, token)
     return ApiResponse.info(
       res,
       {
@@ -202,9 +218,9 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     )
   }
 
-  await SessionService.cleanupExpiredSessions(user)
+  await SessionService.cleanupExpiredSessions(user._id)
 
-  //5 bis. Check if user has 2FA enabled
+  // 5. Check if user has 2FA enabled
   if (user.twoFactor.isEnabled) {
     return ApiResponse.info(
       res,
@@ -233,7 +249,6 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
       session: userSession,
     } = await SessionService.createSessionWithTokens(user, req, res, rememberMe)
 
-    user.lastLogin = new Date()
     await user.save({ session })
     await session.commitTransaction()
 
@@ -267,37 +282,21 @@ export const logout = asyncHandler(async (req: Request, res: Response) => {
   const { t } = req
   const sessionId = req.cookies?.sessionId
 
-  // Find user with sessionId and delete the session
-  const user = await User.findOne({ 'loginHistory.sessionId': sessionId })
-  if (user) {
-    user.loginHistory = user.loginHistory.filter(
-      (session) => session.sessionId !== sessionId,
-    )
-    await user.save()
+  if (sessionId) {
+    // Supprimer la session de la nouvelle collection
+    await SessionService.revokeSession(sessionId)
   }
 
   // Clear cookies
-  res.clearCookie('accessToken', {
+  const cookieOptions = {
     path: '/',
     domain:
-      process.env.NODE_ENV === 'production'
-        ? process.env.FRONTEND_SERVER
-        : undefined,
-  })
-  res.clearCookie('refreshToken', {
-    path: '/',
-    domain:
-      process.env.NODE_ENV === 'production'
-        ? process.env.FRONTEND_SERVER
-        : undefined,
-  })
-  res.clearCookie('sessionId', {
-    path: '/',
-    domain:
-      process.env.NODE_ENV === 'production'
-        ? process.env.FRONTEND_SERVER
-        : undefined,
-  })
+      process.env.NODE_ENV === 'production' ? process.env.DOMAIN : undefined,
+  }
+
+  res.clearCookie('accessToken', cookieOptions)
+  res.clearCookie('refreshToken', cookieOptions)
+  res.clearCookie('sessionId', cookieOptions)
 
   return ApiResponse.success(res, {}, t('auth:success.logged_out'), 200)
 })
@@ -383,7 +382,17 @@ export const emailVerification = asyncHandler(
       return ApiResponse.error(res, t('common:errors.bad_request'), 400)
     }
     // 2. On vérifie si l'utilisateur existe
-    const user = await User.findOne({ email })
+    const user = await User.findOne(
+      { email },
+      {
+        email: 1,
+        'emailVerification.isVerified': 1,
+        'emailVerification.expiration': 1,
+        'emailVerification.token': 1,
+        role: 1,
+        tokenVersion: 1,
+      },
+    ).lean()
     if (!assertUserExists(user, res, t)) return
 
     // 3. Vérification si l'email est déjà vérifié
@@ -407,10 +416,18 @@ export const emailVerification = asyncHandler(
     }
 
     // 5. Mise à jour de l'utilisateur
-    user.emailVerification.isVerified = true
-    user.emailVerification.token = undefined
-    user.emailVerification.expiration = undefined
-    await user.save()
+    await User.updateOne(
+      { _id: user._id },
+      {
+        $set: {
+          'emailVerification.isVerified': true,
+        },
+        $unset: {
+          'emailVerification.token': 1,
+          'emailVerification.expiration': 1,
+        },
+      },
+    )
 
     // 6. On génère le cookie de session
     const session = await mongoose.startSession()
@@ -462,12 +479,8 @@ export const resendVerificationEmail = asyncHandler(
     }
 
     // Générer un nouveau token si l'ancien a expiré
-    await handleUnverifiedUser(user)
-    await sendVerificationEmail(
-      t as TFunction,
-      user,
-      user.emailVerification.token!,
-    )
+    const token = await handleUnverifiedUser(user)
+    await sendVerificationEmail(t as TFunction, user, token)
 
     return ApiResponse.success(
       res,

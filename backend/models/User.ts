@@ -24,20 +24,6 @@ export type WebAuthnCredential = {
   createdAt?: Date
 }
 
-export type LoginHistory = {
-  sessionId: string
-  ip: string
-  userAgent: string
-  location?: string
-  deviceType?: string
-  browser?: string
-  os?: string
-  lastActive: Date
-  expiresAt: Date
-  refreshToken?: string
-  refreshTokenVersion?: number
-}
-
 export interface IUser extends Document {
   _id: mongoose.Schema.Types.ObjectId
   lastName: string
@@ -48,7 +34,6 @@ export interface IUser extends Document {
   tokenVersion: number
   lastLogin?: Date
   lastEmailChange?: Date
-  loginHistory: LoginHistory[]
   emailVerification: {
     token?: string
     expiration?: Date
@@ -106,21 +91,6 @@ const UserSchema = new Schema<IUser>({
   tokenVersion: { type: Number, default: 0 },
   lastLogin: Date,
   lastEmailChange: Date,
-  loginHistory: [
-    {
-      sessionId: { type: String, unique: true },
-      refreshToken: { type: String, unique: true },
-      refreshTokenVersion: { type: Number, default: 0 },
-      ip: String,
-      userAgent: String,
-      location: String,
-      deviceType: String,
-      browser: String,
-      os: String,
-      lastActive: { type: Date, default: Date.now },
-      expiresAt: Date,
-    },
-  ],
   emailVerification: {
     token: String,
     expiration: Date,
@@ -225,11 +195,3 @@ const UserSchema = new Schema<IUser>({
 })
 
 export default mongoose.model<IUser>('User', UserSchema)
-
-UserSchema.index(
-  { 'loginHistory.expiresAt': 1 },
-  {
-    expireAfterSeconds: 0,
-    partialFilterExpression: { 'loginHistory.expiresAt': { $exists: true } },
-  },
-)

@@ -33,6 +33,7 @@ router.use(
 
 // Routes
 
+//TODO: Last controller optimisation : try to use a single updateOne call and authenticateLean
 // WebAuthn Registration
 router.post(
   '/verify-registration',
