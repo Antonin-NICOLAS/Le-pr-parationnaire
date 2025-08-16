@@ -183,6 +183,21 @@ export class SessionService {
     }).sort({ lastActive: -1 })
 
     console.log(sessions)
+    console.log(
+      sessions.map((s) => ({
+        sessionId: s.sessionId,
+        ip: s.ip,
+        location: s.location,
+        deviceName:
+          s.browser && s.os
+            ? `${s.browser} on ${s.os}`
+            : s.userAgent || 'Unknown Device',
+        deviceType: s.deviceType,
+        lastActive: s.lastActive,
+        isCurrent: s.sessionId === currentSessionId,
+        expiresIn: s.expiresAt ? s.expiresAt.getTime() - now.getTime() : null,
+      })),
+    )
 
     return sessions.map((s) => ({
       sessionId: s.sessionId,

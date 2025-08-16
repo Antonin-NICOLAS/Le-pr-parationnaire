@@ -61,7 +61,6 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
   const [disablePassword, setDisablePassword] = useState('')
   const [selectedCredentials, setSelectedCredentials] = useState<string[]>([])
   const [direction, setDirection] = useState(1)
-  const [error, setError] = useState<string | null>(null)
 
   const {
     registerDevice,
@@ -96,27 +95,23 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
 
   const handleUseExistingCredentials = async () => {
     if (selectedCredentials.length === 0) {
-      setError('Veuillez sélectionner au moins une clé de sécurité')
+      transferCredentialsState.setAnError(
+        'Veuillez sélectionner au moins une clé de sécurité',
+      )
       return
     }
+    transferCredentialsState.resetError()
 
-    try {
-      const result = await transferCredentials(
-        'primary',
-        'secondary',
-        selectedCredentials,
-      )
+    const result = await transferCredentials(
+      'primary',
+      'secondary',
+      selectedCredentials,
+    )
 
-      if (result.message) {
-        closeEnableFlow()
-        setSelectedCredentials([])
-        onStatusChange()
-        setError(null)
-      } else {
-        setError('Erreur lors du transfert de certaines clés')
-      }
-    } catch (err) {
-      setError('Erreur lors du transfert des clés')
+    if (result.message) {
+      closeEnableFlow()
+      setSelectedCredentials([])
+      onStatusChange()
     }
   }
 
@@ -132,8 +127,6 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
         setCurrentStep('backup')
         if (!isEnableFlowOpen) openEnableFlow()
       }
-    } else {
-      setError("Erreur lors de l'enregistrement de la clé")
     }
   }
 
@@ -240,13 +233,12 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
               </p>
             </div>
 
-            {error && (
-              <ErrorMessage
-                message={error}
-                type='error'
-                onClose={() => setError(null)}
-              />
-            )}
+            <ErrorMessage
+              message={transferCredentialsState.error}
+              type='error'
+              onClose={() => transferCredentialsState.resetError()}
+              isVisible={!!transferCredentialsState.error}
+            />
 
             <motion.div
               className='space-y-4'
@@ -321,13 +313,12 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
               </p>
             </div>
 
-            {error && (
-              <ErrorMessage
-                message={error}
-                type='error'
-                onClose={() => setError(null)}
-              />
-            )}
+            <ErrorMessage
+              message={registerDeviceState.error}
+              type='error'
+              onClose={() => registerDeviceState.resetError()}
+              isVisible={!!registerDeviceState.error}
+            />
 
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -594,7 +585,9 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
         onClose={() => {
           closeEnableFlow()
           setCurrentStep('register')
-          setError(null)
+          transferCredentialsState.resetError()
+          registerDeviceState.resetData()
+          setCredentialNameState.resetData()
           setSelectedCredentials([])
         }}
         title='Activer WebAuthn'

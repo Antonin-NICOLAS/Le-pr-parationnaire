@@ -106,7 +106,7 @@ export const configTwoFactorApp = asyncHandler(
     const qrCode = await generateQRCode(secret)
 
     const result = await User.updateOne(
-      { _id: user._id, 'twoFactor.app.isEnabled': false }, // Condition atomique
+      { _id: user._id, 'twoFactor.app.isEnabled': false },
       {
         $set: {
           'twoFactor.app.secret': secret.base32,
@@ -114,10 +114,6 @@ export const configTwoFactorApp = asyncHandler(
         },
       },
     )
-
-    if (result.matchedCount === 0) {
-      throw new Error('Concurrent modification detected')
-    }
 
     return ApiResponse.success(
       res,

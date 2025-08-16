@@ -16,6 +16,7 @@ export interface ApiCallResult<T = any> {
   loading: boolean
   error: string | null
   execute: (...args: any[]) => Promise<ApiResponse>
+  setAnError: (error: string | null) => void
   resetError: () => void
   resetData: () => void
 }
@@ -143,6 +144,10 @@ export function useApiCall<T = any>(
     ],
   )
 
+  const setAnError = useCallback((error: string | null) => {
+    setError(error)
+  }, [])
+
   const resetError = useCallback(() => {
     setError(null)
   }, [])
@@ -155,6 +160,7 @@ export function useApiCall<T = any>(
     loading,
     error,
     execute,
+    setAnError,
     resetError,
     resetData,
   }

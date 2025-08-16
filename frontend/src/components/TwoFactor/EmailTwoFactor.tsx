@@ -129,13 +129,12 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
               </p>
             </div>
 
-            {enableEmailState.error && (
-              <ErrorMessage
-                message={enableEmailState.error}
-                type='error'
-                onClose={() => enableEmailState.resetError()}
-              />
-            )}
+            <ErrorMessage
+              message={enableEmailState.error}
+              type='error'
+              onClose={() => enableEmailState.resetError()}
+              isVisible={!!enableEmailState.error}
+            />
 
             <SixDigitCodeInput
               value={verificationCode}
@@ -238,13 +237,12 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
           />
         </div>
 
-        {disableEmailState.error && (
-          <ErrorMessage
-            message={disableEmailState.error}
-            type='error'
-            onClose={() => disableEmailState.resetError()}
-          />
-        )}
+        <ErrorMessage
+          message={disableEmailState.error}
+          type='error'
+          onClose={() => disableEmailState.resetError()}
+          isVisible={!!disableEmailState.error}
+        />
 
         {disableMethod === 'otp' ? (
           <div className='space-y-4'>

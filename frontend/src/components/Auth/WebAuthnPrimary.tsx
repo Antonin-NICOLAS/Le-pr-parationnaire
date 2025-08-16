@@ -58,7 +58,6 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
   const [selectedSecondaryCredential, setSelectedSecondaryCredential] =
     useState<string[]>([])
   const [direction, setDirection] = useState(1)
-  const [error, setError] = useState<string | null>(null)
 
   const {
     registerDevice,
@@ -91,7 +90,9 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
 
   const handleTransferSecondaryKeys = async () => {
     if (selectedSecondaryCredential.length === 0) {
-      setError('Veuillez sélectionner au moins une clé de sécurité')
+      transferCredentialsState.setAnError(
+        'Veuillez sélectionner au moins une clé de sécurité',
+      )
       return
     }
 
@@ -104,8 +105,6 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
       closeEnableFlow()
       setSelectedSecondaryCredential([])
       onStatusChange()
-    } else {
-      setError('Erreur lors du transfert de certaines clés')
     }
   }
 
@@ -128,14 +127,14 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
         closeEnableFlow()
         onStatusChange()
       }
-    } else {
-      setError("Erreur lors de l'enregistrement de la clé")
     }
   }
 
   const handleSetName = async () => {
     if (!deviceName.trim()) {
-      setError('Veuillez entrer un nom pour votre appareil')
+      setCredentialNameState.setAnError(
+        'Veuillez entrer un nom pour votre appareil',
+      )
       return
     }
 
@@ -149,14 +148,12 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
       setDeviceName('')
       setCurrentStep('transfer-choice')
       onStatusChange()
-    } else {
-      setError('Erreur lors de la définition du nom')
     }
   }
 
   const handleDisable = async () => {
     if (disableMethod === 'password' && !disablePassword) {
-      setError('Veuillez entrer votre mot de passe')
+      disableWebAuthnState.setAnError('Veuillez entrer votre mot de passe')
       return
     }
 
@@ -170,16 +167,11 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
       closeDisableFlow()
       setDisablePassword('')
       onStatusChange()
-    } else {
-      setError(
-        disableMethod === 'password'
-          ? 'Mot de passe incorrect'
-          : 'Erreur de vérification',
-      )
     }
   }
 
   const handleDeleteCredential = async (id: string) => {
+    deleteCredentialState.resetError()
     if (
       window.confirm(
         'Êtes-vous sûr de vouloir supprimer cette clé de sécurité ?',
@@ -191,8 +183,6 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
         if (primaryCredentials.length <= 1) {
           closeCredentialsList()
         }
-      } else {
-        setError('Erreur lors de la suppression')
       }
     }
   }
@@ -225,13 +215,12 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
               </p>
             </div>
 
-            {error && (
-              <ErrorMessage
-                message={error}
-                type='error'
-                onClose={() => setError(null)}
-              />
-            )}
+            <ErrorMessage
+              message={transferCredentialsState.error}
+              type='error'
+              onClose={() => transferCredentialsState.resetError()}
+              isVisible={!!transferCredentialsState.error}
+            />
 
             <motion.div
               className='space-y-4'
@@ -313,13 +302,12 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
               </p>
             </div>
 
-            {error && (
-              <ErrorMessage
-                message={error}
-                type='error'
-                onClose={() => setError(null)}
-              />
-            )}
+            <ErrorMessage
+              message={registerDeviceState.error}
+              type='error'
+              onClose={() => registerDeviceState.resetError()}
+              isVisible={!!registerDeviceState.error}
+            />
 
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -366,13 +354,12 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
               </p>
             </div>
 
-            {error && (
-              <ErrorMessage
-                message={error}
-                type='error'
-                onClose={() => setError(null)}
-              />
-            )}
+            <ErrorMessage
+              message={setCredentialNameState.error}
+              type='error'
+              onClose={() => setCredentialNameState.resetError()}
+              isVisible={!!setCredentialNameState.error}
+            />
 
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -393,7 +380,7 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
               <PrimaryButton
                 onClick={handleSetName}
                 loading={setCredentialNameState.loading}
-                disabled={!deviceName.trim()}
+                disabled={!deviceName.trim() || setCredentialNameState.loading}
                 fullWidth
               >
                 Continuer
@@ -433,13 +420,12 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
         </p>
       </div>
 
-      {error && (
-        <ErrorMessage
-          message={error}
-          type='error'
-          onClose={() => setError(null)}
-        />
-      )}
+      <ErrorMessage
+        message={disableWebAuthnState.error}
+        type='error'
+        onClose={() => disableWebAuthnState.resetError()}
+        isVisible={!!disableWebAuthnState.error}
+      />
 
       <div className='space-y-4'>
         <motion.div
@@ -450,7 +436,7 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
           <motion.button
             onClick={() => {
               setDisableMethod('password')
-              setError(null)
+              disableWebAuthnState.resetError()
             }}
             className={`flex-1 rounded-lg border-2 p-4 transition-all ${
               disableMethod === 'password'
@@ -468,7 +454,7 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
           <motion.button
             onClick={() => {
               setDisableMethod('webauthn')
-              setError(null)
+              disableWebAuthnState.resetError()
             }}
             className={`flex-1 rounded-lg border-2 p-4 transition-all ${
               disableMethod === 'webauthn'
@@ -646,7 +632,9 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
         onClose={() => {
           closeEnableFlow()
           setCurrentStep('transfer-choice')
-          setError(null)
+          registerDeviceState.resetError()
+          transferCredentialsState.resetError()
+          setCredentialNameState.resetError()
         }}
         title='Activer la connexion sans mot de passe'
         size='md'
@@ -693,7 +681,7 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
       <Modal
         onClose={() => {
           closeDisableFlow()
-          setError(null)
+          disableWebAuthnState.resetError()
         }}
         title='Désactiver la connexion sans mot de passe'
         size='md'

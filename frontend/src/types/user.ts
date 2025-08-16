@@ -51,6 +51,7 @@ export interface LoginHistory {
   userAgent?: string
   location?: string
   deviceType?: string
+  deviceName?: string
   browser?: string
   os?: string
   lastActive?: Date

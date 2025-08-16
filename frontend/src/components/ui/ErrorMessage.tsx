@@ -194,6 +194,7 @@ const ErrorMessage: React.FC<ErrorMessageProps> = ({
               >
                 <motion.button
                   onClick={onClose}
+                  type='button'
                   whileHover={{ scale: 1.1 }}
                   whileTap={{ scale: 0.9 }}
                   className={`rounded p-1 hover:bg-black/10 dark:hover:bg-white/10 ${config.textColor}`}

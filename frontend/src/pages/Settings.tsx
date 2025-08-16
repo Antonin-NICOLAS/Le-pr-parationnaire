@@ -14,6 +14,7 @@ import {
   Trash2,
   CircleX,
   RefreshCw,
+  Smartphone,
   Lock,
   KeyRound,
   Pen,
@@ -261,12 +262,16 @@ const SettingsPage: React.FC = () => {
                 >
                   <div className='flex flex-1 items-center space-x-3'>
                     <div className='flex-shrink-0'>
-                      <Monitor size={20} className='text-gray-500' />
+                      {session.deviceType === 'Desktop' ? (
+                        <Monitor size={20} className='text-gray-500' />
+                      ) : (
+                        <Smartphone size={20} className='text-gray-500' />
+                      )}
                     </div>
                     <div className='flex-1'>
                       <div className='flex items-center space-x-2'>
                         <span className='font-medium text-gray-900 dark:text-gray-100'>
-                          {session.deviceType}
+                          {session.deviceName}
                         </span>
                         {session.isCurrent && (
                           <span className='rounded-full bg-green-100 px-2 py-1 text-xs text-green-800 dark:bg-green-900/20 dark:text-green-400'>

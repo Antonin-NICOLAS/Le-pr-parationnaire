@@ -153,8 +153,8 @@ export const login = asyncHandler(async (req: Request, res: Response) => {
     },
   ).lean()
 
-  if (!assertUserExists(user, res, t)) {
-    return
+  if (!user) {
+    return ApiResponse.error(res, t('auth:errors.invalid_credentials'), 404)
   }
 
   const isMatch = await comparePassword(password, user.password)

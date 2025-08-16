@@ -58,7 +58,7 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
 
   // Flow states
   const [enableStep, setEnableStep] = useState<
-    'info' | 'method' | 'config' | 'verify' | 'backup' | 'security' | 'name'
+    'info' | 'method' | 'verify' | 'backup' | 'security' | 'name'
   >('info')
   const [disableStep, setDisableStep] = useState<'method' | 'verify'>('method')
   const [selectedMethod, setSelectedMethod] = useState<
@@ -71,7 +71,6 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
   const [selectedCredentials, setSelectedCredentials] = useState<string[]>([])
   const [deviceName, setDeviceName] = useState('')
   const [direction, setDirection] = useState(1)
-  const [error, setError] = useState<string | null>(null)
   const [verificationCode, setVerificationCode] = useState<string[]>(
     Array(6).fill(''),
   )
@@ -110,7 +109,14 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
   const resetEnableFlow = () => {
     setEnableStep('info')
     setVerificationCode(Array(6).fill(''))
-    setError(null)
+    registerDeviceState.resetError()
+    transferCredentialsState.resetError()
+    setCredentialNameState.resetError()
+    configureAppState.resetError()
+    configureEmailState.resetError()
+    resendCodeState.resetError()
+    enableAppState.resetError()
+    enableEmailState.resetError()
   }
 
   const handleEnable = () => {
@@ -120,15 +126,14 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
 
   const handleDisable = () => {
     setDisableStep('method')
-    setError(null)
     openDisableFlow()
+    disableTwoFactorState.resetError()
   }
 
   const changeStep = (
     oldStep: typeof enableStep | typeof disableStep,
     newStep: typeof enableStep | typeof disableStep,
   ) => {
-    console.log(`Changing step from ${oldStep} to ${newStep}`)
     if (
       (oldStep === 'method' || oldStep === 'verify') &&
       (newStep === 'verify' || newStep === 'method')
@@ -164,45 +169,50 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
   }
 
   const handleMethodSelection = async () => {
-    setEnableStep('config')
+    setEnableStep('verify')
     setVerificationCode(Array(6).fill(''))
-    setError(null)
+    registerDeviceState.resetError()
+    transferCredentialsState.resetError()
+    setCredentialNameState.resetError()
+    configureAppState.resetError()
+    configureEmailState.resetError()
+    resendCodeState.resetError()
+    enableAppState.resetError()
+    enableEmailState.resetError()
 
-    try {
-      switch (selectedMethod) {
-        case 'email':
-          await configureEmail()
-          break
-        case 'app':
-          await configureApp()
-          break
-        case 'webauthn':
-          // Check if at least one primary credential is different from secondary ones
-          if (
-            primaryCredentials.some(
-              (credential) =>
-                !secondaryCredentials?.some(
-                  (secondaryCredential) =>
-                    credential.id === secondaryCredential.id,
-                ),
-            )
-          ) {
-            setShowKeyTransferOption(true)
-          } else {
-            await registerDevice('secondary')
-          }
-          break
-      }
-    } catch (err) {
-      setError('Erreur lors de la configuration de la méthode sélectionnée')
+    switch (selectedMethod) {
+      case 'email':
+        await configureEmail()
+        break
+      case 'app':
+        await configureApp()
+        break
+      case 'webauthn':
+        if (
+          primaryCredentials.some(
+            (credential) =>
+              !secondaryCredentials?.some(
+                (secondaryCredential) =>
+                  credential.id === secondaryCredential.id,
+              ),
+          )
+        ) {
+          setShowKeyTransferOption(true)
+        } else {
+          await registerDevice('secondary')
+        }
+        break
     }
   }
 
   const handleTransferPrimaryKeys = async () => {
     if (selectedCredentials.length === 0) {
-      setError('Veuillez sélectionner au moins une clé de sécurité')
+      transferCredentialsState.setAnError(
+        'Veuillez sélectionner au moins une clé de sécurité',
+      )
       return
     }
+    transferCredentialsState.resetError()
     const result = await transferCredentials(
       'primary',
       'secondary',
@@ -213,35 +223,31 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
       setShowKeyTransferOption(false)
       setSelectedCredentials([])
       setEnableStep('backup')
-      setError(null)
-    } else {
-      setError('Erreur lors du transfert de certaines clés')
     }
   }
 
   const handleRegisterNewKey = async () => {
     setShowKeyTransferOption(false)
     setSelectedCredentials([])
-    try {
-      const result = await registerDevice('secondary')
-      if (result.success) {
-        if (result.RequiresSetName) {
-          setEnableStep('name')
-        } else {
-          setEnableStep('backup')
-        }
+    registerDeviceState.resetError()
+    const result = await registerDevice('secondary')
+    if (result.success) {
+      if (result.RequiresSetName) {
+        setEnableStep('name')
+      } else {
+        setEnableStep('backup')
       }
-    } catch (err) {
-      setError("Erreur lors de l'enregistrement de la nouvelle clé")
     }
   }
 
   const handleSetName = async () => {
     if (!deviceName.trim()) {
-      setError('Veuillez entrer un nom pour votre appareil')
+      setCredentialNameState.setAnError(
+        'Veuillez entrer un nom pour votre appareil',
+      )
       return
     }
-
+    setCredentialNameState.resetError()
     const result = await setCredentialName(
       'secondary',
       registerDeviceState.data.credentialId,
@@ -250,9 +256,6 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
     if (result.success) {
       setDeviceName('')
       setEnableStep('backup')
-      setError(null)
-    } else {
-      setError('Erreur lors de la définition du nom')
     }
   }
 
@@ -268,38 +271,28 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
     const code = verificationCode.join('')
     let result
 
-    try {
-      switch (selectedMethod) {
-        case 'email':
-          result = await enableEmail(code)
-          break
-        case 'app':
-          result = await enableApp(code)
-          break
-        case 'webauthn':
-          result = { success: true }
-          break
-      }
+    switch (selectedMethod) {
+      case 'email':
+        result = await enableEmail(code)
+        break
+      case 'app':
+        result = await enableApp(code)
+        break
+      case 'webauthn':
+        result = { success: true }
+        break
+    }
 
-      if (result?.success) {
-        setVerificationCode(Array(6).fill(''))
-        setEnableStep('backup')
-      } else {
-        setError('Code de vérification incorrect')
-      }
-    } catch (err) {
-      setError('Erreur lors de la vérification')
+    if (result?.success) {
+      setVerificationCode(Array(6).fill(''))
+      setEnableStep('backup')
     }
   }
 
   const handleResendCode = async (context: 'config' | 'disable') => {
     resendCodeState.resetError()
     if (selectedMethod === 'email') {
-      try {
-        await resendCode(user?.email, context)
-      } catch (err) {
-        setError("Erreur lors de l'envoi du code")
-      }
+      await resendCode(user?.email, context)
     }
   }
 
@@ -320,15 +313,11 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
   }
 
   const loadSecurityQuestions = async () => {
-    try {
-      const questions = await getAvailableQuestions()
-      setSecurityQuestions(questions.slice(0, 2))
-      setSecurityAnswers(
-        questions.slice(0, 2).map((q) => ({ questionId: q.id, answer: '' })),
-      )
-    } catch (err) {
-      setError('Erreur lors du chargement des questions de sécurité')
-    }
+    const questions = await getAvailableQuestions()
+    setSecurityQuestions(questions.slice(0, 2))
+    setSecurityAnswers(
+      questions.slice(0, 2).map((q) => ({ questionId: q.id, answer: '' })),
+    )
   }
 
   const MethodCard = ({
@@ -376,14 +365,6 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
                 Renforcez la sécurité de votre compte
               </p>
             </div>
-
-            {error && (
-              <ErrorMessage
-                message={error}
-                type='error'
-                onClose={() => setError(null)}
-              />
-            )}
 
             <div className='space-y-4'>
               <ErrorMessage
@@ -480,7 +461,7 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
           </div>
         )
 
-      case 'config':
+      case 'verify':
         if (showKeyTransferOption) {
           return (
             <div className='space-y-6'>
@@ -502,13 +483,20 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
                 </p>
               </div>
 
-              {error && (
-                <ErrorMessage
-                  message={error}
-                  type='error'
-                  onClose={() => setError(null)}
-                />
-              )}
+              <ErrorMessage
+                message={
+                  transferCredentialsState.error || registerDeviceState.error
+                }
+                type='error'
+                onClose={() => {
+                  transferCredentialsState.resetError()
+                  registerDeviceState.resetError()
+                }}
+                isVisible={
+                  !!transferCredentialsState.error ||
+                  !!registerDeviceState.error
+                }
+              />
 
               <motion.div
                 className='space-y-4'
@@ -610,13 +598,15 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
               </h3>
             </div>
 
-            {error && (
-              <ErrorMessage
-                message={error}
-                type='error'
-                onClose={() => setError(null)}
-              />
-            )}
+            <ErrorMessage
+              message={enableEmailState.error || enableAppState.error}
+              type='error'
+              onClose={() => {
+                enableEmailState.resetError()
+                enableAppState.resetError()
+              }}
+              isVisible={!!enableEmailState.error || !!enableAppState.error}
+            />
 
             {selectedMethod === 'email' && (
               <motion.div
@@ -739,60 +729,6 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
           </div>
         )
 
-      case 'verify':
-        return (
-          <div className='space-y-6'>
-            <div className='text-center'>
-              <h3 className='text-lg font-semibold text-gray-900 dark:text-gray-100'>
-                Vérification par Email
-              </h3>
-            </div>
-
-            {error && (
-              <ErrorMessage
-                message={error}
-                type='error'
-                onClose={() => setError(null)}
-              />
-            )}
-
-            <motion.div
-              className='space-y-4'
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-            >
-              <p className='text-sm text-gray-600 dark:text-gray-400'>
-                Entrez le code à 6 chiffres envoyé à{' '}
-                <span className='font-medium'>{user?.email}</span>
-              </p>
-
-              <SixDigitCodeInput
-                value={verificationCode}
-                onChange={setVerificationCode}
-                onComplete={handleMethodVerification}
-                loading={enableEmailState.loading}
-                disabled={enableEmailState.loading || resendCodeState.loading}
-                error={!!enableEmailState.error}
-                autoFocus
-              />
-              <ResendSection
-                onResend={() => handleResendCode('config')}
-                countdownSeconds={60}
-                loading={resendCodeState.loading}
-              />
-            </motion.div>
-
-            <motion.button
-              onClick={() => changeStep(enableStep, 'config')}
-              className='flex items-center justify-center text-sm text-blue-600 hover:text-blue-700 dark:text-blue-400'
-              whileHover={{ x: -2 }}
-            >
-              <ChevronLeft className='h-4 w-4' />
-              Retour à la configuration
-            </motion.button>
-          </div>
-        )
-
       case 'backup':
         return (
           <BackupCodesDisplay
@@ -850,13 +786,12 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
               </p>
             </div>
 
-            {error && (
-              <ErrorMessage
-                message={error}
-                type='error'
-                onClose={() => setError(null)}
-              />
-            )}
+            <ErrorMessage
+              message={setCredentialNameState.error}
+              type='error'
+              onClose={() => setCredentialNameState.resetError()}
+              isVisible={!!setCredentialNameState.error}
+            />
 
             <motion.div
               initial={{ opacity: 0, y: 10 }}
@@ -922,19 +857,13 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
               </p>
             </div>
 
-            {error && (
+            <div className='w-full text-center'>
               <ErrorMessage
-                message={error}
-                type='error'
-                onClose={() => setError(null)}
+                type='warning'
+                title='Attention'
+                message="Cette action réduira la sécurité de votre compte. Assurez-vous d'avoir une autre méthode de protection."
               />
-            )}
-
-            <ErrorMessage
-              type='warning'
-              title='Attention'
-              message="Cette action réduira la sécurité de votre compte. Assurez-vous d'avoir une autre méthode de protection."
-            />
+            </div>
 
             <div className='grid grid-cols-2 min-[706px]:grid-cols-3 gap-3'>
               <MethodSelectionCard
@@ -1047,13 +976,12 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
               </h3>
             </div>
 
-            {error && (
-              <ErrorMessage
-                message={error}
-                type='error'
-                onClose={() => setError(null)}
-              />
-            )}
+            <ErrorMessage
+              message={disableTwoFactorState.error}
+              type='error'
+              onClose={() => disableTwoFactorState.resetError()}
+              isVisible={!!disableTwoFactorState.error}
+            />
 
             {disableMethod === 'password' && (
               <motion.div
@@ -1305,7 +1233,8 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
       <Modal
         onClose={() => {
           closeDisableFlow()
-          setError(null)
+          disableTwoFactorState.resetError()
+          disableTwoFactorState.resetData()
         }}
         title='Désactiver la 2FA'
         size='lg'

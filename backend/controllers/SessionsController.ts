@@ -14,7 +14,7 @@ export const getActiveSessions = asyncHandler(
 
     await SessionService.cleanupExpiredSessions(user._id)
 
-    const sessions = SessionService.getActiveSessions(
+    const sessions = await SessionService.getActiveSessions(
       user._id,
       currentSessionId,
     )

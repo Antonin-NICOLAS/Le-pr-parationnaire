@@ -284,13 +284,12 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
           />
         </div>
 
-        {disableAppState.error && (
-          <ErrorMessage
-            message={disableAppState.error}
-            type='error'
-            onClose={() => disableAppState.resetError()}
-          />
-        )}
+        <ErrorMessage
+          message={disableAppState.error}
+          type='error'
+          onClose={() => disableAppState.resetError()}
+          isVisible={!!disableAppState.error}
+        />
 
         {disableMethod === 'otp' ? (
           <SixDigitCodeInput
