@@ -1,4 +1,5 @@
 {
+  "errors.bad_request": "The request is invalid. \nPlease try again later.",
   "errors.server_error": "Internal Server Error. Please repeat later.",
   "min": "minutes",
   "request_limit": "Too many requests, please try again in",
