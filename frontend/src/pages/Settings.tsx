@@ -75,15 +75,17 @@ const SettingsPage: React.FC = () => {
     deleteAccountState,
   } = useUserSettings()
 
-  const tabs = [
-    { id: 'security', label: 'Sécurité', icon: Shield },
-    { id: 'notifications', label: 'Notifications', icon: Bell },
-    { id: '2fa', label: 'Double authentification', icon: Key },
-    { id: 'account', label: 'Compte', icon: Trash2 },
-  ]
-
   // 2FA state
   const { getTwoFactorStatus, getTwoFactorStatusState } = useTwoFactorAuth()
+
+  const tabs = [
+    { id: 'security', label: 'Sécurité', icon: Shield },
+    getTwoFactorStatusState.data?.isEnabled
+      ? { id: '2fa', label: 'Double authentification', icon: Key }
+      : null,
+    { id: 'notifications', label: 'Notifications', icon: Bell },
+    { id: 'account', label: 'Compte', icon: Trash2 },
+  ]
 
   // Email/password change states
   const [showPasswordForm, setShowPasswordForm] = useState(false)
@@ -1074,7 +1076,9 @@ const SettingsPage: React.FC = () => {
       </div>
 
       <TabNavigation
-        tabs={tabs}
+        tabs={tabs.filter(
+          (tab): tab is Exclude<typeof tab, null> => tab !== null,
+        )}
         activeTab={tab}
         onTabChange={(id) => {
           navigate(`/settings/${id}`)
@@ -1084,8 +1088,8 @@ const SettingsPage: React.FC = () => {
 
       <div className=''>
         {tab === 'security' && renderSecurityTab()}
-        {tab === 'notifications' && renderNotificationsTab()}
         {tab === '2fa' && render2FATab()}
+        {tab === 'notifications' && renderNotificationsTab()}
         {tab === 'account' && renderAccountTab()}
       </div>
 

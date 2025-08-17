@@ -2,6 +2,7 @@ import { AlertCircle, Copy, QrCode, Shield, Smartphone } from 'lucide-react'
 import type React from 'react'
 import { useState } from 'react'
 import { toast } from 'sonner'
+import { motion, AnimatePresence } from 'framer-motion'
 
 import useAppTwoFactor from '../../hooks/TwoFactor/App'
 import useTwoFactorAuth from '../../hooks/TwoFactor/Main'
@@ -33,6 +34,7 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
   const [currentStep, setCurrentStep] = useState<
     'config' | 'qr' | 'verify' | 'backup' | 'security'
   >('config')
+  const [direction, setDirection] = useState(1)
   // Step 2: Verification Code
   const [verificationCode, setVerificationCode] = useState<string[]>(
     Array(6).fill(''),
@@ -52,13 +54,19 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
   } = useAppTwoFactor()
   const { setPreferredMethod, setPreferredMethodState } = useTwoFactorAuth()
 
+  const changeStep = (newStep: typeof currentStep) => {
+    const steps = ['config', 'qr', 'verify', 'backup', 'security']
+    setDirection(steps.indexOf(newStep) > steps.indexOf(currentStep) ? 1 : -1)
+    setCurrentStep(newStep)
+  }
+
   // Step 1 : Request QR Code and Secret
   const handleEnable = async () => {
     configureAppState.resetError()
     const result = await configureApp()
     if (result.success) {
       openEnableFlow()
-      setCurrentStep('qr')
+      changeStep('qr')
     }
   }
 
@@ -78,7 +86,7 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
 
     const result = await enableApp(code)
     if (result.success) {
-      setCurrentStep('backup')
+      changeStep('backup')
     }
   }
 
@@ -114,11 +122,21 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
     switch (currentStep) {
       case 'qr':
         return (
-          <div className='space-y-6'>
+          <motion.div
+            className='space-y-6'
+            initial={{ opacity: 0, y: 10 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.2 }}
+          >
             <div className='text-center'>
-              <div className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/20'>
-                <QrCode className='h-8 w-8 text-green-600 dark:text-green-400' />
-              </div>
+              <motion.div
+                className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-yellow-100 dark:bg-yellow-900/20'
+                initial={{ scale: 0.8 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', stiffness: 500 }}
+              >
+                <QrCode className='h-8 w-8 text-yellow-600 dark:text-yellow-400' />
+              </motion.div>
               <h3 className='text-lg font-semibold text-gray-900 dark:text-gray-100'>
                 Scannez le QR Code
               </h3>
@@ -127,6 +145,15 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
                 code
               </p>
             </div>
+
+            <ErrorMessage
+              message={configureAppState.error}
+              type='error'
+              onClose={() => {
+                configureAppState.resetError()
+              }}
+              isVisible={!!configureAppState.error}
+            />
 
             {configureAppState.data.qrCode && (
               <div className='flex justify-center'>
@@ -140,7 +167,12 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
               </div>
             )}
 
-            <div className='space-y-3'>
+            <motion.div
+              className='space-y-3'
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
               <p className='text-sm font-medium text-gray-900 dark:text-gray-100'>
                 Ou entrez cette clé manuellement :
               </p>
@@ -157,33 +189,46 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
                   Copier
                 </PrimaryButton>
               </div>
-            </div>
+            </motion.div>
 
-            <div className='rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800/30 dark:bg-blue-900/20'>
-              <h4 className='mb-2 font-medium text-blue-900 dark:text-blue-100'>
-                Applications recommandées :
-              </h4>
-              <ul className='space-y-1 text-sm text-blue-800 dark:text-blue-200'>
-                <li>• Google Authenticator</li>
-                <li>• Authy</li>
-                <li>• Microsoft Authenticator</li>
-                <li>• Apple Passwords (iOS 15+)</li>
-              </ul>
-            </div>
+            <motion.div
+              className='text-center'
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <ErrorMessage
+                title='Applications recommandées :'
+                message={
+                  <ul className='space-y-1'>
+                    <li>• Google Authenticator</li>
+                    <li>• Authy</li>
+                    <li>• Microsoft Authenticator</li>
+                    <li>• Apple Passwords (iOS 15+)</li>
+                  </ul>
+                }
+                type='info'
+              />
+            </motion.div>
 
-            <PrimaryButton onClick={() => setCurrentStep('verify')} fullWidth>
+            <PrimaryButton onClick={() => changeStep('verify')} fullWidth>
               Continuer
             </PrimaryButton>
-          </div>
+          </motion.div>
         )
 
       case 'verify':
         return (
           <div className='space-y-6'>
             <div className='text-center'>
-              <div className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/20'>
+              <motion.div
+                className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/20'
+                initial={{ scale: 0.8 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', stiffness: 500 }}
+              >
                 <Smartphone className='h-8 w-8 text-green-600 dark:text-green-400' />
-              </div>
+              </motion.div>
               <h3 className='text-lg font-semibold text-gray-900 dark:text-gray-100'>
                 Vérifiez votre application
               </h3>
@@ -192,14 +237,20 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
               </p>
             </div>
 
-            <SixDigitCodeInput
-              value={verificationCode}
-              onComplete={handleVerifyCode}
-              onChange={setVerificationCode}
-              loading={enableAppState.loading}
-              disabled={enableAppState.loading}
-              autoFocus
-            />
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <SixDigitCodeInput
+                value={verificationCode}
+                onComplete={handleVerifyCode}
+                onChange={setVerificationCode}
+                loading={enableAppState.loading}
+                disabled={enableAppState.loading}
+                autoFocus
+              />
+            </motion.div>
 
             <div className='flex space-x-3'>
               <PrimaryButton
@@ -212,7 +263,7 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
               </PrimaryButton>
               <PrimaryButton
                 variant='outline'
-                onClick={() => setCurrentStep('qr')}
+                onClick={() => changeStep('qr')}
                 fullWidth
               >
                 Retour
@@ -227,7 +278,7 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
             codes={enableAppState.data.backupCodes.map(
               (code: any) => code.code,
             )}
-            onContinue={() => setCurrentStep('security')}
+            onContinue={() => changeStep('security')}
             onSkip={handleFlowComplete}
             isModal
           />
@@ -249,9 +300,14 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
   const renderDisableFlow = () => (
     <div className='space-y-6'>
       <div className='text-center'>
-        <div className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20'>
+        <motion.div
+          className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20'
+          initial={{ scale: 0.8 }}
+          animate={{ scale: 1 }}
+          transition={{ type: 'spring', stiffness: 500 }}
+        >
           <AlertCircle className='h-8 w-8 text-red-600 dark:text-red-400' />
-        </div>
+        </motion.div>
         <h3 className='text-lg font-semibold text-gray-900 dark:text-gray-100'>
           Désactiver la 2FA par application
         </h3>
@@ -261,7 +317,12 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
       </div>
 
       <div className='space-y-4'>
-        <div className='grid grid-cols-2 gap-3'>
+        <motion.div
+          className='grid grid-cols-2 gap-3'
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
           <MethodSelectionCard
             icon={Smartphone}
             title='Application'
@@ -282,7 +343,7 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
             layout='vertical'
             showChevron={false}
           />
-        </div>
+        </motion.div>
 
         <ErrorMessage
           message={disableAppState.error}
@@ -291,24 +352,42 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
           isVisible={!!disableAppState.error}
         />
 
-        {disableMethod === 'otp' ? (
-          <SixDigitCodeInput
-            value={disableCode}
-            onChange={setDisableCode}
-            disabled={disableAppState.loading}
-            loading={disableAppState.loading}
-            onComplete={() => handleDisable()}
-            autoFocus
-          />
-        ) : (
-          <CustomInput
-            type='password'
-            label='Mot de passe'
-            value={disablePassword}
-            onChange={(e) => setDisablePassword(e.target.value)}
-            autoFocus
-          />
-        )}
+        <AnimatePresence mode='wait'>
+          {disableMethod === 'otp' ? (
+            <motion.div
+              key='otp-input'
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <SixDigitCodeInput
+                value={disableCode}
+                onChange={setDisableCode}
+                disabled={disableAppState.loading}
+                loading={disableAppState.loading}
+                onComplete={() => handleDisable()}
+                autoFocus
+              />
+            </motion.div>
+          ) : (
+            <motion.div
+              key='password-input'
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <CustomInput
+                type='password'
+                label='Mot de passe'
+                value={disablePassword}
+                onChange={(e) => setDisablePassword(e.target.value)}
+                autoFocus
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <div className='flex space-x-3'>
@@ -355,7 +434,33 @@ const AppTwoFactor: React.FC<AppTwoFactorProps> = ({
         size='lg'
         urlName='enable-app-2fa'
       >
-        {renderEnableFlow()}
+        <AnimatePresence custom={direction} mode='wait'>
+          <motion.div
+            key={currentStep}
+            custom={direction}
+            variants={{
+              enter: (direction: number) => ({
+                x: direction > 0 ? 50 : -50,
+                opacity: 0,
+              }),
+              center: {
+                x: 0,
+                opacity: 1,
+                transition: { duration: 0.3 },
+              },
+              exit: (direction: number) => ({
+                x: direction < 0 ? 50 : -50,
+                opacity: 0,
+                transition: { duration: 0.2 },
+              }),
+            }}
+            initial='enter'
+            animate='center'
+            exit='exit'
+          >
+            {renderEnableFlow()}
+          </motion.div>
+        </AnimatePresence>
       </Modal>
 
       <Modal

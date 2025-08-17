@@ -14,7 +14,10 @@ import {
   Lock,
   CheckCircle,
   UserCheck,
+  QrCode,
+  Copy,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import { motion, AnimatePresence } from 'framer-motion'
 import ResendSection from '../ui/ResendSection'
 import ToggleSwitch from '../ui/ToggleSwitch'
@@ -58,7 +61,7 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
 
   // Flow states
   const [enableStep, setEnableStep] = useState<
-    'info' | 'method' | 'verify' | 'backup' | 'security' | 'name'
+    'info' | 'method' | 'verify' | 'verify-app' | 'backup' | 'security' | 'name'
   >('info')
   const [disableStep, setDisableStep] = useState<'method' | 'verify'>('method')
   const [selectedMethod, setSelectedMethod] = useState<
@@ -134,38 +137,30 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
     oldStep: typeof enableStep | typeof disableStep,
     newStep: typeof enableStep | typeof disableStep,
   ) => {
-    if (
-      (oldStep === 'method' || oldStep === 'verify') &&
-      (newStep === 'verify' || newStep === 'method')
-    ) {
-      setDirection(newStep === 'method' ? -1 : 1)
-      setDisableStep(newStep)
-    } else {
-      console.log(enableStep.indexOf(oldStep), enableStep.indexOf(newStep))
-      setDirection(
+    newStep
+    setDirection(
+      [
+        'info',
+        'method',
+        'verify',
+        'verify-app',
+        'backup',
+        'security',
+        'name',
+      ].indexOf(oldStep) <
         [
           'info',
           'method',
-          'config',
           'verify',
+          'verify-app',
           'backup',
           'security',
           'name',
-        ].indexOf(oldStep) <
-          [
-            'info',
-            'method',
-            'config',
-            'verify',
-            'backup',
-            'security',
-            'name',
-          ].indexOf(newStep)
-          ? 1
-          : -1,
-      )
-      setEnableStep(newStep)
-    }
+        ].indexOf(newStep)
+        ? 1
+        : -1,
+    )
+    setEnableStep(newStep)
   }
 
   const handleMethodSelection = async () => {
@@ -343,6 +338,14 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
       showChevron={true}
     />
   )
+
+  // Copy secret to clipboard
+  const handleCopySecret = () => {
+    if (configureAppState.data?.secret) {
+      navigator.clipboard.writeText(configureAppState.data.secret)
+      toast.success('Clé copiée dans le presse-papiers')
+    }
+  }
 
   const renderEnableFlow = () => {
     switch (enableStep) {
@@ -580,11 +583,12 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
                 }`}
                 initial={{ scale: 0.8 }}
                 animate={{ scale: 1 }}
+                transition={{ type: 'spring', stiffness: 500 }}
               >
                 {selectedMethod === 'email' ? (
                   <Mail className='h-8 w-8 text-blue-600 dark:text-blue-400' />
                 ) : selectedMethod === 'app' ? (
-                  <Smartphone className='h-8 w-8 text-yellow-600 dark:text-yellow-400' />
+                  <QrCode className='h-8 w-8 text-yellow-600 dark:text-yellow-400' />
                 ) : (
                   <Fingerprint className='h-8 w-8 text-purple-600 dark:text-purple-400' />
                 )}
@@ -593,9 +597,22 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
                 {selectedMethod === 'email'
                   ? 'Vérification par Email'
                   : selectedMethod === 'app'
-                    ? "Configuration de l'application"
+                    ? 'Scannez le QR Code'
                     : 'Enregistrement de clé'}
               </h3>
+              <p className='text-sm text-gray-600 dark:text-gray-400'>
+                {selectedMethod === 'email' ? (
+                  <>
+                    Entrez le code à 6 chiffres envoyé à{' '}
+                    <span className='font-medium'>{user?.email}</span>
+                  </>
+                ) : (
+                  <>
+                    Utilisez votre application d'authentification pour scanner
+                    ce code
+                  </>
+                )}
+              </p>
             </div>
 
             <ErrorMessage
@@ -610,15 +627,11 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
 
             {selectedMethod === 'email' && (
               <motion.div
-                className='space-y-4'
+                className='space-y-6'
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: 0.2 }}
               >
-                <p className='text-sm text-gray-600 dark:text-gray-400'>
-                  Entrez le code à 6 chiffres envoyé à{' '}
-                  <span className='font-medium'>{user?.email}</span>
-                </p>
-
                 <SixDigitCodeInput
                   value={verificationCode}
                   onChange={setVerificationCode}
@@ -632,40 +645,88 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
                   onResend={() => handleResendCode('config')}
                   countdownSeconds={60}
                   loading={resendCodeState.loading}
+                  align='center'
                 />
               </motion.div>
             )}
 
-            {selectedMethod === 'app' && configureAppState.data?.qrCode && (
+            {selectedMethod === 'app' && (
               <motion.div
-                className='space-y-4'
+                className='space-y-6'
                 initial={{ opacity: 0, y: 10 }}
                 animate={{ opacity: 1, y: 0 }}
               >
-                <div className='text-center'>
-                  <img
-                    src={configureAppState.data.qrCode || '/placeholder.svg'}
-                    alt='QR Code'
-                    className='mx-auto h-48 w-48 rounded-lg border bg-white p-2'
-                  />
-                  <p className='mt-2 text-sm font-mono bg-gray-100 dark:bg-gray-700 p-2 rounded'>
-                    {configureAppState.data.secret}
+                {configureAppState.data.qrCode && (
+                  <div className='flex justify-center'>
+                    <div className='rounded-lg border bg-white p-1'>
+                      <img
+                        src={
+                          configureAppState.data.qrCode || '/placeholder.svg'
+                        }
+                        alt='QR Code'
+                        className='h-48 w-48'
+                      />
+                    </div>
+                  </div>
+                )}
+                <motion.div
+                  className='space-y-3'
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.2 }}
+                >
+                  <p className='text-sm font-medium text-gray-900 dark:text-gray-100'>
+                    Ou entrez cette clé manuellement :
                   </p>
+                  <div className='flex items-center space-x-2'>
+                    <code className='flex-1 break-all rounded-lg bg-gray-100 p-3 font-mono text-sm dark:bg-gray-700'>
+                      {configureAppState.data.secret}
+                    </code>
+                    <PrimaryButton
+                      variant='outline'
+                      size='sm'
+                      onClick={handleCopySecret}
+                      icon={Copy}
+                    >
+                      Copier
+                    </PrimaryButton>
+                  </div>
+                </motion.div>
+                <motion.div
+                  className='text-center'
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  <ErrorMessage
+                    title='Applications recommandées :'
+                    message={
+                      <ul className='space-y-1'>
+                        <li>• Google Authenticator</li>
+                        <li>• Authy</li>
+                        <li>• Microsoft Authenticator</li>
+                        <li>• Apple Passwords (iOS 15+)</li>
+                      </ul>
+                    }
+                    type='info'
+                  />
+                </motion.div>
+
+                <div className='flex space-x-3'>
+                  <PrimaryButton
+                    onClick={() => changeStep(enableStep, 'verify-app')}
+                    fullWidth
+                  >
+                    Continuer
+                  </PrimaryButton>
+                  <PrimaryButton
+                    onClick={() => changeStep(enableStep, 'method')}
+                    variant='outline'
+                    fullWidth
+                  >
+                    Retour
+                  </PrimaryButton>
                 </div>
-                <ol className='list-decimal list-inside text-sm text-gray-600 dark:text-gray-400 space-y-2 pl-2'>
-                  <li>Scannez le QR code avec votre application</li>
-                  <li>Ou entrez manuellement le code secret</li>
-                  <li>Entrez le code généré ci-dessous</li>
-                </ol>
-                <SixDigitCodeInput
-                  value={verificationCode}
-                  onChange={setVerificationCode}
-                  onComplete={handleMethodVerification}
-                  loading={enableAppState.loading}
-                  disabled={enableAppState.loading}
-                  error={!!enableAppState.error}
-                  autoFocus
-                />
               </motion.div>
             )}
 
@@ -703,15 +764,8 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
               </motion.div>
             )}
 
-            {selectedMethod !== 'webauthn' && (
+            {selectedMethod === 'email' && (
               <div className='flex space-x-3'>
-                <PrimaryButton
-                  onClick={() => changeStep(enableStep, 'method')}
-                  variant='outline'
-                  fullWidth
-                >
-                  Retour
-                </PrimaryButton>
                 <PrimaryButton
                   onClick={handleMethodVerification}
                   disabled={
@@ -722,10 +776,73 @@ const TwoFactorMain: React.FC<TwoFactorMainProps> = ({
                   loading={enableEmailState.loading || enableAppState.loading}
                   fullWidth
                 >
-                  Vérifier
+                  Vérifier le code
+                </PrimaryButton>
+                <PrimaryButton
+                  onClick={() => changeStep(enableStep, 'method')}
+                  variant='outline'
+                  fullWidth
+                >
+                  Retour
                 </PrimaryButton>
               </div>
             )}
+          </div>
+        )
+
+      case 'verify-app':
+        return (
+          <div className='space-y-6'>
+            <div className='text-center'>
+              <motion.div
+                className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/20'
+                initial={{ scale: 0.8 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', stiffness: 500 }}
+              >
+                <Smartphone className='h-8 w-8 text-green-600 dark:text-green-400' />
+              </motion.div>
+              <h3 className='text-lg font-semibold text-gray-900 dark:text-gray-100'>
+                Vérifiez votre application
+              </h3>
+              <p className='text-sm text-gray-600 dark:text-gray-400'>
+                Entrez le code à 6 chiffres généré par votre application
+              </p>
+            </div>
+
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <SixDigitCodeInput
+                value={verificationCode}
+                onChange={setVerificationCode}
+                onComplete={handleMethodVerification}
+                loading={enableAppState.loading}
+                disabled={enableAppState.loading}
+                error={!!enableAppState.error}
+                autoFocus
+              />
+            </motion.div>
+
+            <div className='flex space-x-3'>
+              <PrimaryButton
+                onClick={handleMethodVerification}
+                loading={enableAppState.loading}
+                disabled={verificationCode.join('').length !== 6}
+                fullWidth
+              >
+                Vérifier le code
+              </PrimaryButton>
+              <PrimaryButton
+                variant='outline'
+                onClick={() => changeStep(enableStep, 'verify')}
+                fullWidth
+              >
+                Retour
+              </PrimaryButton>
+            </div>
           </div>
         )
 

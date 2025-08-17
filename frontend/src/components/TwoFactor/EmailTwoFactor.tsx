@@ -1,6 +1,7 @@
 import { AlertCircle, Mail, Shield } from 'lucide-react'
 import type React from 'react'
 import { useState } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 
 import { useAuth } from '../../context/Auth'
 import useEmailTwoFactor from '../../hooks/TwoFactor/Email'
@@ -38,6 +39,7 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
   const [currentStep, setCurrentStep] = useState<
     'config' | 'verify' | 'backup' | 'security'
   >('config')
+  const [direction, setDirection] = useState(1)
   const [verificationCode, setVerificationCode] = useState<string[]>(
     Array(6).fill(''),
   )
@@ -59,13 +61,19 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
 
   const { setPreferredMethod, setPreferredMethodState } = useTwoFactorAuth()
 
+  const changeStep = (newStep: typeof currentStep) => {
+    const steps = ['config', 'verify', 'backup', 'security']
+    setDirection(steps.indexOf(newStep) > steps.indexOf(currentStep) ? 1 : -1)
+    setCurrentStep(newStep)
+  }
+
   // Step 1: Send Verification code
   const handleEnable = async () => {
     configureEmailState.resetError()
     const result = await configureEmail()
     if (result.success) {
       openEnableFlow()
-      setCurrentStep('verify')
+      changeStep('verify')
     }
   }
 
@@ -79,7 +87,7 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
     enableEmailState.resetError()
     const result = await enableEmail(verificationCode.join(''))
     if (result.success) {
-      setCurrentStep('backup')
+      changeStep('backup')
       onStatusChange()
     }
   }
@@ -118,11 +126,16 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
         return (
           <div className='space-y-6'>
             <div className='text-center'>
-              <div className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/20'>
+              <motion.div
+                className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-blue-100 dark:bg-blue-900/20'
+                initial={{ scale: 0.8 }}
+                animate={{ scale: 1 }}
+                transition={{ type: 'spring', stiffness: 500 }}
+              >
                 <Mail className='h-8 w-8 text-blue-600 dark:text-blue-400' />
-              </div>
+              </motion.div>
               <h3 className='text-lg font-semibold text-gray-900 dark:text-gray-100'>
-                Vérifiez votre email
+                Vérification par Email
               </h3>
               <p className='text-center text-sm text-gray-600 dark:text-gray-400'>
                 Entrez le code à 6 chiffres envoyé à votre adresse email
@@ -136,23 +149,33 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
               isVisible={!!enableEmailState.error}
             />
 
-            <SixDigitCodeInput
-              value={verificationCode}
-              onChange={setVerificationCode}
-              disabled={enableEmailState.loading}
-              error={!!enableEmailState.error}
-              onComplete={() => handleVerifyCode()}
-              autoFocus
-            />
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+            >
+              <SixDigitCodeInput
+                value={verificationCode}
+                onChange={setVerificationCode}
+                disabled={enableEmailState.loading}
+                error={!!enableEmailState.error}
+                onComplete={() => handleVerifyCode()}
+                autoFocus
+              />
+            </motion.div>
 
-            <ResendSection
-              message="Vous n'avez pas reçu l'email ? Vérifiez votre dossier Indésirables ou"
-              countdownSeconds={60}
-              onResend={() => handleResendCode('config')}
-              loading={resendCodeState.loading}
-              buttonText='Renvoyer un code'
-              align='center'
-            />
+            <motion.div
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.3 }}
+            >
+              <ResendSection
+                countdownSeconds={60}
+                onResend={() => handleResendCode('config')}
+                loading={resendCodeState.loading}
+                align='center'
+              />
+            </motion.div>
 
             <div className='flex space-x-3'>
               <PrimaryButton
@@ -180,7 +203,7 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
             codes={enableEmailState.data.backupCodes.map(
               (code: any) => code.code,
             )}
-            onContinue={() => setCurrentStep('security')}
+            onContinue={() => changeStep('security')}
             onSkip={handleFlowComplete}
             isModal
           />
@@ -202,9 +225,14 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
   const renderDisableFlow = () => (
     <div className='space-y-6'>
       <div className='text-center'>
-        <div className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20'>
+        <motion.div
+          className='mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/20'
+          initial={{ scale: 0.8 }}
+          animate={{ scale: 1 }}
+          transition={{ type: 'spring', stiffness: 500 }}
+        >
           <AlertCircle className='h-8 w-8 text-red-600 dark:text-red-400' />
-        </div>
+        </motion.div>
         <h3 className='text-lg font-semibold text-gray-900 dark:text-gray-100'>
           Désactiver la 2FA par email
         </h3>
@@ -214,7 +242,12 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
       </div>
 
       <div className='space-y-4'>
-        <div className='grid grid-cols-2 gap-3'>
+        <motion.div
+          className='grid grid-cols-2 gap-3'
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+        >
           <MethodSelectionCard
             icon={Mail}
             title='Code par email'
@@ -235,7 +268,7 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
             layout='vertical'
             showChevron={false}
           />
-        </div>
+        </motion.div>
 
         <ErrorMessage
           message={disableEmailState.error}
@@ -244,35 +277,52 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
           isVisible={!!disableEmailState.error}
         />
 
-        {disableMethod === 'otp' ? (
-          <div className='space-y-4'>
-            <SixDigitCodeInput
-              value={disableCode}
-              onChange={setDisableCode}
-              disabled={disableEmailState.loading}
-              error={!!disableEmailState.error}
-              onComplete={() => handleDisable()}
-              autoFocus
-            />
+        <AnimatePresence mode='wait'>
+          {disableMethod === 'otp' ? (
+            <motion.div
+              key='otp-section'
+              className='space-y-4'
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <SixDigitCodeInput
+                value={disableCode}
+                onChange={setDisableCode}
+                disabled={disableEmailState.loading}
+                error={!!disableEmailState.error}
+                onComplete={() => handleDisable()}
+                autoFocus
+              />
 
-            <ResendSection
-              message="Vous n'avez pas reçu l'email ? Vérifiez votre dossier Indésirables ou"
-              countdownSeconds={60}
-              onResend={() => handleResendCode('disable')}
-              loading={resendCodeState.loading}
-              buttonText='Renvoyer un code'
-              align='center'
-            />
-          </div>
-        ) : (
-          <CustomInput
-            type='password'
-            label='Mot de passe'
-            value={disablePassword}
-            onChange={(e) => setDisablePassword(e.target.value)}
-            autoFocus
-          />
-        )}
+              <ResendSection
+                message="Vous n'avez pas reçu l'email ? Vérifiez votre dossier Indésirables ou"
+                countdownSeconds={60}
+                onResend={() => handleResendCode('disable')}
+                loading={resendCodeState.loading}
+                buttonText='Renvoyer un code'
+                align='center'
+              />
+            </motion.div>
+          ) : (
+            <motion.div
+              key='password-input'
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              transition={{ duration: 0.2 }}
+            >
+              <CustomInput
+                type='password'
+                label='Mot de passe'
+                value={disablePassword}
+                onChange={(e) => setDisablePassword(e.target.value)}
+                autoFocus
+              />
+            </motion.div>
+          )}
+        </AnimatePresence>
       </div>
 
       <div className='flex space-x-3'>
@@ -326,7 +376,33 @@ const EmailTwoFactor: React.FC<EmailTwoFactorProps> = ({
         size='md'
         urlName='enable-email-2fa'
       >
-        {renderEnableFlow()}
+        <AnimatePresence custom={direction} mode='wait'>
+          <motion.div
+            key={currentStep}
+            custom={direction}
+            variants={{
+              enter: (direction: number) => ({
+                x: direction > 0 ? 50 : -50,
+                opacity: 0,
+              }),
+              center: {
+                x: 0,
+                opacity: 1,
+                transition: { duration: 0.3 },
+              },
+              exit: (direction: number) => ({
+                x: direction < 0 ? 50 : -50,
+                opacity: 0,
+                transition: { duration: 0.2 },
+              }),
+            }}
+            initial='enter'
+            animate='center'
+            exit='exit'
+          >
+            {renderEnableFlow()}
+          </motion.div>
+        </AnimatePresence>
       </Modal>
 
       <Modal

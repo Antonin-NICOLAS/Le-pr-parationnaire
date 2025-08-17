@@ -64,20 +64,20 @@ Ces codes vous permettront d'accéder à votre compte si vous perdez l'accès à
           Stockez ces codes dans un endroit sûr. Ils vous permettront d'accéder
           à votre compte si vous perdez l'accès à vos autres méthodes.
         </p>
+        <ErrorMessage
+          title='Important à retenir'
+          className='mt-6'
+          message={
+            <ul className='space-y-1'>
+              <li>• Chaque code ne peut être utilisé qu'une seule fois</li>
+              <li>• Stockez-les dans un endroit sûr et accessible</li>
+              <li>• Ne les partagez avec personne</li>
+              <li>• Vous pouvez les régénérer si nécessaire</li>
+            </ul>
+          }
+          type='warning'
+        />
       </div>
-
-      <ErrorMessage
-        title='Important à retenir'
-        message={
-          <ul className='space-y-1'>
-            <li>• Chaque code ne peut être utilisé qu'une seule fois</li>
-            <li>• Stockez-les dans un endroit sûr et accessible</li>
-            <li>• Ne les partagez avec personne</li>
-            <li>• Vous pouvez les régénérer si nécessaire</li>
-          </ul>
-        }
-        type='warning'
-      />
 
       <div className='space-y-4'>
         <div

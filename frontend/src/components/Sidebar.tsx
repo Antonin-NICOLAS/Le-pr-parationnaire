@@ -1,10 +1,10 @@
 // Icons
 import {
-  AlignStartVertical,
-  Award,
+  LibraryBig,
+  CalendarDays,
   ChevronsLeft,
-  Dumbbell,
-  Footprints,
+  Rotate3d,
+  Newspaper,
   Info,
   LayoutDashboard,
   LogIn,
@@ -14,7 +14,7 @@ import {
   Settings,
   Sun,
   User,
-  Users,
+  School,
 } from 'lucide-react'
 import React, { useEffect, useRef } from 'react'
 import { NavLink, useNavigate } from 'react-router-dom'
@@ -83,7 +83,7 @@ const Sidebar: React.FC<SidebarProps> = ({
       >
         <div className='bg-deg-gray-100 flex h-[3.5rem] w-full items-center justify-between rounded-2xl px-6 shadow-xl'>
           <NavLink
-            to={user ? '/dashboard' : '/home'}
+            to='/home'
             onClick={handleNavClick}
             className='inline-flex items-center gap-x-1'
           >
@@ -194,7 +194,7 @@ const Sidebar: React.FC<SidebarProps> = ({
               </h3>
               <div className='grid gap-6'>
                 <NavLink
-                  to='/dashboard'
+                  to='/home'
                   onClick={handleNavClick}
                   className={({ isActive }) =>
                     `text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[2rem] [transition:color_0.4s,_opacity_0.4s] ${
@@ -210,11 +210,11 @@ const Sidebar: React.FC<SidebarProps> = ({
                       sidebarOpen ? '' : 'opacity-0'
                     }`}
                   >
-                    Dashboard
+                    Accueil
                   </span>
                 </NavLink>
                 <NavLink
-                  to='/steps'
+                  to='/articles'
                   onClick={handleNavClick}
                   className={({ isActive }) =>
                     `text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[2rem] [transition:color_0.4s,_opacity_0.4s] ${
@@ -224,17 +224,17 @@ const Sidebar: React.FC<SidebarProps> = ({
                     }`
                   }
                 >
-                  <Footprints className='text-xl' />
+                  <Newspaper className='text-xl' />
                   <span
                     className={`font-semibold [transition:opacity_0.4s] ${
                       sidebarOpen ? '' : 'opacity-0'
                     }`}
                   >
-                    Mes pas
+                    Articles
                   </span>
                 </NavLink>
                 <NavLink
-                  to='/challenges'
+                  to='/orientation'
                   onClick={handleNavClick}
                   className={({ isActive }) =>
                     `text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[2rem] [transition:color_0.4s,_opacity_0.4s] ${
@@ -244,17 +244,17 @@ const Sidebar: React.FC<SidebarProps> = ({
                     }`
                   }
                 >
-                  <Dumbbell className='text-xl' />
+                  <Rotate3d className='text-xl' />
                   <span
                     className={`font-semibold [transition:opacity_0.4s] ${
                       sidebarOpen ? '' : 'opacity-0'
                     }`}
                   >
-                    Mes défis
+                    Orientation
                   </span>
                 </NavLink>
                 <NavLink
-                  to='/rewards'
+                  to='/methods'
                   onClick={handleNavClick}
                   className={({ isActive }) =>
                     `text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[2rem] [transition:color_0.4s,_opacity_0.4s] ${
@@ -264,17 +264,17 @@ const Sidebar: React.FC<SidebarProps> = ({
                     }`
                   }
                 >
-                  <Award className='text-xl' />
+                  <CalendarDays className='text-xl' />
                   <span
                     className={`font-semibold [transition:opacity_0.4s] ${
                       sidebarOpen ? '' : 'opacity-0'
                     }`}
                   >
-                    Mes récompenses
+                    Organisation
                   </span>
                 </NavLink>
                 <NavLink
-                  to='/leaderboard'
+                  to='/courses'
                   onClick={handleNavClick}
                   className={({ isActive }) =>
                     `text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[2rem] [transition:color_0.4s,_opacity_0.4s] ${
@@ -284,17 +284,17 @@ const Sidebar: React.FC<SidebarProps> = ({
                     }`
                   }
                 >
-                  <AlignStartVertical className='text-xl' />
+                  <School className='text-xl' />
                   <span
                     className={`font-semibold [transition:opacity_0.4s] ${
                       sidebarOpen ? '' : 'opacity-0'
                     }`}
                   >
-                    Mon classement
+                    Cours
                   </span>
                 </NavLink>
                 <NavLink
-                  to='/friends'
+                  to='/resources'
                   onClick={handleNavClick}
                   className={({ isActive }) =>
                     `text-text hover:text-primary-500 relative grid grid-cols-[repeat(2,max-content)] items-center gap-x-4 pl-[2rem] [transition:color_0.4s,_opacity_0.4s] ${
@@ -304,13 +304,13 @@ const Sidebar: React.FC<SidebarProps> = ({
                     }`
                   }
                 >
-                  <Users className='text-xl' />
+                  <LibraryBig className='text-xl' />
                   <span
                     className={`font-semibold [transition:opacity_0.4s] ${
                       sidebarOpen ? '' : 'opacity-0'
                     }`}
                   >
-                    Mes amis
+                    Resources
                   </span>
                 </NavLink>
               </div>

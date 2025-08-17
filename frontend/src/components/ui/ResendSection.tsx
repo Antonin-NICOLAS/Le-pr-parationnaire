@@ -17,13 +17,13 @@ interface ResendSectionProps {
 }
 
 export default function ResendSection({
-  message = "Didn't receive the email?",
+  message = "Vous n'avez pas reçu l'email ? Vérifiez votre dossier Indésirables ou",
   countdownSeconds = 60,
   onResend,
   loading = false,
   variant = 'block',
   icon: Icon = RefreshCw,
-  buttonText = 'Resend Code',
+  buttonText = 'Renvoyer le code',
   align = 'center',
   className = '',
 }: ResendSectionProps) {

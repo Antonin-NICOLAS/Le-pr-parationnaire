@@ -3,6 +3,7 @@ import { Navigate, Route, Routes } from 'react-router-dom'
 import SidebarLayout from '../layouts/SidebarLayout'
 import Home from '../pages/Home'
 import SettingsPage from '../pages/Settings'
+import Articles from '../pages/Articles'
 // authentification routes
 import AuthPage from '../pages/auth/AuthPage'
 import ForgotPasswordPage from '../pages/auth/ForgotPasswordPage'
@@ -20,6 +21,7 @@ export default function AppRoutes() {
           element={<Navigate to='/settings/security' replace />}
         />
         <Route path='/settings/:tab?' element={<SettingsPage />} />
+        <Route path='/articles' element={<Articles />} />
       </Route>
 
       {/* Authentication routes */}
