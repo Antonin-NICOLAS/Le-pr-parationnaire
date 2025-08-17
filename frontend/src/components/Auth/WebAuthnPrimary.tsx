@@ -95,6 +95,7 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
       )
       return
     }
+    transferCredentialsState.resetError()
 
     const result = await transferCredentials(
       'secondary',
@@ -144,19 +145,17 @@ const WebAuthnPrimary: React.FC<WebAuthnPrimaryProps> = ({
       deviceName,
     )
     if (result.success) {
-      closeEnableFlow()
-      setDeviceName('')
-      setCurrentStep('transfer-choice')
       onStatusChange()
+      setDeviceName('')
+      closeEnableFlow()
+      setCurrentStep('transfer-choice')
+      if (primaryCredentials.length !== 1) {
+        openCredentialsList()
+      }
     }
   }
 
   const handleDisable = async () => {
-    if (disableMethod === 'password' && !disablePassword) {
-      disableWebAuthnState.setAnError('Veuillez entrer votre mot de passe')
-      return
-    }
-
     const result = await disableWebAuthn(
       'primary',
       user?.email || '',

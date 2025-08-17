@@ -165,7 +165,7 @@ const ErrorMessage: React.FC<ErrorMessageProps> = ({
                   className={`font-semibold mb-1 break-words ${config.textColor}`}
                   style={{
                     fontSize: '0.875rem',
-                    lineHeight: '1.25rem',
+                    lineHeight: '1.5rem',
                   }}
                 >
                   {title}
@@ -177,7 +177,7 @@ const ErrorMessage: React.FC<ErrorMessageProps> = ({
                 transition={{ delay: title ? 0.2 : 0.15 }}
                 className={`text-sm break-words ${config.textColor}`}
                 style={{
-                  lineHeight: '1.25rem',
+                  lineHeight: '1.5rem',
                 }}
               >
                 {message}

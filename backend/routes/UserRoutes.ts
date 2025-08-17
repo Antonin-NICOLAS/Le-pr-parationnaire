@@ -50,11 +50,7 @@ router.post('/change-email/step1', NormalRL, authenticateLean, changeEmailStep1)
 router.post(
   '/change-email/step2',
   NormalRL,
-  validate(
-    z.object({
-      code: sixDigitCodeSchema,
-    }),
-  ),
+  validate(sixDigitCodeSchema),
   authenticateLean,
   changeEmailStep2Step4,
 )
@@ -72,11 +68,7 @@ router.post(
 router.post(
   '/change-email/step4',
   NormalRL,
-  validate(
-    z.object({
-      code: sixDigitCodeSchema,
-    }),
-  ),
+  validate(sixDigitCodeSchema),
   authenticateLean,
   changeEmailStep2Step4,
 )

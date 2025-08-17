@@ -78,6 +78,8 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
   const { user } = useAuth()
 
   const handleEnable = async () => {
+    console.log(primaryCredentials)
+    console.log(credentials)
     if (
       primaryCredentials.some(
         (credential) =>
@@ -148,7 +150,13 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
   }
 
   const handleSetName = async () => {
-    if (!deviceName.trim()) return
+    console.log(credentials.length)
+    if (!deviceName.trim()) {
+      setCredentialNameState.setAnError(
+        'Veuillez entrer un nom pour votre appareil',
+      )
+      return
+    } ////////////////////////////////////////////////////////
 
     const result = await setCredentialName(
       'secondary',
@@ -157,10 +165,12 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
     )
     if (result.success) {
       onStatusChange()
+      setDeviceName('')
       if (credentials.length === 1) {
         setCurrentStep('backup')
       } else {
         closeEnableFlow()
+        setCurrentStep('transfer-choice')
         openCredentialsList()
       }
     }
@@ -172,10 +182,10 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
         'Êtes-vous sûr de vouloir supprimer cette clé de sécurité ?',
       )
     ) {
-      const success = await deleteCredential('secondary', id)
-      if (success) {
+      const result = await deleteCredential('secondary', id)
+      if (result.success) {
         onStatusChange()
-        if (credentials.length === 0) {
+        if (credentials.length <= 1) {
           closeCredentialsList()
         }
       }
@@ -191,6 +201,7 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
     )
     if (result.success) {
       closeDisableFlow()
+      setDisablePassword('')
       onStatusChange()
     }
   }
@@ -361,6 +372,12 @@ const WebAuthnTwoFactor: React.FC<WebAuthnTwoFactorProps> = ({
                 Donnez un nom reconnaissable à votre clé de sécurité
               </p>
             </div>
+            <ErrorMessage
+              message={setCredentialNameState.error}
+              type='error'
+              onClose={() => setCredentialNameState.resetError()}
+              isVisible={!!setCredentialNameState.error}
+            />
 
             <CustomInput
               label="Nom de l'appareil"

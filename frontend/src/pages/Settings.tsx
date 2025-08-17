@@ -24,6 +24,7 @@ import { useNavigate, useParams } from 'react-router-dom'
 import { toast } from 'sonner'
 import { motion } from 'framer-motion'
 
+import ErrorMessage from '../components/ui/ErrorMessage'
 import AppTwoFactor from '../components/TwoFactor/AppTwoFactor'
 import BackupCodesDisplay from '../components/TwoFactor/BackupCodesDisplay'
 import EmailTwoFactor from '../components/TwoFactor/EmailTwoFactor'
@@ -163,9 +164,13 @@ const SettingsPage: React.FC = () => {
   }, [])
 
   const handlePasswordChange = async () => {
+    if (!changePasswordForm.validateForm()) return
+    changePasswordForm.clearErrors()
+    changePasswordState.resetError()
     const result = await changePassword(changePasswordForm.values)
     if (result.success) {
       changePasswordForm.reset()
+      setShowPasswordForm(false)
     }
   }
 
@@ -393,12 +398,22 @@ const SettingsPage: React.FC = () => {
           >
             {showPasswordForm ? (
               <motion.form
-                onSubmit={handlePasswordChange}
+                onSubmit={(e) =>
+                  changePasswordForm.handleSubmit(handlePasswordChange)(e)
+                }
                 className='space-y-4'
                 initial='hidden'
                 animate='show'
                 variants={containerVariants}
               >
+                <ErrorMessage
+                  message={changePasswordState.error}
+                  type='error'
+                  onClose={() => {
+                    changePasswordState.resetError()
+                  }}
+                  isVisible={!!changePasswordState.error}
+                />
                 <motion.div variants={itemVariants}>
                   <CustomInput
                     type='password'
@@ -585,10 +600,21 @@ const SettingsPage: React.FC = () => {
                 variants={containerVariants}
               >
                 {emailChangeStep === 'verify-current' && (
-                  <motion.div variants={itemVariants} className='space-y-4'>
+                  <motion.div
+                    variants={itemVariants}
+                    className='space-y-4 text-center'
+                  >
                     <p className='text-sm text-gray-600 dark:text-gray-400'>
                       Entrez le code de vérification envoyé à votre email actuel
                     </p>
+                    <ErrorMessage
+                      message={changeEmailStep2State.error}
+                      type='error'
+                      onClose={() => {
+                        changeEmailStep2State.resetError()
+                      }}
+                      isVisible={!!changeEmailStep2State.error}
+                    />
                     <SixDigitCodeInput
                       value={changeEmailForm.values.currentEmailCode}
                       onChange={(value) =>
@@ -628,7 +654,18 @@ const SettingsPage: React.FC = () => {
                 )}
 
                 {emailChangeStep === 'new-email' && (
-                  <motion.div variants={itemVariants} className='space-y-4'>
+                  <motion.div
+                    variants={itemVariants}
+                    className='space-y-4 text-center'
+                  >
+                    <ErrorMessage
+                      message={changeEmailStep3State.error}
+                      type='error'
+                      onClose={() => {
+                        changeEmailStep3State.resetError()
+                      }}
+                      isVisible={!!changeEmailStep3State.error}
+                    />
                     <CustomInput
                       id='new-email'
                       name='newEmail'
@@ -636,12 +673,11 @@ const SettingsPage: React.FC = () => {
                       label='Nouvel email'
                       placeholder='Entrer votre nouvel email'
                       value={changeEmailForm.values.newEmail}
-                      onChange={(value) =>
-                        changeEmailForm.handleChange('newEmail', value)
+                      onChange={(e) =>
+                        changeEmailForm.handleChange('newEmail', e.target.value)
                       }
                       error={
-                        changeEmailForm.touched.newEmail &&
-                        changeEmailForm.values.newEmail
+                        changeEmailForm.touched.newEmail
                           ? changeEmailForm.errors.newEmail
                           : undefined
                       }
@@ -670,11 +706,22 @@ const SettingsPage: React.FC = () => {
                 )}
 
                 {emailChangeStep === 'verify-new' && (
-                  <motion.div variants={itemVariants} className='space-y-4'>
+                  <motion.div
+                    variants={itemVariants}
+                    className='space-y-4 text-center'
+                  >
                     <p className='text-sm text-gray-600 dark:text-gray-400'>
                       Entrez le code de vérification envoyé à{' '}
                       {changeEmailForm.values.newEmail}
                     </p>
+                    <ErrorMessage
+                      message={changeEmailStep4State.error}
+                      type='error'
+                      onClose={() => {
+                        changeEmailStep4State.resetError()
+                      }}
+                      isVisible={!!changeEmailStep4State.error}
+                    />
                     <SixDigitCodeInput
                       value={changeEmailForm.values.newEmailCode}
                       onChange={(value) =>
@@ -974,6 +1021,9 @@ const SettingsPage: React.FC = () => {
             }
             credentials={
               getTwoFactorStatusState.data?.secondaryCredentials || []
+            }
+            primaryCredentials={
+              getTwoFactorStatusState.data?.primaryCredentials || []
             }
             onStatusChange={() => fetch2FAStatus()}
           />

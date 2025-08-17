@@ -4,7 +4,7 @@ import { RateLimiterMemory } from 'rate-limiter-flexible'
 // Rate limiter configuration (5 requests per IP per minute)
 const rateLimiter = new RateLimiterMemory({
   keyPrefix: 'rate_limiter',
-  points: 5,
+  points: 10,
   duration: 60,
   blockDuration: 60 * 15,
 })

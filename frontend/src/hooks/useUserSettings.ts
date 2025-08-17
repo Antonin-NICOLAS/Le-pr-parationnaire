@@ -40,17 +40,19 @@ const changeEmailStep4Api = (code: string) =>
   )
 
 const useUserSettings = () => {
+  const { checkAuth, logout } = useAuth()
   const deleteAccount = useApiCall(deleteAccountApi, {
     successMessage: 'Compte supprimé avec succès',
     errorMessage: 'Erreur lors de la suppression du compte',
     onSuccess: async () => {
-      await useAuth().logout()
+      await logout()
     },
   })
 
   const changePassword = useApiCall(changePasswordApi, {
     successMessage: 'Mot de passe modifié avec succès',
     errorMessage: 'Erreur lors de la modification du mot de passe',
+    showErrorToast: false,
   })
 
   // Email change flow
@@ -62,6 +64,7 @@ const useUserSettings = () => {
 
   const changeEmailStep2 = useApiCall(changeEmailStep2Api, {
     showSuccessToast: false,
+    showErrorToast: false,
     errorMessage: 'Erreur lors de la vérification du code',
   })
 
@@ -69,12 +72,14 @@ const useUserSettings = () => {
     successMessage:
       'Un email de vérification a été envoyé à votre nouvelle adresse mail.',
     errorMessage: "Erreur lors de la modification de l'adresse email",
+    showErrorToast: false,
   })
   const changeEmailStep4 = useApiCall(changeEmailStep4Api, {
+    showErrorToast: false,
     successMessage: 'Adresse email modifiée avec succès',
     errorMessage: 'Erreur lors de la confirmation du code',
     onSuccess: async () => {
-      await useAuth().checkAuth()
+      await checkAuth()
     },
   })
   return {
